@@ -3,9 +3,9 @@ WidgetMetadata = {
   title: "Jable",
   description: "获取 Jable 视频",
   author: "nibiru",
-  site: "https://widgets-xd.vercel.app",
+  site: "https://github.com/quantumultxx/FW-Widgets",
   version: "1.0.9",
-  requiredVersion: "0.0.2",
+  requiredVersion: "0.0.1",
   detailCacheDuration: 60,
   modules: [
     // 搜索模块
@@ -1255,9 +1255,9 @@ async function parseHtml(htmlContent) {
             previewUrl: video,
             link: url,
             mediaType: "movie",
-            description: "",
-            releaseDate: duration,
-            playerType: "system"
+            durationText: duration,
+            description: duration,
+            playerType: "system",
           };
           items.push(item);
         }
@@ -1281,37 +1281,25 @@ async function loadDetail(link) {
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     },
   });
-  
   const hlsUrl = response.data.match(/var hlsUrl = '(.*?)';/)[1];
   if (!hlsUrl) {
     throw new Error("无法获取有效的HLS URL");
   }
-  
-  const $ = Widget.html.load(response.data);
-  let videoDuration = null;
-  const durationElements = $('.absolute-bottom-right .label, .duration, [class*="duration"]');
-  if (durationElements.length > 0) {
-    videoDuration = durationElements.first().text().trim();
-  }
-  
   const item = {
     id: link,
     type: "detail",
     videoUrl: hlsUrl,
     mediaType: "movie",
-    releaseDate: videoDuration,
     playerType: "system",
     customHeaders: {
       "Referer": link,
       "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     },
   };
-  
   const sections = await parseHtml(response.data);
   const items = sections.flatMap((section) => section.childItems);
   if (items.length > 0) {
     item.childItems = items;
   }
-  
   return item;
 }
