@@ -17,7 +17,7 @@ WidgetMetadata = {
     // =============TMDB模块=============
     // --- 热门模块 ---
     {
-      title: " 今日热门剧集",
+      title: "TMDB 热门剧集",
       description: "今日热门电视剧",
       requiresWebView: false,
       functionName: "loadTodayHotTV",
@@ -28,7 +28,7 @@ WidgetMetadata = {
       ]
     },
     {
-      title: " 今日热门电影",
+      title: "TMDB 热门电影",
       description: "今日热门电影",
       requiresWebView: false,
       functionName: "loadTodayHotMovies",
