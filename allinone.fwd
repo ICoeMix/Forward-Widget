@@ -170,7 +170,7 @@
       "title": "自动链接弹幕",
       "description": "自动获取播放链接并从服务器获取弹幕【30% off code：CHEAP】",
       "requiredVersion": "0.0.2",
-      "version": "1.0.20",
+      "version": "1.0.22",
       "author": "huangxd",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/forward.auto.danmu.js"
     },
@@ -283,15 +283,6 @@
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/cloud_cinema.js"
     },
     {
-      "id": "forward.playurl.danmu",
-      "title": "手动链接弹幕",
-      "description": "从指定播放链接和服务器获取弹幕【30% off code：CHEAP】",
-      "requiredVersion": "0.0.2",
-      "version": "1.0.8",
-      "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/forward.playurl.danmu.js"
-    },
-    {
       "id": "missav",
       "title": "MissAV",
       "description": "获取 MissAV 推荐",
@@ -299,6 +290,15 @@
       "version": "1.0.0",
       "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/missav.js"
+    },
+    {
+      "id": "forward.playurl.danmu",
+      "title": "手动链接弹幕",
+      "description": "从指定播放链接和服务器获取弹幕【30% off code：CHEAP】",
+      "requiredVersion": "0.0.2",
+      "version": "1.0.8",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/forward.playurl.danmu.js"
     }
   ]
 }
