@@ -23,7 +23,6 @@ WidgetMetadata = {
       functionName: "loadTodayHotTV",
       cacheDuration: 3600,
       params: [
-        { name: "language", title: "语言", type: "language", value: "zh-CN" },
         { 
           name: "sort_by", 
           title: "地区", 
@@ -38,6 +37,7 @@ WidgetMetadata = {
           ], 
           value: "" 
         },
+        { name: "language", title: "语言", type: "language", value: "zh-CN" },
         { name: "page", title: "页码", type: "page" }
       ]
     },
@@ -48,7 +48,6 @@ WidgetMetadata = {
       functionName: "loadTodayHotMovies",
       cacheDuration: 3600,
       params: [
-        { name: "language", title: "语言", type: "language", value: "zh-CN" },
         { 
           name: "sort_by", 
           title: "地区", 
@@ -63,6 +62,7 @@ WidgetMetadata = {
           ], 
           value: "" 
         },
+        { name: "language", title: "语言", type: "language", value: "zh-CN" },
         { name: "page", title: "页码", type: "page" }
       ]
     },
@@ -393,10 +393,10 @@ WidgetMetadata = {
           title: "🎯 操作模式",
           type: "enumeration",
           description: "选择操作类型",
-          value: "search_and_block",
+          value: "search_only",
           enumOptions: [
-            { title: "搜索并屏蔽", value: "search_and_block" },
             { title: "仅搜索", value: "search_only" },
+            { title: "搜索并屏蔽", value: "search_and_block" },
             { title: "手动屏蔽ID", value: "manual_block" }
           ]
         },
@@ -433,10 +433,10 @@ WidgetMetadata = {
           title: "🎭 媒体类型",
           type: "enumeration",
           description: "选择媒体类型（手动屏蔽模式使用）",
-          value: "movie",
+          value: "tv",
           enumOptions: [
-            { title: "电影", value: "movie" },
-            { title: "剧集", value: "tv" }
+            { title: "剧集", value: "tv" },
+            { title: "电影", value: "movie" }
           ]
         }
       ]
@@ -456,8 +456,8 @@ WidgetMetadata = {
           value: "view",
           enumOptions: [
             { title: "查看黑名单", value: "view" },
-            { title: "取消屏蔽", value: "unblock" },
             { title: "清空黑名单", value: "clear" },
+            { title: "取消屏蔽", value: "unblock" },
             { title: "导出配置", value: "export" },
             { title: "导入配置", value: "import" }
           ]
@@ -478,8 +478,8 @@ WidgetMetadata = {
           description: "选择要取消屏蔽的媒体类型",
           value: "tv",
           enumOptions: [
-            { title: "电影", value: "movie" },
-            { title: "剧集", value: "tv" }
+            { title: "剧集", value: "tv" },
+            { title: "电影", value: "movie" }
           ],
           belongTo: { paramName: "action", value: ["unblock"] }
         },
