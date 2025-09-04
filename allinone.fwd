@@ -283,13 +283,31 @@
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/cloud_cinema.js"
     },
     {
+      "id": "forward.combined.media.lists.en",
+      "title": "Movie & TV Lists",
+      "description": "Movie & TV Lists",
+      "requiredVersion": "0.0.2",
+      "version": "1.0.0",
+      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/Move_list_EN.js"
+    },
+    {
+      "id": "baranwang.danmu.universe",
+      "title": "通用弹幕",
+      "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩等平台",
+      "requiredVersion": "0.0.2",
+      "version": "0.0.12",
+      "author": "Baran",
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/danmu-universe.js"
+    },
+    {
       "id": "missav",
       "title": "MissAV",
       "description": "获取 MissAV 推荐",
       "requiredVersion": "0.0.2",
       "version": "1.0.0",
       "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/missav.js"
+      "url": "https://widgets-xd.vercel.app/Widgets/MissAV.js"
     },
     {
       "id": "forward.playurl.danmu",
