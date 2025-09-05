@@ -289,16 +289,16 @@
       "requiredVersion": "0.0.2",
       "version": "1.0.0",
       "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/Move_list_EN.js"
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/forward.combined.media.lists.en.js"
     },
     {
       "id": "baranwang.danmu.universe",
       "title": "通用弹幕",
       "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩等平台",
       "requiredVersion": "0.0.2",
-      "version": "0.0.12",
+      "version": "0.0.16",
       "author": "Baran",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/danmu-universe.js"
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/baranwang.danmu.universe.js"
     },
     {
       "id": "missav",
@@ -307,7 +307,7 @@
       "requiredVersion": "0.0.2",
       "version": "1.0.0",
       "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://widgets-xd.vercel.app/Widgets/MissAV.js"
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/missav.js"
     },
     {
       "id": "forward.playurl.danmu",

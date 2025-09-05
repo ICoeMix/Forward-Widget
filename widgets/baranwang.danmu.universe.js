@@ -1,0 +1,6198 @@
+let METADATA_SYMBOL;
+var __webpack_modules__ = {
+    188: function(e) {
+        e.exports = t;
+        function t(e, t) {
+            for(var n = Array(arguments.length - 1), r = 0, i = 2, o = !0; i < arguments.length;)n[r++] = arguments[i++];
+            return new Promise(function(i, s) {
+                n[r] = function(e) {
+                    if (o) if (o = !1, e) s(e);
+                    else {
+                        for(var t = Array(arguments.length - 1), n = 0; n < t.length;)t[n++] = arguments[n];
+                        i.apply(null, t);
+                    }
+                };
+                try {
+                    e.apply(t || null, n);
+                } catch (e) {
+                    o && (o = !1, s(e));
+                }
+            });
+        }
+    },
+    4: function(e, t) {
+        var n = t;
+        n.length = function(e) {
+            var t = e.length;
+            if (!t) return 0;
+            for(var n = 0; --t % 4 > 1 && "=" === e.charAt(t);)++n;
+            return Math.ceil(3 * e.length) / 4 - n;
+        };
+        for(var r = Array(64), i = Array(123), o = 0; o < 64;)i[r[o] = o < 26 ? o + 65 : o < 52 ? o + 71 : o < 62 ? o - 4 : o - 59 | 43] = o++;
+        n.encode = function(e, t, n) {
+            for(var i, o = null, s = [], a = 0, u = 0; t < n;){
+                var l = e[t++];
+                switch(u){
+                    case 0:
+                        s[a++] = r[l >> 2], i = (3 & l) << 4, u = 1;
+                        break;
+                    case 1:
+                        s[a++] = r[i | l >> 4], i = (15 & l) << 2, u = 2;
+                        break;
+                    case 2:
+                        s[a++] = r[i | l >> 6], s[a++] = r[63 & l], u = 0;
+                }
+                a > 8191 && ((o || (o = [])).push(String.fromCharCode.apply(String, s)), a = 0);
+            }
+            return (u && (s[a++] = r[i], s[a++] = 61, 1 === u && (s[a++] = 61)), o) ? (a && o.push(String.fromCharCode.apply(String, s.slice(0, a))), o.join("")) : String.fromCharCode.apply(String, s.slice(0, a));
+        };
+        var s = "invalid encoding";
+        n.decode = function(e, t, n) {
+            for(var r, o = n, a = 0, u = 0; u < e.length;){
+                var l = e.charCodeAt(u++);
+                if (61 === l && a > 1) break;
+                if (void 0 === (l = i[l])) throw Error(s);
+                switch(a){
+                    case 0:
+                        r = l, a = 1;
+                        break;
+                    case 1:
+                        t[n++] = r << 2 | (48 & l) >> 4, r = l, a = 2;
+                        break;
+                    case 2:
+                        t[n++] = (15 & r) << 4 | (60 & l) >> 2, r = l, a = 3;
+                        break;
+                    case 3:
+                        t[n++] = (3 & r) << 6 | l, a = 0;
+                }
+            }
+            if (1 === a) throw Error(s);
+            return n - o;
+        }, n.test = function(e) {
+            return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(e);
+        };
+    },
+    730: function(e) {
+        function t() {
+            this._listeners = {};
+        }
+        e.exports = t, t.prototype.on = function(e, t, n) {
+            return (this._listeners[e] || (this._listeners[e] = [])).push({
+                fn: t,
+                ctx: n || this
+            }), this;
+        }, t.prototype.off = function(e, t) {
+            if (void 0 === e) this._listeners = {};
+            else if (void 0 === t) this._listeners[e] = [];
+            else for(var n = this._listeners[e], r = 0; r < n.length;)n[r].fn === t ? n.splice(r, 1) : ++r;
+            return this;
+        }, t.prototype.emit = function(e) {
+            var t = this._listeners[e];
+            if (t) {
+                for(var n = [], r = 1; r < arguments.length;)n.push(arguments[r++]);
+                for(r = 0; r < t.length;)t[r].fn.apply(t[r++].ctx, n);
+            }
+            return this;
+        };
+    },
+    791: function(e) {
+        function t(e) {
+            return "undefined" != typeof Float32Array ? !function() {
+                var t = new Float32Array([
+                    -0
+                ]), n = new Uint8Array(t.buffer), r = 128 === n[3];
+                function i(e, r, i) {
+                    t[0] = e, r[i] = n[0], r[i + 1] = n[1], r[i + 2] = n[2], r[i + 3] = n[3];
+                }
+                function o(e, r, i) {
+                    t[0] = e, r[i] = n[3], r[i + 1] = n[2], r[i + 2] = n[1], r[i + 3] = n[0];
+                }
+                function s(e, r) {
+                    return n[0] = e[r], n[1] = e[r + 1], n[2] = e[r + 2], n[3] = e[r + 3], t[0];
+                }
+                function a(e, r) {
+                    return n[3] = e[r], n[2] = e[r + 1], n[1] = e[r + 2], n[0] = e[r + 3], t[0];
+                }
+                e.writeFloatLE = r ? i : o, e.writeFloatBE = r ? o : i, e.readFloatLE = r ? s : a, e.readFloatBE = r ? a : s;
+            }() : !function() {
+                function t(e, t, n, r) {
+                    var i = +(t < 0);
+                    if (i && (t = -t), 0 === t) e(1 / t > 0 ? 0 : 2147483648, n, r);
+                    else if (isNaN(t)) e(2143289344, n, r);
+                    else if (t > 3.4028234663852886e+38) e((i << 31 | 2139095040) >>> 0, n, r);
+                    else if (t < 1.1754943508222875e-38) e((i << 31 | Math.round(t / 1.401298464324817e-45)) >>> 0, n, r);
+                    else {
+                        var o = Math.floor(Math.log(t) / Math.LN2), s = 8388607 & Math.round(t * Math.pow(2, -o) * 8388608);
+                        e((i << 31 | o + 127 << 23 | s) >>> 0, n, r);
+                    }
+                }
+                function s(e, t, n) {
+                    var r = e(t, n), i = (r >> 31) * 2 + 1, o = r >>> 23 & 255, s = 8388607 & r;
+                    return 255 === o ? s ? NaN : 1 / 0 * i : 0 === o ? 1.401298464324817e-45 * i * s : i * Math.pow(2, o - 150) * (s + 8388608);
+                }
+                e.writeFloatLE = t.bind(null, n), e.writeFloatBE = t.bind(null, r), e.readFloatLE = s.bind(null, i), e.readFloatBE = s.bind(null, o);
+            }(), "undefined" != typeof Float64Array ? !function() {
+                var t = new Float64Array([
+                    -0
+                ]), n = new Uint8Array(t.buffer), r = 128 === n[7];
+                function i(e, r, i) {
+                    t[0] = e, r[i] = n[0], r[i + 1] = n[1], r[i + 2] = n[2], r[i + 3] = n[3], r[i + 4] = n[4], r[i + 5] = n[5], r[i + 6] = n[6], r[i + 7] = n[7];
+                }
+                function o(e, r, i) {
+                    t[0] = e, r[i] = n[7], r[i + 1] = n[6], r[i + 2] = n[5], r[i + 3] = n[4], r[i + 4] = n[3], r[i + 5] = n[2], r[i + 6] = n[1], r[i + 7] = n[0];
+                }
+                function s(e, r) {
+                    return n[0] = e[r], n[1] = e[r + 1], n[2] = e[r + 2], n[3] = e[r + 3], n[4] = e[r + 4], n[5] = e[r + 5], n[6] = e[r + 6], n[7] = e[r + 7], t[0];
+                }
+                function a(e, r) {
+                    return n[7] = e[r], n[6] = e[r + 1], n[5] = e[r + 2], n[4] = e[r + 3], n[3] = e[r + 4], n[2] = e[r + 5], n[1] = e[r + 6], n[0] = e[r + 7], t[0];
+                }
+                e.writeDoubleLE = r ? i : o, e.writeDoubleBE = r ? o : i, e.readDoubleLE = r ? s : a, e.readDoubleBE = r ? a : s;
+            }() : !function() {
+                function t(e, t, n, r, i, o) {
+                    var s, a = +(r < 0);
+                    if (a && (r = -r), 0 === r) e(0, i, o + t), e(1 / r > 0 ? 0 : 2147483648, i, o + n);
+                    else if (isNaN(r)) e(0, i, o + t), e(2146959360, i, o + n);
+                    else if (r > 1.7976931348623157e+308) e(0, i, o + t), e((a << 31 | 2146435072) >>> 0, i, o + n);
+                    else if (r < 2.2250738585072014e-308) e((s = r / 5e-324) >>> 0, i, o + t), e((a << 31 | s / 4294967296) >>> 0, i, o + n);
+                    else {
+                        var u = Math.floor(Math.log(r) / Math.LN2);
+                        1024 === u && (u = 1023), e(4503599627370496 * (s = r * Math.pow(2, -u)) >>> 0, i, o + t), e((a << 31 | u + 1023 << 20 | 1048576 * s & 1048575) >>> 0, i, o + n);
+                    }
+                }
+                function s(e, t, n, r, i) {
+                    var o = e(r, i + t), s = e(r, i + n), a = (s >> 31) * 2 + 1, u = s >>> 20 & 2047, l = 4294967296 * (1048575 & s) + o;
+                    return 2047 === u ? l ? NaN : 1 / 0 * a : 0 === u ? 5e-324 * a * l : a * Math.pow(2, u - 1075) * (l + 4503599627370496);
+                }
+                e.writeDoubleLE = t.bind(null, n, 0, 4), e.writeDoubleBE = t.bind(null, r, 4, 0), e.readDoubleLE = s.bind(null, i, 0, 4), e.readDoubleBE = s.bind(null, o, 4, 0);
+            }(), e;
+        }
+        function n(e, t, n) {
+            t[n] = 255 & e, t[n + 1] = e >>> 8 & 255, t[n + 2] = e >>> 16 & 255, t[n + 3] = e >>> 24;
+        }
+        function r(e, t, n) {
+            t[n] = e >>> 24, t[n + 1] = e >>> 16 & 255, t[n + 2] = e >>> 8 & 255, t[n + 3] = 255 & e;
+        }
+        function i(e, t) {
+            return (e[t] | e[t + 1] << 8 | e[t + 2] << 16 | e[t + 3] << 24) >>> 0;
+        }
+        function o(e, t) {
+            return (e[t] << 24 | e[t + 1] << 16 | e[t + 2] << 8 | e[t + 3]) >>> 0;
+        }
+        e.exports = t(t);
+    },
+    706: function(module) {
+        module.exports = inquire;
+        function inquire(moduleName) {
+            try {
+                var mod = eval("quire".replace(/^/, "re"))(moduleName);
+                if (mod && (mod.length || Object.keys(mod).length)) return mod;
+            } catch (e) {}
+            return null;
+        }
+    },
+    338: function(e) {
+        e.exports = t;
+        function t(e, t, n) {
+            var r = n || 8192, i = r >>> 1, o = null, s = r;
+            return function(n) {
+                if (n < 1 || n > i) return e(n);
+                s + n > r && (o = e(r), s = 0);
+                var a = t.call(o, s, s += n);
+                return 7 & s && (s = (7 | s) + 1), a;
+            };
+        }
+    },
+    322: function(e, t) {
+        var n = t;
+        n.length = function(e) {
+            for(var t = 0, n = 0, r = 0; r < e.length; ++r)(n = e.charCodeAt(r)) < 128 ? t += 1 : n < 2048 ? t += 2 : (0xFC00 & n) == 0xD800 && (0xFC00 & e.charCodeAt(r + 1)) == 0xDC00 ? (++r, t += 4) : t += 3;
+            return t;
+        }, n.read = function(e, t, n) {
+            if (n - t < 1) return "";
+            for(var r, i = null, o = [], s = 0; t < n;)(r = e[t++]) < 128 ? o[s++] = r : r > 191 && r < 224 ? o[s++] = (31 & r) << 6 | 63 & e[t++] : r > 239 && r < 365 ? (r = ((7 & r) << 18 | (63 & e[t++]) << 12 | (63 & e[t++]) << 6 | 63 & e[t++]) - 0x10000, o[s++] = 0xD800 + (r >> 10), o[s++] = 0xDC00 + (1023 & r)) : o[s++] = (15 & r) << 12 | (63 & e[t++]) << 6 | 63 & e[t++], s > 8191 && ((i || (i = [])).push(String.fromCharCode.apply(String, o)), s = 0);
+            return i ? (s && i.push(String.fromCharCode.apply(String, o.slice(0, s))), i.join("")) : String.fromCharCode.apply(String, o.slice(0, s));
+        }, n.write = function(e, t, n) {
+            for(var r, i, o = n, s = 0; s < e.length; ++s)(r = e.charCodeAt(s)) < 128 ? t[n++] = r : (r < 2048 ? t[n++] = r >> 6 | 192 : ((0xFC00 & r) == 0xD800 && (0xFC00 & (i = e.charCodeAt(s + 1))) == 0xDC00 ? (r = 0x10000 + ((0x03FF & r) << 10) + (0x03FF & i), ++s, t[n++] = r >> 18 | 240, t[n++] = r >> 12 & 63 | 128) : t[n++] = r >> 12 | 224, t[n++] = r >> 6 & 63 | 128), t[n++] = 63 & r | 128);
+            return n - o;
+        };
+    },
+    252: function(e, t, n) {
+        e = n.nmd(e), function(t, r) {
+            'function' == typeof define && define.amd ? define([
+                "protobufjs/minimal"
+            ], r) : e && e.exports && (e.exports = r(n(643)));
+        }(0, function(e) {
+            "use strict";
+            var t = e.Reader, n = e.Writer, r = e.util, i = e.roots.default || (e.roots.default = {});
+            return i.biliproto = function() {
+                var o = {};
+                return o.community = function() {
+                    var o = {};
+                    return o.service = function() {
+                        var o = {};
+                        return o.dm = function() {
+                            var o = {};
+                            return o.v1 = function() {
+                                var o = {};
+                                return o.DanmakuElem = function() {
+                                    function o(e) {
+                                        if (e) for(var t = Object.keys(e), n = 0; n < t.length; ++n)null != e[t[n]] && (this[t[n]] = e[t[n]]);
+                                    }
+                                    return o.prototype.id = r.Long ? r.Long.fromBits(0, 0, !1) : 0, o.prototype.progress = 0, o.prototype.mode = 0, o.prototype.fontsize = 0, o.prototype.color = 0, o.prototype.midHash = "", o.prototype.content = "", o.prototype.ctime = r.Long ? r.Long.fromBits(0, 0, !1) : 0, o.prototype.weight = 0, o.prototype.action = "", o.prototype.pool = 0, o.prototype.idStr = "", o.prototype.attr = 0, o.prototype.animation = "", o.prototype.likeNum = 0, o.prototype.colorV2 = "", o.prototype.dmTypeV2 = 0, o.create = function(e) {
+                                        return new o(e);
+                                    }, o.encode = function(e, t) {
+                                        return t || (t = n.create()), null != e.id && Object.hasOwnProperty.call(e, "id") && t.uint32(8).int64(e.id), null != e.progress && Object.hasOwnProperty.call(e, "progress") && t.uint32(16).int32(e.progress), null != e.mode && Object.hasOwnProperty.call(e, "mode") && t.uint32(24).int32(e.mode), null != e.fontsize && Object.hasOwnProperty.call(e, "fontsize") && t.uint32(32).int32(e.fontsize), null != e.color && Object.hasOwnProperty.call(e, "color") && t.uint32(40).uint32(e.color), null != e.midHash && Object.hasOwnProperty.call(e, "midHash") && t.uint32(50).string(e.midHash), null != e.content && Object.hasOwnProperty.call(e, "content") && t.uint32(58).string(e.content), null != e.ctime && Object.hasOwnProperty.call(e, "ctime") && t.uint32(64).int64(e.ctime), null != e.weight && Object.hasOwnProperty.call(e, "weight") && t.uint32(72).int32(e.weight), null != e.action && Object.hasOwnProperty.call(e, "action") && t.uint32(82).string(e.action), null != e.pool && Object.hasOwnProperty.call(e, "pool") && t.uint32(88).int32(e.pool), null != e.idStr && Object.hasOwnProperty.call(e, "idStr") && t.uint32(98).string(e.idStr), null != e.attr && Object.hasOwnProperty.call(e, "attr") && t.uint32(104).int32(e.attr), null != e.animation && Object.hasOwnProperty.call(e, "animation") && t.uint32(114).string(e.animation), null != e.likeNum && Object.hasOwnProperty.call(e, "likeNum") && t.uint32(120).uint32(e.likeNum), null != e.colorV2 && Object.hasOwnProperty.call(e, "colorV2") && t.uint32(130).string(e.colorV2), null != e.dmTypeV2 && Object.hasOwnProperty.call(e, "dmTypeV2") && t.uint32(136).uint32(e.dmTypeV2), t;
+                                    }, o.encodeDelimited = function(e, t) {
+                                        return this.encode(e, t).ldelim();
+                                    }, o.decode = function(e, n, r) {
+                                        e instanceof t || (e = t.create(e));
+                                        for(var o = void 0 === n ? e.len : e.pos + n, s = new i.biliproto.community.service.dm.v1.DanmakuElem(); e.pos < o;){
+                                            var a = e.uint32();
+                                            if (a === r) break;
+                                            switch(a >>> 3){
+                                                case 1:
+                                                    s.id = e.int64();
+                                                    break;
+                                                case 2:
+                                                    s.progress = e.int32();
+                                                    break;
+                                                case 3:
+                                                    s.mode = e.int32();
+                                                    break;
+                                                case 4:
+                                                    s.fontsize = e.int32();
+                                                    break;
+                                                case 5:
+                                                    s.color = e.uint32();
+                                                    break;
+                                                case 6:
+                                                    s.midHash = e.string();
+                                                    break;
+                                                case 7:
+                                                    s.content = e.string();
+                                                    break;
+                                                case 8:
+                                                    s.ctime = e.int64();
+                                                    break;
+                                                case 9:
+                                                    s.weight = e.int32();
+                                                    break;
+                                                case 10:
+                                                    s.action = e.string();
+                                                    break;
+                                                case 11:
+                                                    s.pool = e.int32();
+                                                    break;
+                                                case 12:
+                                                    s.idStr = e.string();
+                                                    break;
+                                                case 13:
+                                                    s.attr = e.int32();
+                                                    break;
+                                                case 14:
+                                                    s.animation = e.string();
+                                                    break;
+                                                case 15:
+                                                    s.likeNum = e.uint32();
+                                                    break;
+                                                case 16:
+                                                    s.colorV2 = e.string();
+                                                    break;
+                                                case 17:
+                                                    s.dmTypeV2 = e.uint32();
+                                                    break;
+                                                default:
+                                                    e.skipType(7 & a);
+                                            }
+                                        }
+                                        return s;
+                                    }, o.decodeDelimited = function(e) {
+                                        return e instanceof t || (e = new t(e)), this.decode(e, e.uint32());
+                                    }, o.verify = function(e) {
+                                        return "object" != typeof e || null === e ? "object expected" : null != e.id && e.hasOwnProperty("id") && !r.isInteger(e.id) && !(e.id && r.isInteger(e.id.low) && r.isInteger(e.id.high)) ? "id: integer|Long expected" : null != e.progress && e.hasOwnProperty("progress") && !r.isInteger(e.progress) ? "progress: integer expected" : null != e.mode && e.hasOwnProperty("mode") && !r.isInteger(e.mode) ? "mode: integer expected" : null != e.fontsize && e.hasOwnProperty("fontsize") && !r.isInteger(e.fontsize) ? "fontsize: integer expected" : null != e.color && e.hasOwnProperty("color") && !r.isInteger(e.color) ? "color: integer expected" : null != e.midHash && e.hasOwnProperty("midHash") && !r.isString(e.midHash) ? "midHash: string expected" : null != e.content && e.hasOwnProperty("content") && !r.isString(e.content) ? "content: string expected" : null != e.ctime && e.hasOwnProperty("ctime") && !r.isInteger(e.ctime) && !(e.ctime && r.isInteger(e.ctime.low) && r.isInteger(e.ctime.high)) ? "ctime: integer|Long expected" : null != e.weight && e.hasOwnProperty("weight") && !r.isInteger(e.weight) ? "weight: integer expected" : null != e.action && e.hasOwnProperty("action") && !r.isString(e.action) ? "action: string expected" : null != e.pool && e.hasOwnProperty("pool") && !r.isInteger(e.pool) ? "pool: integer expected" : null != e.idStr && e.hasOwnProperty("idStr") && !r.isString(e.idStr) ? "idStr: string expected" : null != e.attr && e.hasOwnProperty("attr") && !r.isInteger(e.attr) ? "attr: integer expected" : null != e.animation && e.hasOwnProperty("animation") && !r.isString(e.animation) ? "animation: string expected" : null != e.likeNum && e.hasOwnProperty("likeNum") && !r.isInteger(e.likeNum) ? "likeNum: integer expected" : null != e.colorV2 && e.hasOwnProperty("colorV2") && !r.isString(e.colorV2) ? "colorV2: string expected" : null != e.dmTypeV2 && e.hasOwnProperty("dmTypeV2") && !r.isInteger(e.dmTypeV2) ? "dmTypeV2: integer expected" : null;
+                                    }, o.fromObject = function(e) {
+                                        if (e instanceof i.biliproto.community.service.dm.v1.DanmakuElem) return e;
+                                        var t = new i.biliproto.community.service.dm.v1.DanmakuElem();
+                                        return null != e.id && (r.Long ? (t.id = r.Long.fromValue(e.id)).unsigned = !1 : "string" == typeof e.id ? t.id = parseInt(e.id, 10) : "number" == typeof e.id ? t.id = e.id : "object" == typeof e.id && (t.id = new r.LongBits(e.id.low >>> 0, e.id.high >>> 0).toNumber())), null != e.progress && (t.progress = 0 | e.progress), null != e.mode && (t.mode = 0 | e.mode), null != e.fontsize && (t.fontsize = 0 | e.fontsize), null != e.color && (t.color = e.color >>> 0), null != e.midHash && (t.midHash = String(e.midHash)), null != e.content && (t.content = String(e.content)), null != e.ctime && (r.Long ? (t.ctime = r.Long.fromValue(e.ctime)).unsigned = !1 : "string" == typeof e.ctime ? t.ctime = parseInt(e.ctime, 10) : "number" == typeof e.ctime ? t.ctime = e.ctime : "object" == typeof e.ctime && (t.ctime = new r.LongBits(e.ctime.low >>> 0, e.ctime.high >>> 0).toNumber())), null != e.weight && (t.weight = 0 | e.weight), null != e.action && (t.action = String(e.action)), null != e.pool && (t.pool = 0 | e.pool), null != e.idStr && (t.idStr = String(e.idStr)), null != e.attr && (t.attr = 0 | e.attr), null != e.animation && (t.animation = String(e.animation)), null != e.likeNum && (t.likeNum = e.likeNum >>> 0), null != e.colorV2 && (t.colorV2 = String(e.colorV2)), null != e.dmTypeV2 && (t.dmTypeV2 = e.dmTypeV2 >>> 0), t;
+                                    }, o.toObject = function(e, t) {
+                                        t || (t = {});
+                                        var n = {};
+                                        if (t.defaults) {
+                                            if (r.Long) {
+                                                var i = new r.Long(0, 0, !1);
+                                                n.id = t.longs === String ? i.toString() : t.longs === Number ? i.toNumber() : i;
+                                            } else n.id = t.longs === String ? "0" : 0;
+                                            if (n.progress = 0, n.mode = 0, n.fontsize = 0, n.color = 0, n.midHash = "", n.content = "", r.Long) {
+                                                var i = new r.Long(0, 0, !1);
+                                                n.ctime = t.longs === String ? i.toString() : t.longs === Number ? i.toNumber() : i;
+                                            } else n.ctime = t.longs === String ? "0" : 0;
+                                            n.weight = 0, n.action = "", n.pool = 0, n.idStr = "", n.attr = 0, n.animation = "", n.likeNum = 0, n.colorV2 = "", n.dmTypeV2 = 0;
+                                        }
+                                        return null != e.id && e.hasOwnProperty("id") && ("number" == typeof e.id ? n.id = t.longs === String ? String(e.id) : e.id : n.id = t.longs === String ? r.Long.prototype.toString.call(e.id) : t.longs === Number ? new r.LongBits(e.id.low >>> 0, e.id.high >>> 0).toNumber() : e.id), null != e.progress && e.hasOwnProperty("progress") && (n.progress = e.progress), null != e.mode && e.hasOwnProperty("mode") && (n.mode = e.mode), null != e.fontsize && e.hasOwnProperty("fontsize") && (n.fontsize = e.fontsize), null != e.color && e.hasOwnProperty("color") && (n.color = e.color), null != e.midHash && e.hasOwnProperty("midHash") && (n.midHash = e.midHash), null != e.content && e.hasOwnProperty("content") && (n.content = e.content), null != e.ctime && e.hasOwnProperty("ctime") && ("number" == typeof e.ctime ? n.ctime = t.longs === String ? String(e.ctime) : e.ctime : n.ctime = t.longs === String ? r.Long.prototype.toString.call(e.ctime) : t.longs === Number ? new r.LongBits(e.ctime.low >>> 0, e.ctime.high >>> 0).toNumber() : e.ctime), null != e.weight && e.hasOwnProperty("weight") && (n.weight = e.weight), null != e.action && e.hasOwnProperty("action") && (n.action = e.action), null != e.pool && e.hasOwnProperty("pool") && (n.pool = e.pool), null != e.idStr && e.hasOwnProperty("idStr") && (n.idStr = e.idStr), null != e.attr && e.hasOwnProperty("attr") && (n.attr = e.attr), null != e.animation && e.hasOwnProperty("animation") && (n.animation = e.animation), null != e.likeNum && e.hasOwnProperty("likeNum") && (n.likeNum = e.likeNum), null != e.colorV2 && e.hasOwnProperty("colorV2") && (n.colorV2 = e.colorV2), null != e.dmTypeV2 && e.hasOwnProperty("dmTypeV2") && (n.dmTypeV2 = e.dmTypeV2), n;
+                                    }, o.prototype.toJSON = function() {
+                                        return this.constructor.toObject(this, e.util.toJSONOptions);
+                                    }, o.getTypeUrl = function(e) {
+                                        return void 0 === e && (e = "type.googleapis.com"), e + "/biliproto.community.service.dm.v1.DanmakuElem";
+                                    }, o;
+                                }(), o.Flag = function() {
+                                    function o(e) {
+                                        if (e) for(var t = Object.keys(e), n = 0; n < t.length; ++n)null != e[t[n]] && (this[t[n]] = e[t[n]]);
+                                    }
+                                    return o.prototype.value = 0, o.prototype.description = "", o.create = function(e) {
+                                        return new o(e);
+                                    }, o.encode = function(e, t) {
+                                        return t || (t = n.create()), null != e.value && Object.hasOwnProperty.call(e, "value") && t.uint32(8).int32(e.value), null != e.description && Object.hasOwnProperty.call(e, "description") && t.uint32(18).string(e.description), t;
+                                    }, o.encodeDelimited = function(e, t) {
+                                        return this.encode(e, t).ldelim();
+                                    }, o.decode = function(e, n, r) {
+                                        e instanceof t || (e = t.create(e));
+                                        for(var o = void 0 === n ? e.len : e.pos + n, s = new i.biliproto.community.service.dm.v1.Flag(); e.pos < o;){
+                                            var a = e.uint32();
+                                            if (a === r) break;
+                                            switch(a >>> 3){
+                                                case 1:
+                                                    s.value = e.int32();
+                                                    break;
+                                                case 2:
+                                                    s.description = e.string();
+                                                    break;
+                                                default:
+                                                    e.skipType(7 & a);
+                                            }
+                                        }
+                                        return s;
+                                    }, o.decodeDelimited = function(e) {
+                                        return e instanceof t || (e = new t(e)), this.decode(e, e.uint32());
+                                    }, o.verify = function(e) {
+                                        return "object" != typeof e || null === e ? "object expected" : null != e.value && e.hasOwnProperty("value") && !r.isInteger(e.value) ? "value: integer expected" : null != e.description && e.hasOwnProperty("description") && !r.isString(e.description) ? "description: string expected" : null;
+                                    }, o.fromObject = function(e) {
+                                        if (e instanceof i.biliproto.community.service.dm.v1.Flag) return e;
+                                        var t = new i.biliproto.community.service.dm.v1.Flag();
+                                        return null != e.value && (t.value = 0 | e.value), null != e.description && (t.description = String(e.description)), t;
+                                    }, o.toObject = function(e, t) {
+                                        t || (t = {});
+                                        var n = {};
+                                        return t.defaults && (n.value = 0, n.description = ""), null != e.value && e.hasOwnProperty("value") && (n.value = e.value), null != e.description && e.hasOwnProperty("description") && (n.description = e.description), n;
+                                    }, o.prototype.toJSON = function() {
+                                        return this.constructor.toObject(this, e.util.toJSONOptions);
+                                    }, o.getTypeUrl = function(e) {
+                                        return void 0 === e && (e = "type.googleapis.com"), e + "/biliproto.community.service.dm.v1.Flag";
+                                    }, o;
+                                }(), o.DmSegMobileReply = function() {
+                                    function o(e) {
+                                        if (this.elems = [], e) for(var t = Object.keys(e), n = 0; n < t.length; ++n)null != e[t[n]] && (this[t[n]] = e[t[n]]);
+                                    }
+                                    return o.prototype.elems = r.emptyArray, o.prototype.state = 0, o.prototype.aiFlagForSummary = null, o.create = function(e) {
+                                        return new o(e);
+                                    }, o.encode = function(e, t) {
+                                        if (t || (t = n.create()), null != e.elems && e.elems.length) for(var r = 0; r < e.elems.length; ++r)i.biliproto.community.service.dm.v1.DanmakuElem.encode(e.elems[r], t.uint32(10).fork()).ldelim();
+                                        return null != e.state && Object.hasOwnProperty.call(e, "state") && t.uint32(16).int32(e.state), null != e.aiFlagForSummary && Object.hasOwnProperty.call(e, "aiFlagForSummary") && i.biliproto.community.service.dm.v1.Flag.encode(e.aiFlagForSummary, t.uint32(26).fork()).ldelim(), t;
+                                    }, o.encodeDelimited = function(e, t) {
+                                        return this.encode(e, t).ldelim();
+                                    }, o.decode = function(e, n, r) {
+                                        e instanceof t || (e = t.create(e));
+                                        for(var o = void 0 === n ? e.len : e.pos + n, s = new i.biliproto.community.service.dm.v1.DmSegMobileReply(); e.pos < o;){
+                                            var a = e.uint32();
+                                            if (a === r) break;
+                                            switch(a >>> 3){
+                                                case 1:
+                                                    s.elems && s.elems.length || (s.elems = []), s.elems.push(i.biliproto.community.service.dm.v1.DanmakuElem.decode(e, e.uint32()));
+                                                    break;
+                                                case 2:
+                                                    s.state = e.int32();
+                                                    break;
+                                                case 3:
+                                                    s.aiFlagForSummary = i.biliproto.community.service.dm.v1.Flag.decode(e, e.uint32());
+                                                    break;
+                                                default:
+                                                    e.skipType(7 & a);
+                                            }
+                                        }
+                                        return s;
+                                    }, o.decodeDelimited = function(e) {
+                                        return e instanceof t || (e = new t(e)), this.decode(e, e.uint32());
+                                    }, o.verify = function(e) {
+                                        if ("object" != typeof e || null === e) return "object expected";
+                                        if (null != e.elems && e.hasOwnProperty("elems")) {
+                                            if (!Array.isArray(e.elems)) return "elems: array expected";
+                                            for(var t = 0; t < e.elems.length; ++t){
+                                                var n = i.biliproto.community.service.dm.v1.DanmakuElem.verify(e.elems[t]);
+                                                if (n) return "elems." + n;
+                                            }
+                                        }
+                                        if (null != e.state && e.hasOwnProperty("state") && !r.isInteger(e.state)) return "state: integer expected";
+                                        if (null != e.aiFlagForSummary && e.hasOwnProperty("aiFlagForSummary")) {
+                                            var n = i.biliproto.community.service.dm.v1.Flag.verify(e.aiFlagForSummary);
+                                            if (n) return "aiFlagForSummary." + n;
+                                        }
+                                        return null;
+                                    }, o.fromObject = function(e) {
+                                        if (e instanceof i.biliproto.community.service.dm.v1.DmSegMobileReply) return e;
+                                        var t = new i.biliproto.community.service.dm.v1.DmSegMobileReply();
+                                        if (e.elems) {
+                                            if (!Array.isArray(e.elems)) throw TypeError(".biliproto.community.service.dm.v1.DmSegMobileReply.elems: array expected");
+                                            t.elems = [];
+                                            for(var n = 0; n < e.elems.length; ++n){
+                                                if ("object" != typeof e.elems[n]) throw TypeError(".biliproto.community.service.dm.v1.DmSegMobileReply.elems: object expected");
+                                                t.elems[n] = i.biliproto.community.service.dm.v1.DanmakuElem.fromObject(e.elems[n]);
+                                            }
+                                        }
+                                        if (null != e.state && (t.state = 0 | e.state), null != e.aiFlagForSummary) {
+                                            if ("object" != typeof e.aiFlagForSummary) throw TypeError(".biliproto.community.service.dm.v1.DmSegMobileReply.aiFlagForSummary: object expected");
+                                            t.aiFlagForSummary = i.biliproto.community.service.dm.v1.Flag.fromObject(e.aiFlagForSummary);
+                                        }
+                                        return t;
+                                    }, o.toObject = function(e, t) {
+                                        t || (t = {});
+                                        var n = {};
+                                        if ((t.arrays || t.defaults) && (n.elems = []), t.defaults && (n.state = 0, n.aiFlagForSummary = null), e.elems && e.elems.length) {
+                                            n.elems = [];
+                                            for(var r = 0; r < e.elems.length; ++r)n.elems[r] = i.biliproto.community.service.dm.v1.DanmakuElem.toObject(e.elems[r], t);
+                                        }
+                                        return null != e.state && e.hasOwnProperty("state") && (n.state = e.state), null != e.aiFlagForSummary && e.hasOwnProperty("aiFlagForSummary") && (n.aiFlagForSummary = i.biliproto.community.service.dm.v1.Flag.toObject(e.aiFlagForSummary, t)), n;
+                                    }, o.prototype.toJSON = function() {
+                                        return this.constructor.toObject(this, e.util.toJSONOptions);
+                                    }, o.getTypeUrl = function(e) {
+                                        return void 0 === e && (e = "type.googleapis.com"), e + "/biliproto.community.service.dm.v1.DmSegMobileReply";
+                                    }, o;
+                                }(), o;
+                            }(), o;
+                        }(), o;
+                    }(), o;
+                }(), o;
+            }(), i;
+        });
+    },
+    95: function(e, t, n) {
+        !function(n, r) {
+            e.exports = t = r();
+        }(0, function() {
+            var e = e || function(e, t) {
+                if ('undefined' != typeof window && window.crypto && (r = window.crypto), 'undefined' != typeof self && self.crypto && (r = self.crypto), 'undefined' != typeof globalThis && globalThis.crypto && (r = globalThis.crypto), !r && 'undefined' != typeof window && window.msCrypto && (r = window.msCrypto), !r && void 0 !== n.g && n.g.crypto && (r = n.g.crypto), !r) try {
+                    r = n(602);
+                } catch (e) {}
+                var r, i = function() {
+                    if (r) {
+                        if ('function' == typeof r.getRandomValues) try {
+                            return r.getRandomValues(new Uint32Array(1))[0];
+                        } catch (e) {}
+                        if ('function' == typeof r.randomBytes) try {
+                            return r.randomBytes(4).readInt32LE();
+                        } catch (e) {}
+                    }
+                    throw Error('Native crypto module could not be used to get secure random number.');
+                }, o = Object.create || function() {
+                    function e() {}
+                    return function(t) {
+                        var n;
+                        return e.prototype = t, n = new e(), e.prototype = null, n;
+                    };
+                }(), s = {}, a = s.lib = {}, u = a.Base = function() {
+                    return {
+                        extend: function(e) {
+                            var t = o(this);
+                            return e && t.mixIn(e), t.hasOwnProperty('init') && this.init !== t.init || (t.init = function() {
+                                t.$super.init.apply(this, arguments);
+                            }), t.init.prototype = t, t.$super = this, t;
+                        },
+                        create: function() {
+                            var e = this.extend();
+                            return e.init.apply(e, arguments), e;
+                        },
+                        init: function() {},
+                        mixIn: function(e) {
+                            for(var t in e)e.hasOwnProperty(t) && (this[t] = e[t]);
+                            e.hasOwnProperty('toString') && (this.toString = e.toString);
+                        },
+                        clone: function() {
+                            return this.init.prototype.extend(this);
+                        }
+                    };
+                }(), l = a.WordArray = u.extend({
+                    init: function(e, n) {
+                        e = this.words = e || [], t != n ? this.sigBytes = n : this.sigBytes = 4 * e.length;
+                    },
+                    toString: function(e) {
+                        return (e || d).stringify(this);
+                    },
+                    concat: function(e) {
+                        var t = this.words, n = e.words, r = this.sigBytes, i = e.sigBytes;
+                        if (this.clamp(), r % 4) for(var o = 0; o < i; o++){
+                            var s = n[o >>> 2] >>> 24 - o % 4 * 8 & 0xff;
+                            t[r + o >>> 2] |= s << 24 - (r + o) % 4 * 8;
+                        }
+                        else for(var a = 0; a < i; a += 4)t[r + a >>> 2] = n[a >>> 2];
+                        return this.sigBytes += i, this;
+                    },
+                    clamp: function() {
+                        var t = this.words, n = this.sigBytes;
+                        t[n >>> 2] &= 0xffffffff << 32 - n % 4 * 8, t.length = e.ceil(n / 4);
+                    },
+                    clone: function() {
+                        var e = u.clone.call(this);
+                        return e.words = this.words.slice(0), e;
+                    },
+                    random: function(e) {
+                        for(var t = [], n = 0; n < e; n += 4)t.push(i());
+                        return new l.init(t, e);
+                    }
+                }), c = s.enc = {}, d = c.Hex = {
+                    stringify: function(e) {
+                        for(var t = e.words, n = e.sigBytes, r = [], i = 0; i < n; i++){
+                            var o = t[i >>> 2] >>> 24 - i % 4 * 8 & 0xff;
+                            r.push((o >>> 4).toString(16)), r.push((0x0f & o).toString(16));
+                        }
+                        return r.join('');
+                    },
+                    parse: function(e) {
+                        for(var t = e.length, n = [], r = 0; r < t; r += 2)n[r >>> 3] |= parseInt(e.substr(r, 2), 16) << 24 - r % 8 * 4;
+                        return new l.init(n, t / 2);
+                    }
+                }, p = c.Latin1 = {
+                    stringify: function(e) {
+                        for(var t = e.words, n = e.sigBytes, r = [], i = 0; i < n; i++){
+                            var o = t[i >>> 2] >>> 24 - i % 4 * 8 & 0xff;
+                            r.push(String.fromCharCode(o));
+                        }
+                        return r.join('');
+                    },
+                    parse: function(e) {
+                        for(var t = e.length, n = [], r = 0; r < t; r++)n[r >>> 2] |= (0xff & e.charCodeAt(r)) << 24 - r % 4 * 8;
+                        return new l.init(n, t);
+                    }
+                }, f = c.Utf8 = {
+                    stringify: function(e) {
+                        try {
+                            return decodeURIComponent(escape(p.stringify(e)));
+                        } catch (e) {
+                            throw Error('Malformed UTF-8 data');
+                        }
+                    },
+                    parse: function(e) {
+                        return p.parse(unescape(encodeURIComponent(e)));
+                    }
+                }, h = a.BufferedBlockAlgorithm = u.extend({
+                    reset: function() {
+                        this._data = new l.init(), this._nDataBytes = 0;
+                    },
+                    _append: function(e) {
+                        'string' == typeof e && (e = f.parse(e)), this._data.concat(e), this._nDataBytes += e.sigBytes;
+                    },
+                    _process: function(t) {
+                        var n, r = this._data, i = r.words, o = r.sigBytes, s = this.blockSize, a = o / (4 * s), u = (a = t ? e.ceil(a) : e.max((0 | a) - this._minBufferSize, 0)) * s, c = e.min(4 * u, o);
+                        if (u) {
+                            for(var d = 0; d < u; d += s)this._doProcessBlock(i, d);
+                            n = i.splice(0, u), r.sigBytes -= c;
+                        }
+                        return new l.init(n, c);
+                    },
+                    clone: function() {
+                        var e = u.clone.call(this);
+                        return e._data = this._data.clone(), e;
+                    },
+                    _minBufferSize: 0
+                });
+                a.Hasher = h.extend({
+                    cfg: u.extend(),
+                    init: function(e) {
+                        this.cfg = this.cfg.extend(e), this.reset();
+                    },
+                    reset: function() {
+                        h.reset.call(this), this._doReset();
+                    },
+                    update: function(e) {
+                        return this._append(e), this._process(), this;
+                    },
+                    finalize: function(e) {
+                        return e && this._append(e), this._doFinalize();
+                    },
+                    blockSize: 16,
+                    _createHelper: function(e) {
+                        return function(t, n) {
+                            return new e.init(n).finalize(t);
+                        };
+                    },
+                    _createHmacHelper: function(e) {
+                        return function(t, n) {
+                            return new m.HMAC.init(e, n).finalize(t);
+                        };
+                    }
+                });
+                var m = s.algo = {};
+                return s;
+            }(Math);
+            return e;
+        });
+    },
+    716: function(e, t, n) {
+        !function(r, i) {
+            e.exports = t = i(n(95));
+        }(0, function(e) {
+            return !function() {
+                var t = e, n = t.lib.WordArray;
+                function r(e, t, r) {
+                    for(var i = [], o = 0, s = 0; s < t; s++)if (s % 4) {
+                        var a = r[e.charCodeAt(s - 1)] << s % 4 * 2 | r[e.charCodeAt(s)] >>> 6 - s % 4 * 2;
+                        i[o >>> 2] |= a << 24 - o % 4 * 8, o++;
+                    }
+                    return n.create(i, o);
+                }
+                t.enc.Base64 = {
+                    stringify: function(e) {
+                        var t = e.words, n = e.sigBytes, r = this._map;
+                        e.clamp();
+                        for(var i = [], o = 0; o < n; o += 3)for(var s = (t[o >>> 2] >>> 24 - o % 4 * 8 & 0xff) << 16 | (t[o + 1 >>> 2] >>> 24 - (o + 1) % 4 * 8 & 0xff) << 8 | t[o + 2 >>> 2] >>> 24 - (o + 2) % 4 * 8 & 0xff, a = 0; a < 4 && o + 0.75 * a < n; a++)i.push(r.charAt(s >>> 6 * (3 - a) & 0x3f));
+                        var u = r.charAt(64);
+                        if (u) for(; i.length % 4;)i.push(u);
+                        return i.join('');
+                    },
+                    parse: function(e) {
+                        var t = e.length, n = this._map, i = this._reverseMap;
+                        if (!i) {
+                            i = this._reverseMap = [];
+                            for(var o = 0; o < n.length; o++)i[n.charCodeAt(o)] = o;
+                        }
+                        var s = n.charAt(64);
+                        if (s) {
+                            var a = e.indexOf(s);
+                            -1 !== a && (t = a);
+                        }
+                        return r(e, t, i);
+                    },
+                    _map: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+                };
+            }(), e.enc.Base64;
+        });
+    },
+    60: function(e, t, n) {
+        !function(r, i) {
+            e.exports = t = i(n(95));
+        }(0, function(e) {
+            return e.enc.Utf8;
+        });
+    },
+    478: function(e, t, n) {
+        !function(r, i) {
+            e.exports = t = i(n(95));
+        }(0, function(e) {
+            return !function(t) {
+                var n = e, r = n.lib, i = r.WordArray, o = r.Hasher, s = n.algo, a = [];
+                !function() {
+                    for(var e = 0; e < 64; e++)a[e] = 0x100000000 * t.abs(t.sin(e + 1)) | 0;
+                }();
+                var u = s.MD5 = o.extend({
+                    _doReset: function() {
+                        this._hash = new i.init([
+                            0x67452301,
+                            0xefcdab89,
+                            0x98badcfe,
+                            0x10325476
+                        ]);
+                    },
+                    _doProcessBlock: function(e, t) {
+                        for(var n = 0; n < 16; n++){
+                            var r = t + n, i = e[r];
+                            e[r] = (i << 8 | i >>> 24) & 0x00ff00ff | (i << 24 | i >>> 8) & 0xff00ff00;
+                        }
+                        var o = this._hash.words, s = e[t + 0], u = e[t + 1], f = e[t + 2], h = e[t + 3], m = e[t + 4], g = e[t + 5], v = e[t + 6], y = e[t + 7], b = e[t + 8], _ = e[t + 9], w = e[t + 10], k = e[t + 11], x = e[t + 12], S = e[t + 13], E = e[t + 14], z = e[t + 15], O = o[0], I = o[1], $ = o[2], P = o[3];
+                        O = l(O, I, $, P, s, 7, a[0]), P = l(P, O, I, $, u, 12, a[1]), $ = l($, P, O, I, f, 17, a[2]), I = l(I, $, P, O, h, 22, a[3]), O = l(O, I, $, P, m, 7, a[4]), P = l(P, O, I, $, g, 12, a[5]), $ = l($, P, O, I, v, 17, a[6]), I = l(I, $, P, O, y, 22, a[7]), O = l(O, I, $, P, b, 7, a[8]), P = l(P, O, I, $, _, 12, a[9]), $ = l($, P, O, I, w, 17, a[10]), I = l(I, $, P, O, k, 22, a[11]), O = l(O, I, $, P, x, 7, a[12]), P = l(P, O, I, $, S, 12, a[13]), $ = l($, P, O, I, E, 17, a[14]), I = l(I, $, P, O, z, 22, a[15]), O = c(O, I, $, P, u, 5, a[16]), P = c(P, O, I, $, v, 9, a[17]), $ = c($, P, O, I, k, 14, a[18]), I = c(I, $, P, O, s, 20, a[19]), O = c(O, I, $, P, g, 5, a[20]), P = c(P, O, I, $, w, 9, a[21]), $ = c($, P, O, I, z, 14, a[22]), I = c(I, $, P, O, m, 20, a[23]), O = c(O, I, $, P, _, 5, a[24]), P = c(P, O, I, $, E, 9, a[25]), $ = c($, P, O, I, h, 14, a[26]), I = c(I, $, P, O, b, 20, a[27]), O = c(O, I, $, P, S, 5, a[28]), P = c(P, O, I, $, f, 9, a[29]), $ = c($, P, O, I, y, 14, a[30]), I = c(I, $, P, O, x, 20, a[31]), O = d(O, I, $, P, g, 4, a[32]), P = d(P, O, I, $, b, 11, a[33]), $ = d($, P, O, I, k, 16, a[34]), I = d(I, $, P, O, E, 23, a[35]), O = d(O, I, $, P, u, 4, a[36]), P = d(P, O, I, $, m, 11, a[37]), $ = d($, P, O, I, y, 16, a[38]), I = d(I, $, P, O, w, 23, a[39]), O = d(O, I, $, P, S, 4, a[40]), P = d(P, O, I, $, s, 11, a[41]), $ = d($, P, O, I, h, 16, a[42]), I = d(I, $, P, O, v, 23, a[43]), O = d(O, I, $, P, _, 4, a[44]), P = d(P, O, I, $, x, 11, a[45]), $ = d($, P, O, I, z, 16, a[46]), I = d(I, $, P, O, f, 23, a[47]), O = p(O, I, $, P, s, 6, a[48]), P = p(P, O, I, $, y, 10, a[49]), $ = p($, P, O, I, E, 15, a[50]), I = p(I, $, P, O, g, 21, a[51]), O = p(O, I, $, P, x, 6, a[52]), P = p(P, O, I, $, h, 10, a[53]), $ = p($, P, O, I, w, 15, a[54]), I = p(I, $, P, O, u, 21, a[55]), O = p(O, I, $, P, b, 6, a[56]), P = p(P, O, I, $, z, 10, a[57]), $ = p($, P, O, I, v, 15, a[58]), I = p(I, $, P, O, S, 21, a[59]), O = p(O, I, $, P, m, 6, a[60]), P = p(P, O, I, $, k, 10, a[61]), $ = p($, P, O, I, f, 15, a[62]), I = p(I, $, P, O, _, 21, a[63]), o[0] = o[0] + O | 0, o[1] = o[1] + I | 0, o[2] = o[2] + $ | 0, o[3] = o[3] + P | 0;
+                    },
+                    _doFinalize: function() {
+                        var e = this._data, n = e.words, r = 8 * this._nDataBytes, i = 8 * e.sigBytes;
+                        n[i >>> 5] |= 0x80 << 24 - i % 32;
+                        var o = t.floor(r / 0x100000000), s = r;
+                        n[(i + 64 >>> 9 << 4) + 15] = (o << 8 | o >>> 24) & 0x00ff00ff | (o << 24 | o >>> 8) & 0xff00ff00, n[(i + 64 >>> 9 << 4) + 14] = (s << 8 | s >>> 24) & 0x00ff00ff | (s << 24 | s >>> 8) & 0xff00ff00, e.sigBytes = (n.length + 1) * 4, this._process();
+                        for(var a = this._hash, u = a.words, l = 0; l < 4; l++){
+                            var c = u[l];
+                            u[l] = (c << 8 | c >>> 24) & 0x00ff00ff | (c << 24 | c >>> 8) & 0xff00ff00;
+                        }
+                        return a;
+                    },
+                    clone: function() {
+                        var e = o.clone.call(this);
+                        return e._hash = this._hash.clone(), e;
+                    }
+                });
+                function l(e, t, n, r, i, o, s) {
+                    var a = e + (t & n | ~t & r) + i + s;
+                    return (a << o | a >>> 32 - o) + t;
+                }
+                function c(e, t, n, r, i, o, s) {
+                    var a = e + (t & r | n & ~r) + i + s;
+                    return (a << o | a >>> 32 - o) + t;
+                }
+                function d(e, t, n, r, i, o, s) {
+                    var a = e + (t ^ n ^ r) + i + s;
+                    return (a << o | a >>> 32 - o) + t;
+                }
+                function p(e, t, n, r, i, o, s) {
+                    var a = e + (n ^ (t | ~r)) + i + s;
+                    return (a << o | a >>> 32 - o) + t;
+                }
+                n.MD5 = o._createHelper(u), n.HmacMD5 = o._createHmacHelper(u);
+            }(Math), e.MD5;
+        });
+    },
+    643: function(e, t, n) {
+        e.exports = n(447);
+    },
+    447: function(e, t, n) {
+        var r = t;
+        function i() {
+            r.util._configure(), r.Writer._configure(r.BufferWriter), r.Reader._configure(r.BufferReader);
+        }
+        r.build = "minimal", r.Writer = n(114), r.BufferWriter = n(491), r.Reader = n(762), r.BufferReader = n(171), r.util = n(837), r.rpc = n(366), r.roots = n(264), r.configure = i, i();
+    },
+    762: function(e, t, n) {
+        e.exports = u;
+        var r, i = n(837), o = i.LongBits, s = i.utf8;
+        function a(e, t) {
+            return RangeError("index out of range: " + e.pos + " + " + (t || 1) + " > " + e.len);
+        }
+        function u(e) {
+            this.buf = e, this.pos = 0, this.len = e.length;
+        }
+        var l = "undefined" != typeof Uint8Array ? function(e) {
+            if (e instanceof Uint8Array || Array.isArray(e)) return new u(e);
+            throw Error("illegal buffer");
+        } : function(e) {
+            if (Array.isArray(e)) return new u(e);
+            throw Error("illegal buffer");
+        }, c = function() {
+            return i.Buffer ? function(e) {
+                return (u.create = function(e) {
+                    return i.Buffer.isBuffer(e) ? new r(e) : l(e);
+                })(e);
+            } : l;
+        };
+        function d() {
+            var e = new o(0, 0), t = 0;
+            if (this.len - this.pos > 4) {
+                for(; t < 4; ++t)if (e.lo = (e.lo | (127 & this.buf[this.pos]) << 7 * t) >>> 0, this.buf[this.pos++] < 128) return e;
+                if (e.lo = (e.lo | (127 & this.buf[this.pos]) << 28) >>> 0, e.hi = (e.hi | (127 & this.buf[this.pos]) >> 4) >>> 0, this.buf[this.pos++] < 128) return e;
+                t = 0;
+            } else {
+                for(; t < 3; ++t){
+                    if (this.pos >= this.len) throw a(this);
+                    if (e.lo = (e.lo | (127 & this.buf[this.pos]) << 7 * t) >>> 0, this.buf[this.pos++] < 128) return e;
+                }
+                return e.lo = (e.lo | (127 & this.buf[this.pos++]) << 7 * t) >>> 0, e;
+            }
+            if (this.len - this.pos > 4) {
+                for(; t < 5; ++t)if (e.hi = (e.hi | (127 & this.buf[this.pos]) << 7 * t + 3) >>> 0, this.buf[this.pos++] < 128) return e;
+            } else for(; t < 5; ++t){
+                if (this.pos >= this.len) throw a(this);
+                if (e.hi = (e.hi | (127 & this.buf[this.pos]) << 7 * t + 3) >>> 0, this.buf[this.pos++] < 128) return e;
+            }
+            throw Error("invalid varint encoding");
+        }
+        function p(e, t) {
+            return (e[t - 4] | e[t - 3] << 8 | e[t - 2] << 16 | e[t - 1] << 24) >>> 0;
+        }
+        function f() {
+            if (this.pos + 8 > this.len) throw a(this, 8);
+            return new o(p(this.buf, this.pos += 4), p(this.buf, this.pos += 4));
+        }
+        u.create = c(), u.prototype._slice = i.Array.prototype.subarray || i.Array.prototype.slice, u.prototype.uint32 = function() {
+            var e = 4294967295;
+            return function() {
+                if (e = (127 & this.buf[this.pos]) >>> 0, this.buf[this.pos++] < 128 || (e = (e | (127 & this.buf[this.pos]) << 7) >>> 0, this.buf[this.pos++] < 128) || (e = (e | (127 & this.buf[this.pos]) << 14) >>> 0, this.buf[this.pos++] < 128) || (e = (e | (127 & this.buf[this.pos]) << 21) >>> 0, this.buf[this.pos++] < 128) || (e = (e | (15 & this.buf[this.pos]) << 28) >>> 0, this.buf[this.pos++] < 128)) return e;
+                if ((this.pos += 5) > this.len) throw this.pos = this.len, a(this, 10);
+                return e;
+            };
+        }(), u.prototype.int32 = function() {
+            return 0 | this.uint32();
+        }, u.prototype.sint32 = function() {
+            var e = this.uint32();
+            return e >>> 1 ^ -(1 & e);
+        }, u.prototype.bool = function() {
+            return 0 !== this.uint32();
+        }, u.prototype.fixed32 = function() {
+            if (this.pos + 4 > this.len) throw a(this, 4);
+            return p(this.buf, this.pos += 4);
+        }, u.prototype.sfixed32 = function() {
+            if (this.pos + 4 > this.len) throw a(this, 4);
+            return 0 | p(this.buf, this.pos += 4);
+        }, u.prototype.float = function() {
+            if (this.pos + 4 > this.len) throw a(this, 4);
+            var e = i.float.readFloatLE(this.buf, this.pos);
+            return this.pos += 4, e;
+        }, u.prototype.double = function() {
+            if (this.pos + 8 > this.len) throw a(this, 4);
+            var e = i.float.readDoubleLE(this.buf, this.pos);
+            return this.pos += 8, e;
+        }, u.prototype.bytes = function() {
+            var e = this.uint32(), t = this.pos, n = this.pos + e;
+            if (n > this.len) throw a(this, e);
+            if (this.pos += e, Array.isArray(this.buf)) return this.buf.slice(t, n);
+            if (t === n) {
+                var r = i.Buffer;
+                return r ? r.alloc(0) : new this.buf.constructor(0);
+            }
+            return this._slice.call(this.buf, t, n);
+        }, u.prototype.string = function() {
+            var e = this.bytes();
+            return s.read(e, 0, e.length);
+        }, u.prototype.skip = function(e) {
+            if ("number" == typeof e) {
+                if (this.pos + e > this.len) throw a(this, e);
+                this.pos += e;
+            } else do if (this.pos >= this.len) throw a(this);
+            while (128 & this.buf[this.pos++]);
+            return this;
+        }, u.prototype.skipType = function(e) {
+            switch(e){
+                case 0:
+                    this.skip();
+                    break;
+                case 1:
+                    this.skip(8);
+                    break;
+                case 2:
+                    this.skip(this.uint32());
+                    break;
+                case 3:
+                    for(; 4 != (e = 7 & this.uint32());)this.skipType(e);
+                    break;
+                case 5:
+                    this.skip(4);
+                    break;
+                default:
+                    throw Error("invalid wire type " + e + " at offset " + this.pos);
+            }
+            return this;
+        }, u._configure = function(e) {
+            r = e, u.create = c(), r._configure();
+            var t = i.Long ? "toLong" : "toNumber";
+            i.merge(u.prototype, {
+                int64: function() {
+                    return d.call(this)[t](!1);
+                },
+                uint64: function() {
+                    return d.call(this)[t](!0);
+                },
+                sint64: function() {
+                    return d.call(this).zzDecode()[t](!1);
+                },
+                fixed64: function() {
+                    return f.call(this)[t](!0);
+                },
+                sfixed64: function() {
+                    return f.call(this)[t](!1);
+                }
+            });
+        };
+    },
+    171: function(e, t, n) {
+        e.exports = o;
+        var r = n(762);
+        (o.prototype = Object.create(r.prototype)).constructor = o;
+        var i = n(837);
+        function o(e) {
+            r.call(this, e);
+        }
+        o._configure = function() {
+            i.Buffer && (o.prototype._slice = i.Buffer.prototype.slice);
+        }, o.prototype.string = function() {
+            var e = this.uint32();
+            return this.buf.utf8Slice ? this.buf.utf8Slice(this.pos, this.pos = Math.min(this.pos + e, this.len)) : this.buf.toString("utf-8", this.pos, this.pos = Math.min(this.pos + e, this.len));
+        }, o._configure();
+    },
+    264: function(e) {
+        e.exports = {};
+    },
+    366: function(e, t, n) {
+        t.Service = n(286);
+    },
+    286: function(e, t, n) {
+        e.exports = i;
+        var r = n(837);
+        function i(e, t, n) {
+            if ("function" != typeof e) throw TypeError("rpcImpl must be a function");
+            r.EventEmitter.call(this), this.rpcImpl = e, this.requestDelimited = !!t, this.responseDelimited = !!n;
+        }
+        (i.prototype = Object.create(r.EventEmitter.prototype)).constructor = i, i.prototype.rpcCall = function e(t, n, i, o, s) {
+            if (!o) throw TypeError("request must be specified");
+            var a = this;
+            if (!s) return r.asPromise(e, a, t, n, i, o);
+            if (!a.rpcImpl) return void setTimeout(function() {
+                s(Error("already ended"));
+            }, 0);
+            try {
+                return a.rpcImpl(t, n[a.requestDelimited ? "encodeDelimited" : "encode"](o).finish(), function(e, n) {
+                    if (e) return a.emit("error", e, t), s(e);
+                    if (null === n) return void a.end(!0);
+                    if (!(n instanceof i)) try {
+                        n = i[a.responseDelimited ? "decodeDelimited" : "decode"](n);
+                    } catch (e) {
+                        return a.emit("error", e, t), s(e);
+                    }
+                    return a.emit("data", n, t), s(null, n);
+                });
+            } catch (e) {
+                a.emit("error", e, t), setTimeout(function() {
+                    s(e);
+                }, 0);
+                return;
+            }
+        }, i.prototype.end = function(e) {
+            return this.rpcImpl && (e || this.rpcImpl(null, null, null), this.rpcImpl = null, this.emit("end").off()), this;
+        };
+    },
+    926: function(e, t, n) {
+        e.exports = i;
+        var r = n(837);
+        function i(e, t) {
+            this.lo = e >>> 0, this.hi = t >>> 0;
+        }
+        var o = i.zero = new i(0, 0);
+        o.toNumber = function() {
+            return 0;
+        }, o.zzEncode = o.zzDecode = function() {
+            return this;
+        }, o.length = function() {
+            return 1;
+        };
+        var s = i.zeroHash = "\0\0\0\0\0\0\0\0";
+        i.fromNumber = function(e) {
+            if (0 === e) return o;
+            var t = e < 0;
+            t && (e = -e);
+            var n = e >>> 0, r = (e - n) / 4294967296 >>> 0;
+            return t && (r = ~r >>> 0, n = ~n >>> 0, ++n > 4294967295 && (n = 0, ++r > 4294967295 && (r = 0))), new i(n, r);
+        }, i.from = function(e) {
+            if ("number" == typeof e) return i.fromNumber(e);
+            if (r.isString(e)) if (!r.Long) return i.fromNumber(parseInt(e, 10));
+            else e = r.Long.fromString(e);
+            return e.low || e.high ? new i(e.low >>> 0, e.high >>> 0) : o;
+        }, i.prototype.toNumber = function(e) {
+            if (!e && this.hi >>> 31) {
+                var t = ~this.lo + 1 >>> 0, n = ~this.hi >>> 0;
+                return t || (n = n + 1 >>> 0), -(t + 4294967296 * n);
+            }
+            return this.lo + 4294967296 * this.hi;
+        }, i.prototype.toLong = function(e) {
+            return r.Long ? new r.Long(0 | this.lo, 0 | this.hi, !!e) : {
+                low: 0 | this.lo,
+                high: 0 | this.hi,
+                unsigned: !!e
+            };
+        };
+        var a = String.prototype.charCodeAt;
+        i.fromHash = function(e) {
+            return e === s ? o : new i((a.call(e, 0) | a.call(e, 1) << 8 | a.call(e, 2) << 16 | a.call(e, 3) << 24) >>> 0, (a.call(e, 4) | a.call(e, 5) << 8 | a.call(e, 6) << 16 | a.call(e, 7) << 24) >>> 0);
+        }, i.prototype.toHash = function() {
+            return String.fromCharCode(255 & this.lo, this.lo >>> 8 & 255, this.lo >>> 16 & 255, this.lo >>> 24, 255 & this.hi, this.hi >>> 8 & 255, this.hi >>> 16 & 255, this.hi >>> 24);
+        }, i.prototype.zzEncode = function() {
+            var e = this.hi >> 31;
+            return this.hi = ((this.hi << 1 | this.lo >>> 31) ^ e) >>> 0, this.lo = (this.lo << 1 ^ e) >>> 0, this;
+        }, i.prototype.zzDecode = function() {
+            var e = -(1 & this.lo);
+            return this.lo = ((this.lo >>> 1 | this.hi << 31) ^ e) >>> 0, this.hi = (this.hi >>> 1 ^ e) >>> 0, this;
+        }, i.prototype.length = function() {
+            var e = this.lo, t = (this.lo >>> 28 | this.hi << 4) >>> 0, n = this.hi >>> 24;
+            return 0 === n ? 0 === t ? e < 16384 ? e < 128 ? 1 : 2 : e < 2097152 ? 3 : 4 : t < 16384 ? t < 128 ? 5 : 6 : t < 2097152 ? 7 : 8 : n < 128 ? 9 : 10;
+        };
+    },
+    837: function(e, t, n) {
+        var r = t;
+        function i(e, t, n) {
+            for(var r = Object.keys(t), i = 0; i < r.length; ++i)void 0 !== e[r[i]] && n || (e[r[i]] = t[r[i]]);
+            return e;
+        }
+        function o(e) {
+            function t(e, n) {
+                if (!(this instanceof t)) return new t(e, n);
+                Object.defineProperty(this, "message", {
+                    get: function() {
+                        return e;
+                    }
+                }), Error.captureStackTrace ? Error.captureStackTrace(this, t) : Object.defineProperty(this, "stack", {
+                    value: Error().stack || ""
+                }), n && i(this, n);
+            }
+            return t.prototype = Object.create(Error.prototype, {
+                constructor: {
+                    value: t,
+                    writable: !0,
+                    enumerable: !1,
+                    configurable: !0
+                },
+                name: {
+                    get: function() {
+                        return e;
+                    },
+                    set: void 0,
+                    enumerable: !1,
+                    configurable: !0
+                },
+                toString: {
+                    value: function() {
+                        return this.name + ": " + this.message;
+                    },
+                    writable: !0,
+                    enumerable: !1,
+                    configurable: !0
+                }
+            }), t;
+        }
+        r.asPromise = n(188), r.base64 = n(4), r.EventEmitter = n(730), r.float = n(791), r.inquire = n(706), r.utf8 = n(322), r.pool = n(338), r.LongBits = n(926), r.isNode = !!(void 0 !== n.g && n.g && n.g.process && n.g.process.versions && n.g.process.versions.node), r.global = r.isNode && n.g || "undefined" != typeof window && window || "undefined" != typeof self && self || this, r.emptyArray = Object.freeze ? Object.freeze([]) : [], r.emptyObject = Object.freeze ? Object.freeze({}) : {}, r.isInteger = Number.isInteger || function(e) {
+            return "number" == typeof e && isFinite(e) && Math.floor(e) === e;
+        }, r.isString = function(e) {
+            return "string" == typeof e || e instanceof String;
+        }, r.isObject = function(e) {
+            return e && "object" == typeof e;
+        }, r.isset = r.isSet = function(e, t) {
+            var n = e[t];
+            return !!(null != n && e.hasOwnProperty(t)) && ("object" != typeof n || (Array.isArray(n) ? n.length : Object.keys(n).length) > 0);
+        }, r.Buffer = function() {
+            try {
+                var e = r.inquire("buffer").Buffer;
+                return e.prototype.utf8Write ? e : null;
+            } catch (e) {
+                return null;
+            }
+        }(), r._Buffer_from = null, r._Buffer_allocUnsafe = null, r.newBuffer = function(e) {
+            return "number" == typeof e ? r.Buffer ? r._Buffer_allocUnsafe(e) : new r.Array(e) : r.Buffer ? r._Buffer_from(e) : "undefined" == typeof Uint8Array ? e : new Uint8Array(e);
+        }, r.Array = "undefined" != typeof Uint8Array ? Uint8Array : Array, r.Long = r.global.dcodeIO && r.global.dcodeIO.Long || r.global.Long || r.inquire("long"), r.key2Re = /^true|false|0|1$/, r.key32Re = /^-?(?:0|[1-9][0-9]*)$/, r.key64Re = /^(?:[\\x00-\\xff]{8}|-?(?:0|[1-9][0-9]*))$/, r.longToHash = function(e) {
+            return e ? r.LongBits.from(e).toHash() : r.LongBits.zeroHash;
+        }, r.longFromHash = function(e, t) {
+            var n = r.LongBits.fromHash(e);
+            return r.Long ? r.Long.fromBits(n.lo, n.hi, t) : n.toNumber(!!t);
+        }, r.merge = i, r.lcFirst = function(e) {
+            return e.charAt(0).toLowerCase() + e.substring(1);
+        }, r.newError = o, r.ProtocolError = o("ProtocolError"), r.oneOfGetter = function(e) {
+            for(var t = {}, n = 0; n < e.length; ++n)t[e[n]] = 1;
+            return function() {
+                for(var e = Object.keys(this), n = e.length - 1; n > -1; --n)if (1 === t[e[n]] && void 0 !== this[e[n]] && null !== this[e[n]]) return e[n];
+            };
+        }, r.oneOfSetter = function(e) {
+            return function(t) {
+                for(var n = 0; n < e.length; ++n)e[n] !== t && delete this[e[n]];
+            };
+        }, r.toJSONOptions = {
+            longs: String,
+            enums: String,
+            bytes: String,
+            json: !0
+        }, r._configure = function() {
+            var e = r.Buffer;
+            if (!e) {
+                r._Buffer_from = r._Buffer_allocUnsafe = null;
+                return;
+            }
+            r._Buffer_from = e.from !== Uint8Array.from && e.from || function(t, n) {
+                return new e(t, n);
+            }, r._Buffer_allocUnsafe = e.allocUnsafe || function(t) {
+                return new e(t);
+            };
+        };
+    },
+    114: function(e, t, n) {
+        e.exports = d;
+        var r, i = n(837), o = i.LongBits, s = i.base64, a = i.utf8;
+        function u(e, t, n) {
+            this.fn = e, this.len = t, this.next = void 0, this.val = n;
+        }
+        function l() {}
+        function c(e) {
+            this.head = e.head, this.tail = e.tail, this.len = e.len, this.next = e.states;
+        }
+        function d() {
+            this.len = 0, this.head = new u(l, 0, 0), this.tail = this.head, this.states = null;
+        }
+        var p = function() {
+            return i.Buffer ? function() {
+                return (d.create = function() {
+                    return new r();
+                })();
+            } : function() {
+                return new d();
+            };
+        };
+        function f(e, t, n) {
+            t[n] = 255 & e;
+        }
+        function h(e, t, n) {
+            for(; e > 127;)t[n++] = 127 & e | 128, e >>>= 7;
+            t[n] = e;
+        }
+        function m(e, t) {
+            this.len = e, this.next = void 0, this.val = t;
+        }
+        function g(e, t, n) {
+            for(; e.hi;)t[n++] = 127 & e.lo | 128, e.lo = (e.lo >>> 7 | e.hi << 25) >>> 0, e.hi >>>= 7;
+            for(; e.lo > 127;)t[n++] = 127 & e.lo | 128, e.lo = e.lo >>> 7;
+            t[n++] = e.lo;
+        }
+        function v(e, t, n) {
+            t[n] = 255 & e, t[n + 1] = e >>> 8 & 255, t[n + 2] = e >>> 16 & 255, t[n + 3] = e >>> 24;
+        }
+        d.create = p(), d.alloc = function(e) {
+            return new i.Array(e);
+        }, i.Array !== Array && (d.alloc = i.pool(d.alloc, i.Array.prototype.subarray)), d.prototype._push = function(e, t, n) {
+            return this.tail = this.tail.next = new u(e, t, n), this.len += t, this;
+        }, m.prototype = Object.create(u.prototype), m.prototype.fn = h, d.prototype.uint32 = function(e) {
+            return this.len += (this.tail = this.tail.next = new m((e >>>= 0) < 128 ? 1 : e < 16384 ? 2 : e < 2097152 ? 3 : e < 268435456 ? 4 : 5, e)).len, this;
+        }, d.prototype.int32 = function(e) {
+            return e < 0 ? this._push(g, 10, o.fromNumber(e)) : this.uint32(e);
+        }, d.prototype.sint32 = function(e) {
+            return this.uint32((e << 1 ^ e >> 31) >>> 0);
+        }, d.prototype.uint64 = function(e) {
+            var t = o.from(e);
+            return this._push(g, t.length(), t);
+        }, d.prototype.int64 = d.prototype.uint64, d.prototype.sint64 = function(e) {
+            var t = o.from(e).zzEncode();
+            return this._push(g, t.length(), t);
+        }, d.prototype.bool = function(e) {
+            return this._push(f, 1, +!!e);
+        }, d.prototype.fixed32 = function(e) {
+            return this._push(v, 4, e >>> 0);
+        }, d.prototype.sfixed32 = d.prototype.fixed32, d.prototype.fixed64 = function(e) {
+            var t = o.from(e);
+            return this._push(v, 4, t.lo)._push(v, 4, t.hi);
+        }, d.prototype.sfixed64 = d.prototype.fixed64, d.prototype.float = function(e) {
+            return this._push(i.float.writeFloatLE, 4, e);
+        }, d.prototype.double = function(e) {
+            return this._push(i.float.writeDoubleLE, 8, e);
+        };
+        var y = i.Array.prototype.set ? function(e, t, n) {
+            t.set(e, n);
+        } : function(e, t, n) {
+            for(var r = 0; r < e.length; ++r)t[n + r] = e[r];
+        };
+        d.prototype.bytes = function(e) {
+            var t = e.length >>> 0;
+            if (!t) return this._push(f, 1, 0);
+            if (i.isString(e)) {
+                var n = d.alloc(t = s.length(e));
+                s.decode(e, n, 0), e = n;
+            }
+            return this.uint32(t)._push(y, t, e);
+        }, d.prototype.string = function(e) {
+            var t = a.length(e);
+            return t ? this.uint32(t)._push(a.write, t, e) : this._push(f, 1, 0);
+        }, d.prototype.fork = function() {
+            return this.states = new c(this), this.head = this.tail = new u(l, 0, 0), this.len = 0, this;
+        }, d.prototype.reset = function() {
+            return this.states ? (this.head = this.states.head, this.tail = this.states.tail, this.len = this.states.len, this.states = this.states.next) : (this.head = this.tail = new u(l, 0, 0), this.len = 0), this;
+        }, d.prototype.ldelim = function() {
+            var e = this.head, t = this.tail, n = this.len;
+            return this.reset().uint32(n), n && (this.tail.next = e.next, this.tail = t, this.len += n), this;
+        }, d.prototype.finish = function() {
+            for(var e = this.head.next, t = this.constructor.alloc(this.len), n = 0; e;)e.fn(e.val, t, n), n += e.len, e = e.next;
+            return t;
+        }, d._configure = function(e) {
+            r = e, d.create = p(), r._configure();
+        };
+    },
+    491: function(e, t, n) {
+        e.exports = o;
+        var r = n(114);
+        (o.prototype = Object.create(r.prototype)).constructor = o;
+        var i = n(837);
+        function o() {
+            r.call(this);
+        }
+        function s(e, t, n) {
+            e.length < 40 ? i.utf8.write(e, t, n) : t.utf8Write ? t.utf8Write(e, n) : t.write(e, n);
+        }
+        o._configure = function() {
+            o.alloc = i._Buffer_allocUnsafe, o.writeBytesBuffer = i.Buffer && i.Buffer.prototype instanceof Uint8Array && "set" === i.Buffer.prototype.set.name ? function(e, t, n) {
+                t.set(e, n);
+            } : function(e, t, n) {
+                if (e.copy) e.copy(t, n, 0, e.length);
+                else for(var r = 0; r < e.length;)t[n++] = e[r++];
+            };
+        }, o.prototype.bytes = function(e) {
+            i.isString(e) && (e = i._Buffer_from(e, "base64"));
+            var t = e.length >>> 0;
+            return this.uint32(t), t && this._push(o.writeBytesBuffer, t, e), this;
+        }, o.prototype.string = function(e) {
+            var t = i.Buffer.byteLength(e);
+            return this.uint32(t), t && this._push(s, t, e), this;
+        }, o._configure();
+    },
+    682: function(e, t) {
+        var n, r = Object.prototype.hasOwnProperty;
+        function i(e) {
+            try {
+                return decodeURIComponent(e.replace(/\+/g, ' '));
+            } catch (e) {
+                return null;
+            }
+        }
+        function o(e) {
+            try {
+                return encodeURIComponent(e);
+            } catch (e) {
+                return null;
+            }
+        }
+        function s(e) {
+            for(var t, n = /([^=?#&]+)=?([^&]*)/g, r = {}; t = n.exec(e);){
+                var o = i(t[1]), s = i(t[2]);
+                null === o || null === s || o in r || (r[o] = s);
+            }
+            return r;
+        }
+        t.stringify = function(e, t) {
+            var i, s, a = [];
+            for(s in 'string' != typeof (t = t || '') && (t = '?'), e)if (r.call(e, s)) {
+                if (!(i = e[s]) && (null === i || i === n || isNaN(i)) && (i = ''), s = o(s), i = o(i), null === s || null === i) continue;
+                a.push(s + '=' + i);
+            }
+            return a.length ? t + a.join('&') : '';
+        }, t.parse = s;
+    },
+    995: function(e) {
+        e.exports = function(e, t) {
+            if (t = t.split(':')[0], !(e *= 1)) return !1;
+            switch(t){
+                case 'http':
+                case 'ws':
+                    return 80 !== e;
+                case 'https':
+                case 'wss':
+                    return 443 !== e;
+                case 'ftp':
+                    return 21 !== e;
+                case 'gopher':
+                    return 70 !== e;
+                case 'file':
+                    return !1;
+            }
+            return 0 !== e;
+        };
+    },
+    337: function(e, t, n) {
+        var r = n(995), i = n(682), o = /^[\x00-\x20\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+/, s = /[\n\r\t]/g, a = /^[A-Za-z][A-Za-z0-9+-.]*:\/\//, u = /:\d+$/, l = /^([a-z][a-z0-9.+-]*:)?(\/\/)?([\\/]+)?([\S\s]*)/i, c = /^[a-zA-Z]:/;
+        function d(e) {
+            return (e || '').toString().replace(o, '');
+        }
+        var p = [
+            [
+                '#',
+                'hash'
+            ],
+            [
+                '?',
+                'query'
+            ],
+            function(e, t) {
+                return m(t.protocol) ? e.replace(/\\/g, '/') : e;
+            },
+            [
+                '/',
+                'pathname'
+            ],
+            [
+                '@',
+                'auth',
+                1
+            ],
+            [
+                NaN,
+                'host',
+                void 0,
+                1,
+                1
+            ],
+            [
+                /:(\d*)$/,
+                'port',
+                void 0,
+                1
+            ],
+            [
+                NaN,
+                'hostname',
+                void 0,
+                1,
+                1
+            ]
+        ], f = {
+            hash: 1,
+            query: 1
+        };
+        function h(e) {
+            var t, r, i = (t = 'undefined' != typeof window ? window : void 0 !== n.g ? n.g : 'undefined' != typeof self ? self : {}).location || {}, o = {}, s = typeof (e = e || i);
+            if ('blob:' === e.protocol) o = new y(unescape(e.pathname), {});
+            else if ('string' === s) for(r in o = new y(e, {}), f)delete o[r];
+            else if ('object' === s) {
+                for(r in e)r in f || (o[r] = e[r]);
+                void 0 === o.slashes && (o.slashes = a.test(e.href));
+            }
+            return o;
+        }
+        function m(e) {
+            return 'file:' === e || 'ftp:' === e || 'http:' === e || 'https:' === e || 'ws:' === e || 'wss:' === e;
+        }
+        function g(e, t) {
+            e = (e = d(e)).replace(s, ''), t = t || {};
+            var n, r = l.exec(e), i = r[1] ? r[1].toLowerCase() : '', o = !!r[2], a = !!r[3], u = 0;
+            return o ? a ? (n = r[2] + r[3] + r[4], u = r[2].length + r[3].length) : (n = r[2] + r[4], u = r[2].length) : a ? (n = r[3] + r[4], u = r[3].length) : n = r[4], 'file:' === i ? u >= 2 && (n = n.slice(2)) : m(i) ? n = r[4] : i ? o && (n = n.slice(2)) : u >= 2 && m(t.protocol) && (n = r[4]), {
+                protocol: i,
+                slashes: o || m(i),
+                slashesCount: u,
+                rest: n
+            };
+        }
+        function v(e, t) {
+            if ('' === e) return t;
+            for(var n = (t || '/').split('/').slice(0, -1).concat(e.split('/')), r = n.length, i = n[r - 1], o = !1, s = 0; r--;)'.' === n[r] ? n.splice(r, 1) : '..' === n[r] ? (n.splice(r, 1), s++) : s && (0 === r && (o = !0), n.splice(r, 1), s--);
+            return o && n.unshift(''), ('.' === i || '..' === i) && n.push(''), n.join('/');
+        }
+        function y(e, t, n) {
+            if (e = (e = d(e)).replace(s, ''), !(this instanceof y)) return new y(e, t, n);
+            var o, a, u, l, f, b, _ = p.slice(), w = typeof t, k = this, x = 0;
+            for('object' !== w && 'string' !== w && (n = t, t = null), n && 'function' != typeof n && (n = i.parse), o = !(a = g(e || '', t = h(t))).protocol && !a.slashes, k.slashes = a.slashes || o && t.slashes, k.protocol = a.protocol || t.protocol || '', e = a.rest, ('file:' === a.protocol && (2 !== a.slashesCount || c.test(e)) || !a.slashes && (a.protocol || a.slashesCount < 2 || !m(k.protocol))) && (_[3] = [
+                /(.*)/,
+                'pathname'
+            ]); x < _.length; x++){
+                if ('function' == typeof (l = _[x])) {
+                    e = l(e, k);
+                    continue;
+                }
+                u = l[0], b = l[1], u != u ? k[b] = e : 'string' == typeof u ? ~(f = '@' === u ? e.lastIndexOf(u) : e.indexOf(u)) && ('number' == typeof l[2] ? (k[b] = e.slice(0, f), e = e.slice(f + l[2])) : (k[b] = e.slice(f), e = e.slice(0, f))) : (f = u.exec(e)) && (k[b] = f[1], e = e.slice(0, f.index)), k[b] = k[b] || o && l[3] && t[b] || '', l[4] && (k[b] = k[b].toLowerCase());
+            }
+            n && (k.query = n(k.query)), o && t.slashes && '/' !== k.pathname.charAt(0) && ('' !== k.pathname || '' !== t.pathname) && (k.pathname = v(k.pathname, t.pathname)), '/' !== k.pathname.charAt(0) && m(k.protocol) && (k.pathname = '/' + k.pathname), r(k.port, k.protocol) || (k.host = k.hostname, k.port = ''), k.username = k.password = '', k.auth && (~(f = k.auth.indexOf(':')) ? (k.username = k.auth.slice(0, f), k.username = encodeURIComponent(decodeURIComponent(k.username)), k.password = k.auth.slice(f + 1), k.password = encodeURIComponent(decodeURIComponent(k.password))) : k.username = encodeURIComponent(decodeURIComponent(k.auth)), k.auth = k.password ? k.username + ':' + k.password : k.username), k.origin = 'file:' !== k.protocol && m(k.protocol) && k.host ? k.protocol + '//' + k.host : 'null', k.href = k.toString();
+        }
+        y.prototype = {
+            set: function(e, t, n) {
+                var o = this;
+                switch(e){
+                    case 'query':
+                        'string' == typeof t && t.length && (t = (n || i.parse)(t)), o[e] = t;
+                        break;
+                    case 'port':
+                        o[e] = t, r(t, o.protocol) ? t && (o.host = o.hostname + ':' + t) : (o.host = o.hostname, o[e] = '');
+                        break;
+                    case 'hostname':
+                        o[e] = t, o.port && (t += ':' + o.port), o.host = t;
+                        break;
+                    case 'host':
+                        o[e] = t, u.test(t) ? (o.port = (t = t.split(':')).pop(), o.hostname = t.join(':')) : (o.hostname = t, o.port = '');
+                        break;
+                    case 'protocol':
+                        o.protocol = t.toLowerCase(), o.slashes = !n;
+                        break;
+                    case 'pathname':
+                    case 'hash':
+                        if (t) {
+                            var s = 'pathname' === e ? '/' : '#';
+                            o[e] = t.charAt(0) !== s ? s + t : t;
+                        } else o[e] = t;
+                        break;
+                    case 'username':
+                    case 'password':
+                        o[e] = encodeURIComponent(t);
+                        break;
+                    case 'auth':
+                        var a = t.indexOf(':');
+                        ~a ? (o.username = t.slice(0, a), o.username = encodeURIComponent(decodeURIComponent(o.username)), o.password = t.slice(a + 1), o.password = encodeURIComponent(decodeURIComponent(o.password))) : o.username = encodeURIComponent(decodeURIComponent(t));
+                }
+                for(var l = 0; l < p.length; l++){
+                    var c = p[l];
+                    c[4] && (o[c[1]] = o[c[1]].toLowerCase());
+                }
+                return o.auth = o.password ? o.username + ':' + o.password : o.username, o.origin = 'file:' !== o.protocol && m(o.protocol) && o.host ? o.protocol + '//' + o.host : 'null', o.href = o.toString(), o;
+            },
+            toString: function(e) {
+                e && 'function' == typeof e || (e = i.stringify);
+                var t, n = this, r = n.host, o = n.protocol;
+                o && ':' !== o.charAt(o.length - 1) && (o += ':');
+                var s = o + (n.protocol && n.slashes || m(n.protocol) ? '//' : '');
+                return n.username ? (s += n.username, n.password && (s += ':' + n.password), s += '@') : n.password ? (s += ':' + n.password, s += '@') : 'file:' !== n.protocol && m(n.protocol) && !r && '/' !== n.pathname && (s += '@'), (':' === r[r.length - 1] || u.test(n.hostname) && !n.port) && (r += ':'), s += r + n.pathname, (t = 'object' == typeof n.query ? e(n.query) : n.query) && (s += '?' !== t.charAt(0) ? '?' + t : t), n.hash && (s += n.hash), s;
+            }
+        }, y.extractProtocol = g, y.location = h, y.trimLeft = d, y.qs = i, e.exports = y;
+    },
+    602: function() {}
+}, __webpack_module_cache__ = {};
+function __webpack_require__(e) {
+    var t = __webpack_module_cache__[e];
+    if (void 0 !== t) return t.exports;
+    var n = __webpack_module_cache__[e] = {
+        id: e,
+        loaded: !1,
+        exports: {}
+    };
+    return __webpack_modules__[e].call(n.exports, n, n.exports, __webpack_require__), n.loaded = !0, n.exports;
+}
+(()=>{
+    __webpack_require__.n = (e)=>{
+        var t = e && e.__esModule ? ()=>e.default : ()=>e;
+        return __webpack_require__.d(t, {
+            a: t
+        }), t;
+    };
+})(), (()=>{
+    __webpack_require__.d = (e, t)=>{
+        for(var n in t)__webpack_require__.o(t, n) && !__webpack_require__.o(e, n) && Object.defineProperty(e, n, {
+            enumerable: !0,
+            get: t[n]
+        });
+    };
+})(), (()=>{
+    __webpack_require__.g = (()=>{
+        if ('object' == typeof globalThis) return globalThis;
+        try {
+            return this || Function('return this')();
+        } catch (e) {
+            if ('object' == typeof window) return window;
+        }
+    })();
+})(), (()=>{
+    __webpack_require__.o = (e, t)=>Object.prototype.hasOwnProperty.call(e, t);
+})(), (()=>{
+    __webpack_require__.nmd = (e)=>(e.paths = [], e.children || (e.children = []), e);
+})();
+const PROVIDER_NAMES = {
+    tencent: "\u817E\u8BAF\u89C6\u9891",
+    iqiyi: "\u7231\u5947\u827A",
+    youku: "\u4F18\u9177\u89C6\u9891",
+    bilibili: "\u54D4\u54E9\u54D4\u54E9"
+};
+function $constructor(e, t, n) {
+    function r(n, r) {
+        var i;
+        for(let o in Object.defineProperty(n, "_zod", {
+            value: n._zod ?? {},
+            enumerable: !1
+        }), (i = n._zod).traits ?? (i.traits = new Set()), n._zod.traits.add(e), t(n, r), s.prototype)o in n || Object.defineProperty(n, o, {
+            value: s.prototype[o].bind(n)
+        });
+        n._zod.constr = s, n._zod.def = r;
+    }
+    let i = n?.Parent ?? Object;
+    class o extends i {
+    }
+    function s(e) {
+        var t;
+        let i = n?.Parent ? new o() : this;
+        for (let n of (r(i, e), (t = i._zod).deferred ?? (t.deferred = []), i._zod.deferred))n();
+        return i;
+    }
+    return Object.defineProperty(o, "name", {
+        value: e
+    }), Object.defineProperty(s, "init", {
+        value: r
+    }), Object.defineProperty(s, Symbol.hasInstance, {
+        value: (t)=>!!n?.Parent && t instanceof n.Parent || t?._zod?.traits?.has(e)
+    }), Object.defineProperty(s, "name", {
+        value: e
+    }), s;
+}
+Object.freeze({
+    status: "aborted"
+}), Symbol("zod_brand");
+class $ZodAsyncError extends Error {
+    constructor(){
+        super("Encountered Promise during synchronous parse. Use .parseAsync() instead.");
+    }
+}
+const globalConfig = {};
+function core_config(e) {
+    return e && Object.assign(globalConfig, e), globalConfig;
+}
+const cuid = /^[cC][^\s-]{8,}$/, cuid2 = /^[0-9a-z]+$/, ulid = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/, xid = /^[0-9a-vA-V]{20}$/, ksuid = /^[A-Za-z0-9]{27}$/, nanoid = /^[a-zA-Z0-9_-]{21}$/, regexes_duration = /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/, guid = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, uuid = (e)=>e ? RegExp(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${e}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`) : /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$/, email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/, _emoji = "^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$";
+function emoji() {
+    return RegExp(_emoji, "u");
+}
+const ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/, ipv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})$/, cidrv4 = /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/([0-9]|[1-2][0-9]|3[0-2])$/, cidrv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/, regexes_base64 = /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/, base64url = /^[A-Za-z0-9_-]*$/, hostname = /^(?=.{1,253}\.?$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[-0-9a-zA-Z]{0,61}[0-9a-zA-Z])?)*\.?$/, e164 = /^\+(?:[0-9]){6,14}[0-9]$/, dateSource = "(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))", regexes_date = RegExp(`^${dateSource}$`);
+function timeSource(e) {
+    let t = "(?:[01]\\d|2[0-3]):[0-5]\\d";
+    return "number" == typeof e.precision ? -1 === e.precision ? `${t}` : 0 === e.precision ? `${t}:[0-5]\\d` : `${t}:[0-5]\\d\\.\\d{${e.precision}}` : `${t}(?::[0-5]\\d(?:\\.\\d+)?)?`;
+}
+function regexes_time(e) {
+    return RegExp(`^${timeSource(e)}$`);
+}
+function datetime(e) {
+    let t = timeSource({
+        precision: e.precision
+    }), n = [
+        "Z"
+    ];
+    e.local && n.push(""), e.offset && n.push("([+-](?:[01]\\d|2[0-3]):[0-5]\\d)");
+    let r = `${t}(?:${n.join("|")})`;
+    return RegExp(`^${dateSource}T(?:${r})$`);
+}
+const regexes_string = (e)=>{
+    let t = e ? `[\\s\\S]{${e?.minimum ?? 0},${e?.maximum ?? ""}}` : "[\\s\\S]*";
+    return RegExp(`^${t}$`);
+}, integer = /^\d+$/, number = /^-?\d+(?:\.\d+)?/i, regexes_boolean = /true|false/i, lowercase = /^[^A-Z]*$/, uppercase = /^[^a-z]*$/;
+function getEnumValues(e) {
+    let t = Object.values(e).filter((e)=>"number" == typeof e);
+    return Object.entries(e).filter(([e, n])=>-1 === t.indexOf(+e)).map(([e, t])=>t);
+}
+function jsonStringifyReplacer(e, t) {
+    return "bigint" == typeof t ? t.toString() : t;
+}
+function util_cached(e) {
+    let t = !1;
+    return {
+        get value () {
+            if (!t) {
+                let t = e();
+                return Object.defineProperty(this, "value", {
+                    value: t
+                }), t;
+            }
+            throw Error("cached value already set");
+        }
+    };
+}
+function nullish(e) {
+    return null == e;
+}
+function cleanRegex(e) {
+    let t = +!!e.startsWith("^"), n = e.endsWith("$") ? e.length - 1 : e.length;
+    return e.slice(t, n);
+}
+function floatSafeRemainder(e, t) {
+    let n = (e.toString().split(".")[1] || "").length, r = t.toString(), i = (r.split(".")[1] || "").length;
+    if (0 === i && /\d?e-\d?/.test(r)) {
+        let e = r.match(/\d?e-(\d?)/);
+        e?.[1] && (i = Number.parseInt(e[1]));
+    }
+    let o = n > i ? n : i;
+    return Number.parseInt(e.toFixed(o).replace(".", "")) % Number.parseInt(t.toFixed(o).replace(".", "")) / 10 ** o;
+}
+const EVALUATING = Symbol("evaluating");
+function defineLazy(e, t, n) {
+    let r;
+    Object.defineProperty(e, t, {
+        get () {
+            if (r !== EVALUATING) return void 0 === r && (r = EVALUATING, r = n()), r;
+        },
+        set (n) {
+            Object.defineProperty(e, t, {
+                value: n
+            });
+        },
+        configurable: !0
+    });
+}
+function objectClone(e) {
+    return Object.create(Object.getPrototypeOf(e), Object.getOwnPropertyDescriptors(e));
+}
+function assignProp(e, t, n) {
+    Object.defineProperty(e, t, {
+        value: n,
+        writable: !0,
+        enumerable: !0,
+        configurable: !0
+    });
+}
+function mergeDefs(...e) {
+    let t = {};
+    for (let n of e)Object.assign(t, Object.getOwnPropertyDescriptors(n));
+    return Object.defineProperties({}, t);
+}
+function esc(e) {
+    return JSON.stringify(e);
+}
+const captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace : (...e)=>{};
+function util_isObject(e) {
+    return "object" == typeof e && null !== e && !Array.isArray(e);
+}
+const util_allowsEval = util_cached(()=>{
+    if ("undefined" != typeof navigator && navigator?.userAgent?.includes("Cloudflare")) return !1;
+    try {
+        return Function(""), !0;
+    } catch (e) {
+        return !1;
+    }
+});
+function isPlainObject(e) {
+    if (!1 === util_isObject(e)) return !1;
+    let t = e.constructor;
+    if (void 0 === t) return !0;
+    let n = t.prototype;
+    return !1 !== util_isObject(n) && !1 !== Object.prototype.hasOwnProperty.call(n, "isPrototypeOf");
+}
+function shallowClone(e) {
+    return isPlainObject(e) ? {
+        ...e
+    } : e;
+}
+const propertyKeyTypes = new Set([
+    "string",
+    "number",
+    "symbol"
+]);
+function escapeRegex(e) {
+    return e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function clone(e, t, n) {
+    let r = new e._zod.constr(t ?? e._zod.def);
+    return (!t || n?.parent) && (r._zod.parent = e), r;
+}
+function normalizeParams(e) {
+    let t = e;
+    if (!t) return {};
+    if ("string" == typeof t) return {
+        error: ()=>t
+    };
+    if (t?.message !== void 0) {
+        if (t?.error !== void 0) throw Error("Cannot specify both `message` and `error` params");
+        t.error = t.message;
+    }
+    return (delete t.message, "string" == typeof t.error) ? {
+        ...t,
+        error: ()=>t.error
+    } : t;
+}
+function optionalKeys(e) {
+    return Object.keys(e).filter((t)=>"optional" === e[t]._zod.optin && "optional" === e[t]._zod.optout);
+}
+const NUMBER_FORMAT_RANGES = {
+    safeint: [
+        Number.MIN_SAFE_INTEGER,
+        Number.MAX_SAFE_INTEGER
+    ],
+    int32: [
+        -2147483648,
+        2147483647
+    ],
+    uint32: [
+        0,
+        4294967295
+    ],
+    float32: [
+        -3.4028234663852886e+38,
+        3.4028234663852886e38
+    ],
+    float64: [
+        -Number.MAX_VALUE,
+        Number.MAX_VALUE
+    ]
+};
+function pick(e, t) {
+    let n = e._zod.def, r = mergeDefs(e._zod.def, {
+        get shape () {
+            let e = {};
+            for(let r in t){
+                if (!(r in n.shape)) throw Error(`Unrecognized key: "${r}"`);
+                t[r] && (e[r] = n.shape[r]);
+            }
+            return assignProp(this, "shape", e), e;
+        },
+        checks: []
+    });
+    return clone(e, r);
+}
+function omit(e, t) {
+    let n = e._zod.def, r = mergeDefs(e._zod.def, {
+        get shape () {
+            let r = {
+                ...e._zod.def.shape
+            };
+            for(let e in t){
+                if (!(e in n.shape)) throw Error(`Unrecognized key: "${e}"`);
+                t[e] && delete r[e];
+            }
+            return assignProp(this, "shape", r), r;
+        },
+        checks: []
+    });
+    return clone(e, r);
+}
+function extend(e, t) {
+    if (!isPlainObject(t)) throw Error("Invalid input to extend: expected a plain object");
+    let n = mergeDefs(e._zod.def, {
+        get shape () {
+            let n = {
+                ...e._zod.def.shape,
+                ...t
+            };
+            return assignProp(this, "shape", n), n;
+        },
+        checks: []
+    });
+    return clone(e, n);
+}
+function merge(e, t) {
+    let n = mergeDefs(e._zod.def, {
+        get shape () {
+            let n = {
+                ...e._zod.def.shape,
+                ...t._zod.def.shape
+            };
+            return assignProp(this, "shape", n), n;
+        },
+        get catchall () {
+            return t._zod.def.catchall;
+        },
+        checks: []
+    });
+    return clone(e, n);
+}
+function partial(e, t, n) {
+    let r = mergeDefs(t._zod.def, {
+        get shape () {
+            let r = t._zod.def.shape, i = {
+                ...r
+            };
+            if (n) for(let t in n){
+                if (!(t in r)) throw Error(`Unrecognized key: "${t}"`);
+                n[t] && (i[t] = e ? new e({
+                    type: "optional",
+                    innerType: r[t]
+                }) : r[t]);
+            }
+            else for(let t in r)i[t] = e ? new e({
+                type: "optional",
+                innerType: r[t]
+            }) : r[t];
+            return assignProp(this, "shape", i), i;
+        },
+        checks: []
+    });
+    return clone(t, r);
+}
+function required(e, t, n) {
+    let r = mergeDefs(t._zod.def, {
+        get shape () {
+            let r = t._zod.def.shape, i = {
+                ...r
+            };
+            if (n) for(let t in n){
+                if (!(t in i)) throw Error(`Unrecognized key: "${t}"`);
+                n[t] && (i[t] = new e({
+                    type: "nonoptional",
+                    innerType: r[t]
+                }));
+            }
+            else for(let t in r)i[t] = new e({
+                type: "nonoptional",
+                innerType: r[t]
+            });
+            return assignProp(this, "shape", i), i;
+        },
+        checks: []
+    });
+    return clone(t, r);
+}
+function aborted(e, t = 0) {
+    for(let n = t; n < e.issues.length; n++)if (e.issues[n]?.continue !== !0) return !0;
+    return !1;
+}
+function prefixIssues(e, t) {
+    return t.map((t)=>{
+        var n;
+        return (n = t).path ?? (n.path = []), t.path.unshift(e), t;
+    });
+}
+function unwrapMessage(e) {
+    return "string" == typeof e ? e : e?.message;
+}
+function finalizeIssue(e, t, n) {
+    let r = {
+        ...e,
+        path: e.path ?? []
+    };
+    return e.message || (r.message = unwrapMessage(e.inst?._zod.def?.error?.(e)) ?? unwrapMessage(t?.error?.(e)) ?? unwrapMessage(n.customError?.(e)) ?? unwrapMessage(n.localeError?.(e)) ?? "Invalid input"), delete r.inst, delete r.continue, t?.reportInput || delete r.input, r;
+}
+function getLengthableOrigin(e) {
+    return Array.isArray(e) ? "array" : "string" == typeof e ? "string" : "unknown";
+}
+function util_issue(...e) {
+    let [t, n, r] = e;
+    return "string" == typeof t ? {
+        message: t,
+        code: "custom",
+        input: n,
+        inst: r
+    } : {
+        ...t
+    };
+}
+const $ZodCheck = $constructor("$ZodCheck", (e, t)=>{
+    var n;
+    e._zod ?? (e._zod = {}), e._zod.def = t, (n = e._zod).onattach ?? (n.onattach = []);
+}), numericOriginMap = {
+    number: "number",
+    bigint: "bigint",
+    object: "date"
+}, $ZodCheckLessThan = $constructor("$ZodCheckLessThan", (e, t)=>{
+    $ZodCheck.init(e, t);
+    let n = numericOriginMap[typeof t.value];
+    e._zod.onattach.push((e)=>{
+        let n = e._zod.bag, r = (t.inclusive ? n.maximum : n.exclusiveMaximum) ?? 1 / 0;
+        t.value < r && (t.inclusive ? n.maximum = t.value : n.exclusiveMaximum = t.value);
+    }), e._zod.check = (r)=>{
+        (t.inclusive ? r.value <= t.value : r.value < t.value) || r.issues.push({
+            origin: n,
+            code: "too_big",
+            maximum: t.value,
+            input: r.value,
+            inclusive: t.inclusive,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckGreaterThan = $constructor("$ZodCheckGreaterThan", (e, t)=>{
+    $ZodCheck.init(e, t);
+    let n = numericOriginMap[typeof t.value];
+    e._zod.onattach.push((e)=>{
+        let n = e._zod.bag, r = (t.inclusive ? n.minimum : n.exclusiveMinimum) ?? -1 / 0;
+        t.value > r && (t.inclusive ? n.minimum = t.value : n.exclusiveMinimum = t.value);
+    }), e._zod.check = (r)=>{
+        (t.inclusive ? r.value >= t.value : r.value > t.value) || r.issues.push({
+            origin: n,
+            code: "too_small",
+            minimum: t.value,
+            input: r.value,
+            inclusive: t.inclusive,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckMultipleOf = $constructor("$ZodCheckMultipleOf", (e, t)=>{
+    $ZodCheck.init(e, t), e._zod.onattach.push((e)=>{
+        var n;
+        (n = e._zod.bag).multipleOf ?? (n.multipleOf = t.value);
+    }), e._zod.check = (n)=>{
+        if (typeof n.value != typeof t.value) throw Error("Cannot mix number and bigint in multiple_of check.");
+        ("bigint" == typeof n.value ? n.value % t.value === BigInt(0) : 0 === floatSafeRemainder(n.value, t.value)) || n.issues.push({
+            origin: typeof n.value,
+            code: "not_multiple_of",
+            divisor: t.value,
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckNumberFormat = $constructor("$ZodCheckNumberFormat", (e, t)=>{
+    $ZodCheck.init(e, t), t.format = t.format || "float64";
+    let n = t.format?.includes("int"), r = n ? "int" : "number", [i, o] = NUMBER_FORMAT_RANGES[t.format];
+    e._zod.onattach.push((e)=>{
+        let r = e._zod.bag;
+        r.format = t.format, r.minimum = i, r.maximum = o, n && (r.pattern = integer);
+    }), e._zod.check = (s)=>{
+        let a = s.value;
+        if (n) {
+            if (!Number.isInteger(a)) return void s.issues.push({
+                expected: r,
+                format: t.format,
+                code: "invalid_type",
+                continue: !1,
+                input: a,
+                inst: e
+            });
+            if (!Number.isSafeInteger(a)) return void (a > 0 ? s.issues.push({
+                input: a,
+                code: "too_big",
+                maximum: Number.MAX_SAFE_INTEGER,
+                note: "Integers must be within the safe integer range.",
+                inst: e,
+                origin: r,
+                continue: !t.abort
+            }) : s.issues.push({
+                input: a,
+                code: "too_small",
+                minimum: Number.MIN_SAFE_INTEGER,
+                note: "Integers must be within the safe integer range.",
+                inst: e,
+                origin: r,
+                continue: !t.abort
+            }));
+        }
+        a < i && s.issues.push({
+            origin: "number",
+            input: a,
+            code: "too_small",
+            minimum: i,
+            inclusive: !0,
+            inst: e,
+            continue: !t.abort
+        }), a > o && s.issues.push({
+            origin: "number",
+            input: a,
+            code: "too_big",
+            maximum: o,
+            inst: e
+        });
+    };
+}), $ZodCheckMaxLength = $constructor("$ZodCheckMaxLength", (e, t)=>{
+    var n;
+    $ZodCheck.init(e, t), (n = e._zod.def).when ?? (n.when = (e)=>{
+        let t = e.value;
+        return !nullish(t) && void 0 !== t.length;
+    }), e._zod.onattach.push((e)=>{
+        let n = e._zod.bag.maximum ?? 1 / 0;
+        t.maximum < n && (e._zod.bag.maximum = t.maximum);
+    }), e._zod.check = (n)=>{
+        let r = n.value;
+        if (r.length <= t.maximum) return;
+        let i = getLengthableOrigin(r);
+        n.issues.push({
+            origin: i,
+            code: "too_big",
+            maximum: t.maximum,
+            inclusive: !0,
+            input: r,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckMinLength = $constructor("$ZodCheckMinLength", (e, t)=>{
+    var n;
+    $ZodCheck.init(e, t), (n = e._zod.def).when ?? (n.when = (e)=>{
+        let t = e.value;
+        return !nullish(t) && void 0 !== t.length;
+    }), e._zod.onattach.push((e)=>{
+        let n = e._zod.bag.minimum ?? -1 / 0;
+        t.minimum > n && (e._zod.bag.minimum = t.minimum);
+    }), e._zod.check = (n)=>{
+        let r = n.value;
+        if (r.length >= t.minimum) return;
+        let i = getLengthableOrigin(r);
+        n.issues.push({
+            origin: i,
+            code: "too_small",
+            minimum: t.minimum,
+            inclusive: !0,
+            input: r,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckLengthEquals = $constructor("$ZodCheckLengthEquals", (e, t)=>{
+    var n;
+    $ZodCheck.init(e, t), (n = e._zod.def).when ?? (n.when = (e)=>{
+        let t = e.value;
+        return !nullish(t) && void 0 !== t.length;
+    }), e._zod.onattach.push((e)=>{
+        let n = e._zod.bag;
+        n.minimum = t.length, n.maximum = t.length, n.length = t.length;
+    }), e._zod.check = (n)=>{
+        let r = n.value, i = r.length;
+        if (i === t.length) return;
+        let o = getLengthableOrigin(r), s = i > t.length;
+        n.issues.push({
+            origin: o,
+            ...s ? {
+                code: "too_big",
+                maximum: t.length
+            } : {
+                code: "too_small",
+                minimum: t.length
+            },
+            inclusive: !0,
+            exact: !0,
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckStringFormat = $constructor("$ZodCheckStringFormat", (e, t)=>{
+    var n, r;
+    $ZodCheck.init(e, t), e._zod.onattach.push((e)=>{
+        let n = e._zod.bag;
+        n.format = t.format, t.pattern && (n.patterns ?? (n.patterns = new Set()), n.patterns.add(t.pattern));
+    }), t.pattern ? (n = e._zod).check ?? (n.check = (n)=>{
+        t.pattern.lastIndex = 0, t.pattern.test(n.value) || n.issues.push({
+            origin: "string",
+            code: "invalid_format",
+            format: t.format,
+            input: n.value,
+            ...t.pattern ? {
+                pattern: t.pattern.toString()
+            } : {},
+            inst: e,
+            continue: !t.abort
+        });
+    }) : (r = e._zod).check ?? (r.check = ()=>{});
+}), $ZodCheckRegex = $constructor("$ZodCheckRegex", (e, t)=>{
+    $ZodCheckStringFormat.init(e, t), e._zod.check = (n)=>{
+        t.pattern.lastIndex = 0, t.pattern.test(n.value) || n.issues.push({
+            origin: "string",
+            code: "invalid_format",
+            format: "regex",
+            input: n.value,
+            pattern: t.pattern.toString(),
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckLowerCase = $constructor("$ZodCheckLowerCase", (e, t)=>{
+    t.pattern ?? (t.pattern = lowercase), $ZodCheckStringFormat.init(e, t);
+}), $ZodCheckUpperCase = $constructor("$ZodCheckUpperCase", (e, t)=>{
+    t.pattern ?? (t.pattern = uppercase), $ZodCheckStringFormat.init(e, t);
+}), $ZodCheckIncludes = $constructor("$ZodCheckIncludes", (e, t)=>{
+    $ZodCheck.init(e, t);
+    let n = escapeRegex(t.includes), r = new RegExp("number" == typeof t.position ? `^.{${t.position}}${n}` : n);
+    t.pattern = r, e._zod.onattach.push((e)=>{
+        let t = e._zod.bag;
+        t.patterns ?? (t.patterns = new Set()), t.patterns.add(r);
+    }), e._zod.check = (n)=>{
+        n.value.includes(t.includes, t.position) || n.issues.push({
+            origin: "string",
+            code: "invalid_format",
+            format: "includes",
+            includes: t.includes,
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckStartsWith = $constructor("$ZodCheckStartsWith", (e, t)=>{
+    $ZodCheck.init(e, t);
+    let n = RegExp(`^${escapeRegex(t.prefix)}.*`);
+    t.pattern ?? (t.pattern = n), e._zod.onattach.push((e)=>{
+        let t = e._zod.bag;
+        t.patterns ?? (t.patterns = new Set()), t.patterns.add(n);
+    }), e._zod.check = (n)=>{
+        n.value.startsWith(t.prefix) || n.issues.push({
+            origin: "string",
+            code: "invalid_format",
+            format: "starts_with",
+            prefix: t.prefix,
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckEndsWith = $constructor("$ZodCheckEndsWith", (e, t)=>{
+    $ZodCheck.init(e, t);
+    let n = RegExp(`.*${escapeRegex(t.suffix)}$`);
+    t.pattern ?? (t.pattern = n), e._zod.onattach.push((e)=>{
+        let t = e._zod.bag;
+        t.patterns ?? (t.patterns = new Set()), t.patterns.add(n);
+    }), e._zod.check = (n)=>{
+        n.value.endsWith(t.suffix) || n.issues.push({
+            origin: "string",
+            code: "invalid_format",
+            format: "ends_with",
+            suffix: t.suffix,
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodCheckOverwrite = $constructor("$ZodCheckOverwrite", (e, t)=>{
+    $ZodCheck.init(e, t), e._zod.check = (e)=>{
+        e.value = t.tx(e.value);
+    };
+});
+class Doc {
+    constructor(e = []){
+        this.content = [], this.indent = 0, this && (this.args = e);
+    }
+    indented(e) {
+        this.indent += 1, e(this), this.indent -= 1;
+    }
+    write(e) {
+        if ("function" == typeof e) {
+            e(this, {
+                execution: "sync"
+            }), e(this, {
+                execution: "async"
+            });
+            return;
+        }
+        let t = e.split("\n").filter((e)=>e), n = Math.min(...t.map((e)=>e.length - e.trimStart().length));
+        for (let e of t.map((e)=>e.slice(n)).map((e)=>" ".repeat(2 * this.indent) + e))this.content.push(e);
+    }
+    compile() {
+        return Function(...this?.args, [
+            ...(this?.content ?? [
+                ""
+            ]).map((e)=>`  ${e}`)
+        ].join("\n"));
+    }
+}
+const errors_initializer = (e, t)=>{
+    e.name = "$ZodError", Object.defineProperty(e, "_zod", {
+        value: e._zod,
+        enumerable: !1
+    }), Object.defineProperty(e, "issues", {
+        value: t,
+        enumerable: !1
+    }), e.message = JSON.stringify(t, jsonStringifyReplacer, 2), Object.defineProperty(e, "toString", {
+        value: ()=>e.message,
+        enumerable: !1
+    });
+}, $ZodError = $constructor("$ZodError", errors_initializer), $ZodRealError = $constructor("$ZodError", errors_initializer, {
+    Parent: Error
+});
+function flattenError(e, t = (e)=>e.message) {
+    let n = {}, r = [];
+    for (let i of e.issues)i.path.length > 0 ? (n[i.path[0]] = n[i.path[0]] || [], n[i.path[0]].push(t(i))) : r.push(t(i));
+    return {
+        formErrors: r,
+        fieldErrors: n
+    };
+}
+function formatError(e, t) {
+    let n = t || function(e) {
+        return e.message;
+    }, r = {
+        _errors: []
+    }, i = (e)=>{
+        for (let t of e.issues)if ("invalid_union" === t.code && t.errors.length) t.errors.map((e)=>i({
+                issues: e
+            }));
+        else if ("invalid_key" === t.code) i({
+            issues: t.issues
+        });
+        else if ("invalid_element" === t.code) i({
+            issues: t.issues
+        });
+        else if (0 === t.path.length) r._errors.push(n(t));
+        else {
+            let e = r, i = 0;
+            for(; i < t.path.length;){
+                let r = t.path[i];
+                i === t.path.length - 1 ? (e[r] = e[r] || {
+                    _errors: []
+                }, e[r]._errors.push(n(t))) : e[r] = e[r] || {
+                    _errors: []
+                }, e = e[r], i++;
+            }
+        }
+    };
+    return i(e), r;
+}
+function toDotPath(e) {
+    let t = [];
+    for (let n of e.map((e)=>"object" == typeof e ? e.key : e))"number" == typeof n ? t.push(`[${n}]`) : "symbol" == typeof n ? t.push(`[${JSON.stringify(String(n))}]`) : /[^\w$]/.test(n) ? t.push(`[${JSON.stringify(n)}]`) : (t.length && t.push("."), t.push(n));
+    return t.join("");
+}
+function prettifyError(e) {
+    let t = [];
+    for (let n of [
+        ...e.issues
+    ].sort((e, t)=>(e.path ?? []).length - (t.path ?? []).length))t.push(`✖ ${n.message}`), n.path?.length && t.push(`  → at ${toDotPath(n.path)}`);
+    return t.join("\n");
+}
+const _parse = (e)=>(t, n, r, i)=>{
+        let o = r ? Object.assign(r, {
+            async: !1
+        }) : {
+            async: !1
+        }, s = t._zod.run({
+            value: n,
+            issues: []
+        }, o);
+        if (s instanceof Promise) throw new $ZodAsyncError();
+        if (s.issues.length) {
+            let t = new (i?.Err ?? e)(s.issues.map((e)=>finalizeIssue(e, o, core_config())));
+            throw captureStackTrace(t, i?.callee), t;
+        }
+        return s.value;
+    }, _parseAsync = (e)=>async (t, n, r, i)=>{
+        let o = r ? Object.assign(r, {
+            async: !0
+        }) : {
+            async: !0
+        }, s = t._zod.run({
+            value: n,
+            issues: []
+        }, o);
+        if (s instanceof Promise && (s = await s), s.issues.length) {
+            let t = new (i?.Err ?? e)(s.issues.map((e)=>finalizeIssue(e, o, core_config())));
+            throw captureStackTrace(t, i?.callee), t;
+        }
+        return s.value;
+    }, _safeParse = (e)=>(t, n, r)=>{
+        let i = r ? {
+            ...r,
+            async: !1
+        } : {
+            async: !1
+        }, o = t._zod.run({
+            value: n,
+            issues: []
+        }, i);
+        if (o instanceof Promise) throw new $ZodAsyncError();
+        return o.issues.length ? {
+            success: !1,
+            error: new (e ?? $ZodError)(o.issues.map((e)=>finalizeIssue(e, i, core_config())))
+        } : {
+            success: !0,
+            data: o.value
+        };
+    }, safeParse = _safeParse($ZodRealError), _safeParseAsync = (e)=>async (t, n, r)=>{
+        let i = r ? Object.assign(r, {
+            async: !0
+        }) : {
+            async: !0
+        }, o = t._zod.run({
+            value: n,
+            issues: []
+        }, i);
+        return o instanceof Promise && (o = await o), o.issues.length ? {
+            success: !1,
+            error: new e(o.issues.map((e)=>finalizeIssue(e, i, core_config())))
+        } : {
+            success: !0,
+            data: o.value
+        };
+    }, safeParseAsync = _safeParseAsync($ZodRealError), versions_version = {
+    major: 4,
+    minor: 0,
+    patch: 17
+}, $ZodType = $constructor("$ZodType", (e, t)=>{
+    var n;
+    e ?? (e = {}), e._zod.def = t, e._zod.bag = e._zod.bag || {}, e._zod.version = versions_version;
+    let r = [
+        ...e._zod.def.checks ?? []
+    ];
+    for (let t of (e._zod.traits.has("$ZodCheck") && r.unshift(e), r))for (let n of t._zod.onattach)n(e);
+    if (0 === r.length) (n = e._zod).deferred ?? (n.deferred = []), e._zod.deferred?.push(()=>{
+        e._zod.run = e._zod.parse;
+    });
+    else {
+        let t = (e, t, n)=>{
+            let r, i = aborted(e);
+            for (let o of t){
+                if (o._zod.def.when) {
+                    if (!o._zod.def.when(e)) continue;
+                } else if (i) continue;
+                let t = e.issues.length, s = o._zod.check(e);
+                if (s instanceof Promise && n?.async === !1) throw new $ZodAsyncError();
+                if (r || s instanceof Promise) r = (r ?? Promise.resolve()).then(async ()=>{
+                    await s, e.issues.length !== t && (i || (i = aborted(e, t)));
+                });
+                else {
+                    if (e.issues.length === t) continue;
+                    i || (i = aborted(e, t));
+                }
+            }
+            return r ? r.then(()=>e) : e;
+        };
+        e._zod.run = (n, i)=>{
+            let o = e._zod.parse(n, i);
+            if (o instanceof Promise) {
+                if (!1 === i.async) throw new $ZodAsyncError();
+                return o.then((e)=>t(e, r, i));
+            }
+            return t(o, r, i);
+        };
+    }
+    e["~standard"] = {
+        validate: (t)=>{
+            try {
+                let n = safeParse(e, t);
+                return n.success ? {
+                    value: n.data
+                } : {
+                    issues: n.error?.issues
+                };
+            } catch (n) {
+                return safeParseAsync(e, t).then((e)=>e.success ? {
+                        value: e.data
+                    } : {
+                        issues: e.error?.issues
+                    });
+            }
+        },
+        vendor: "zod",
+        version: 1
+    };
+}), $ZodString = $constructor("$ZodString", (e, t)=>{
+    $ZodType.init(e, t), e._zod.pattern = [
+        ...e?._zod.bag?.patterns ?? []
+    ].pop() ?? regexes_string(e._zod.bag), e._zod.parse = (n, r)=>{
+        if (t.coerce) try {
+            n.value = String(n.value);
+        } catch (e) {}
+        return "string" == typeof n.value || n.issues.push({
+            expected: "string",
+            code: "invalid_type",
+            input: n.value,
+            inst: e
+        }), n;
+    };
+}), $ZodStringFormat = $constructor("$ZodStringFormat", (e, t)=>{
+    $ZodCheckStringFormat.init(e, t), $ZodString.init(e, t);
+}), $ZodGUID = $constructor("$ZodGUID", (e, t)=>{
+    t.pattern ?? (t.pattern = guid), $ZodStringFormat.init(e, t);
+}), $ZodUUID = $constructor("$ZodUUID", (e, t)=>{
+    if (t.version) {
+        let e = {
+            v1: 1,
+            v2: 2,
+            v3: 3,
+            v4: 4,
+            v5: 5,
+            v6: 6,
+            v7: 7,
+            v8: 8
+        }[t.version];
+        if (void 0 === e) throw Error(`Invalid UUID version: "${t.version}"`);
+        t.pattern ?? (t.pattern = uuid(e));
+    } else t.pattern ?? (t.pattern = uuid());
+    $ZodStringFormat.init(e, t);
+}), $ZodEmail = $constructor("$ZodEmail", (e, t)=>{
+    t.pattern ?? (t.pattern = email), $ZodStringFormat.init(e, t);
+}), $ZodURL = $constructor("$ZodURL", (e, t)=>{
+    $ZodStringFormat.init(e, t), e._zod.check = (n)=>{
+        try {
+            let r = n.value.trim(), i = new URL(r);
+            t.hostname && (t.hostname.lastIndex = 0, t.hostname.test(i.hostname) || n.issues.push({
+                code: "invalid_format",
+                format: "url",
+                note: "Invalid hostname",
+                pattern: hostname.source,
+                input: n.value,
+                inst: e,
+                continue: !t.abort
+            })), t.protocol && (t.protocol.lastIndex = 0, t.protocol.test(i.protocol.endsWith(":") ? i.protocol.slice(0, -1) : i.protocol) || n.issues.push({
+                code: "invalid_format",
+                format: "url",
+                note: "Invalid protocol",
+                pattern: t.protocol.source,
+                input: n.value,
+                inst: e,
+                continue: !t.abort
+            })), t.normalize ? n.value = i.href : n.value = r;
+            return;
+        } catch (r) {
+            n.issues.push({
+                code: "invalid_format",
+                format: "url",
+                input: n.value,
+                inst: e,
+                continue: !t.abort
+            });
+        }
+    };
+}), $ZodEmoji = $constructor("$ZodEmoji", (e, t)=>{
+    t.pattern ?? (t.pattern = emoji()), $ZodStringFormat.init(e, t);
+}), $ZodNanoID = $constructor("$ZodNanoID", (e, t)=>{
+    t.pattern ?? (t.pattern = nanoid), $ZodStringFormat.init(e, t);
+}), $ZodCUID = $constructor("$ZodCUID", (e, t)=>{
+    t.pattern ?? (t.pattern = cuid), $ZodStringFormat.init(e, t);
+}), $ZodCUID2 = $constructor("$ZodCUID2", (e, t)=>{
+    t.pattern ?? (t.pattern = cuid2), $ZodStringFormat.init(e, t);
+}), $ZodULID = $constructor("$ZodULID", (e, t)=>{
+    t.pattern ?? (t.pattern = ulid), $ZodStringFormat.init(e, t);
+}), $ZodXID = $constructor("$ZodXID", (e, t)=>{
+    t.pattern ?? (t.pattern = xid), $ZodStringFormat.init(e, t);
+}), $ZodKSUID = $constructor("$ZodKSUID", (e, t)=>{
+    t.pattern ?? (t.pattern = ksuid), $ZodStringFormat.init(e, t);
+}), $ZodISODateTime = $constructor("$ZodISODateTime", (e, t)=>{
+    t.pattern ?? (t.pattern = datetime(t)), $ZodStringFormat.init(e, t);
+}), $ZodISODate = $constructor("$ZodISODate", (e, t)=>{
+    t.pattern ?? (t.pattern = regexes_date), $ZodStringFormat.init(e, t);
+}), $ZodISOTime = $constructor("$ZodISOTime", (e, t)=>{
+    t.pattern ?? (t.pattern = regexes_time(t)), $ZodStringFormat.init(e, t);
+}), $ZodISODuration = $constructor("$ZodISODuration", (e, t)=>{
+    t.pattern ?? (t.pattern = regexes_duration), $ZodStringFormat.init(e, t);
+}), $ZodIPv4 = $constructor("$ZodIPv4", (e, t)=>{
+    t.pattern ?? (t.pattern = ipv4), $ZodStringFormat.init(e, t), e._zod.onattach.push((e)=>{
+        e._zod.bag.format = "ipv4";
+    });
+}), $ZodIPv6 = $constructor("$ZodIPv6", (e, t)=>{
+    t.pattern ?? (t.pattern = ipv6), $ZodStringFormat.init(e, t), e._zod.onattach.push((e)=>{
+        e._zod.bag.format = "ipv6";
+    }), e._zod.check = (n)=>{
+        try {
+            new URL(`http://[${n.value}]`);
+        } catch  {
+            n.issues.push({
+                code: "invalid_format",
+                format: "ipv6",
+                input: n.value,
+                inst: e,
+                continue: !t.abort
+            });
+        }
+    };
+}), $ZodCIDRv4 = $constructor("$ZodCIDRv4", (e, t)=>{
+    t.pattern ?? (t.pattern = cidrv4), $ZodStringFormat.init(e, t);
+}), $ZodCIDRv6 = $constructor("$ZodCIDRv6", (e, t)=>{
+    t.pattern ?? (t.pattern = cidrv6), $ZodStringFormat.init(e, t), e._zod.check = (n)=>{
+        let [r, i] = n.value.split("/");
+        try {
+            if (!i) throw Error();
+            let e = Number(i);
+            if (`${e}` !== i || e < 0 || e > 128) throw Error();
+            new URL(`http://[${r}]`);
+        } catch  {
+            n.issues.push({
+                code: "invalid_format",
+                format: "cidrv6",
+                input: n.value,
+                inst: e,
+                continue: !t.abort
+            });
+        }
+    };
+});
+function isValidBase64(e) {
+    if ("" === e) return !0;
+    if (e.length % 4 != 0) return !1;
+    try {
+        return atob(e), !0;
+    } catch  {
+        return !1;
+    }
+}
+const $ZodBase64 = $constructor("$ZodBase64", (e, t)=>{
+    t.pattern ?? (t.pattern = regexes_base64), $ZodStringFormat.init(e, t), e._zod.onattach.push((e)=>{
+        e._zod.bag.contentEncoding = "base64";
+    }), e._zod.check = (n)=>{
+        isValidBase64(n.value) || n.issues.push({
+            code: "invalid_format",
+            format: "base64",
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+});
+function isValidBase64URL(e) {
+    if (!base64url.test(e)) return !1;
+    let t = e.replace(/[-_]/g, (e)=>"-" === e ? "+" : "/");
+    return isValidBase64(t.padEnd(4 * Math.ceil(t.length / 4), "="));
+}
+const $ZodBase64URL = $constructor("$ZodBase64URL", (e, t)=>{
+    t.pattern ?? (t.pattern = base64url), $ZodStringFormat.init(e, t), e._zod.onattach.push((e)=>{
+        e._zod.bag.contentEncoding = "base64url";
+    }), e._zod.check = (n)=>{
+        isValidBase64URL(n.value) || n.issues.push({
+            code: "invalid_format",
+            format: "base64url",
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodE164 = $constructor("$ZodE164", (e, t)=>{
+    t.pattern ?? (t.pattern = e164), $ZodStringFormat.init(e, t);
+});
+function isValidJWT(e, t = null) {
+    try {
+        let n = e.split(".");
+        if (3 !== n.length) return !1;
+        let [r] = n;
+        if (!r) return !1;
+        let i = JSON.parse(atob(r));
+        if ("typ" in i && i?.typ !== "JWT" || !i.alg || t && (!("alg" in i) || i.alg !== t)) return !1;
+        return !0;
+    } catch  {
+        return !1;
+    }
+}
+const $ZodJWT = $constructor("$ZodJWT", (e, t)=>{
+    $ZodStringFormat.init(e, t), e._zod.check = (n)=>{
+        isValidJWT(n.value, t.alg) || n.issues.push({
+            code: "invalid_format",
+            format: "jwt",
+            input: n.value,
+            inst: e,
+            continue: !t.abort
+        });
+    };
+}), $ZodNumber = $constructor("$ZodNumber", (e, t)=>{
+    $ZodType.init(e, t), e._zod.pattern = e._zod.bag.pattern ?? number, e._zod.parse = (n, r)=>{
+        if (t.coerce) try {
+            n.value = Number(n.value);
+        } catch (e) {}
+        let i = n.value;
+        if ("number" == typeof i && !Number.isNaN(i) && Number.isFinite(i)) return n;
+        let o = "number" == typeof i ? Number.isNaN(i) ? "NaN" : Number.isFinite(i) ? void 0 : "Infinity" : void 0;
+        return n.issues.push({
+            expected: "number",
+            code: "invalid_type",
+            input: i,
+            inst: e,
+            ...o ? {
+                received: o
+            } : {}
+        }), n;
+    };
+}), $ZodNumberFormat = $constructor("$ZodNumber", (e, t)=>{
+    $ZodCheckNumberFormat.init(e, t), $ZodNumber.init(e, t);
+}), $ZodBoolean = $constructor("$ZodBoolean", (e, t)=>{
+    $ZodType.init(e, t), e._zod.pattern = regexes_boolean, e._zod.parse = (n, r)=>{
+        if (t.coerce) try {
+            n.value = !!n.value;
+        } catch (e) {}
+        let i = n.value;
+        return "boolean" == typeof i || n.issues.push({
+            expected: "boolean",
+            code: "invalid_type",
+            input: i,
+            inst: e
+        }), n;
+    };
+}), $ZodUnknown = $constructor("$ZodUnknown", (e, t)=>{
+    $ZodType.init(e, t), e._zod.parse = (e)=>e;
+}), $ZodNever = $constructor("$ZodNever", (e, t)=>{
+    $ZodType.init(e, t), e._zod.parse = (t, n)=>(t.issues.push({
+            expected: "never",
+            code: "invalid_type",
+            input: t.value,
+            inst: e
+        }), t);
+});
+function handleArrayResult(e, t, n) {
+    e.issues.length && t.issues.push(...prefixIssues(n, e.issues)), t.value[n] = e.value;
+}
+const $ZodArray = $constructor("$ZodArray", (e, t)=>{
+    $ZodType.init(e, t), e._zod.parse = (n, r)=>{
+        let i = n.value;
+        if (!Array.isArray(i)) return n.issues.push({
+            expected: "array",
+            code: "invalid_type",
+            input: i,
+            inst: e
+        }), n;
+        n.value = Array(i.length);
+        let o = [];
+        for(let e = 0; e < i.length; e++){
+            let s = i[e], a = t.element._zod.run({
+                value: s,
+                issues: []
+            }, r);
+            a instanceof Promise ? o.push(a.then((t)=>handleArrayResult(t, n, e))) : handleArrayResult(a, n, e);
+        }
+        return o.length ? Promise.all(o).then(()=>n) : n;
+    };
+});
+function handlePropertyResult(e, t, n, r) {
+    e.issues.length && t.issues.push(...prefixIssues(n, e.issues)), void 0 === e.value ? n in r && (t.value[n] = void 0) : t.value[n] = e.value;
+}
+const $ZodObject = $constructor("$ZodObject", (e, t)=>{
+    let n, r;
+    $ZodType.init(e, t);
+    let i = util_cached(()=>{
+        let e = Object.keys(t.shape);
+        for (let n of e)if (!t.shape[n]._zod.traits.has("$ZodType")) throw Error(`Invalid element at key "${n}": expected a Zod schema`);
+        let n = optionalKeys(t.shape);
+        return {
+            shape: t.shape,
+            keys: e,
+            keySet: new Set(e),
+            numKeys: e.length,
+            optionalKeys: new Set(n)
+        };
+    });
+    defineLazy(e._zod, "propValues", ()=>{
+        let e = t.shape, n = {};
+        for(let t in e){
+            let r = e[t]._zod;
+            if (r.values) for (let e of (n[t] ?? (n[t] = new Set()), r.values))n[t].add(e);
+        }
+        return n;
+    });
+    let o = (e)=>{
+        let t = new Doc([
+            "shape",
+            "payload",
+            "ctx"
+        ]), n = i.value, r = (e)=>{
+            let t = esc(e);
+            return `shape[${t}]._zod.run({ value: input[${t}], issues: [] }, ctx)`;
+        };
+        t.write("const input = payload.value;");
+        let o = Object.create(null), s = 0;
+        for (let e of n.keys)o[e] = `key_${s++}`;
+        for (let e of (t.write("const newResult = {}"), n.keys)){
+            let n = o[e], i = esc(e);
+            t.write(`const ${n} = ${r(e)};`), t.write(`
+        if (${n}.issues.length) {
+          payload.issues = payload.issues.concat(${n}.issues.map(iss => ({
+            ...iss,
+            path: iss.path ? [${i}, ...iss.path] : [${i}]
+          })));
+        }
+        
+        if (${n}.value === undefined) {
+          if (${i} in input) {
+            newResult[${i}] = undefined;
+          }
+        } else {
+          newResult[${i}] = ${n}.value;
+        }
+      `);
+        }
+        t.write("payload.value = newResult;"), t.write("return payload;");
+        let a = t.compile();
+        return (t, n)=>a(e, t, n);
+    }, s = util_isObject, a = !globalConfig.jitless, u = util_allowsEval, l = a && u.value, c = t.catchall;
+    e._zod.parse = (u, d)=>{
+        r ?? (r = i.value);
+        let p = u.value;
+        if (!s(p)) return u.issues.push({
+            expected: "object",
+            code: "invalid_type",
+            input: p,
+            inst: e
+        }), u;
+        let f = [];
+        if (a && l && d?.async === !1 && !0 !== d.jitless) n || (n = o(t.shape)), u = n(u, d);
+        else {
+            u.value = {};
+            let e = r.shape;
+            for (let t of r.keys){
+                let n = e[t]._zod.run({
+                    value: p[t],
+                    issues: []
+                }, d);
+                n instanceof Promise ? f.push(n.then((e)=>handlePropertyResult(e, u, t, p))) : handlePropertyResult(n, u, t, p);
+            }
+        }
+        if (!c) return f.length ? Promise.all(f).then(()=>u) : u;
+        let h = [], m = r.keySet, g = c._zod, v = g.def.type;
+        for (let e of Object.keys(p)){
+            if (m.has(e)) continue;
+            if ("never" === v) {
+                h.push(e);
+                continue;
+            }
+            let t = g.run({
+                value: p[e],
+                issues: []
+            }, d);
+            t instanceof Promise ? f.push(t.then((t)=>handlePropertyResult(t, u, e, p))) : handlePropertyResult(t, u, e, p);
+        }
+        return (h.length && u.issues.push({
+            code: "unrecognized_keys",
+            keys: h,
+            input: p,
+            inst: e
+        }), f.length) ? Promise.all(f).then(()=>u) : u;
+    };
+});
+function handleUnionResults(e, t, n, r) {
+    for (let n of e)if (0 === n.issues.length) return t.value = n.value, t;
+    let i = e.filter((e)=>!aborted(e));
+    return 1 === i.length ? (t.value = i[0].value, i[0]) : (t.issues.push({
+        code: "invalid_union",
+        input: t.value,
+        inst: n,
+        errors: e.map((e)=>e.issues.map((e)=>finalizeIssue(e, r, core_config())))
+    }), t);
+}
+const $ZodUnion = $constructor("$ZodUnion", (e, t)=>{
+    $ZodType.init(e, t), defineLazy(e._zod, "optin", ()=>t.options.some((e)=>"optional" === e._zod.optin) ? "optional" : void 0), defineLazy(e._zod, "optout", ()=>t.options.some((e)=>"optional" === e._zod.optout) ? "optional" : void 0), defineLazy(e._zod, "values", ()=>{
+        if (t.options.every((e)=>e._zod.values)) return new Set(t.options.flatMap((e)=>Array.from(e._zod.values)));
+    }), defineLazy(e._zod, "pattern", ()=>{
+        if (t.options.every((e)=>e._zod.pattern)) {
+            let e = t.options.map((e)=>e._zod.pattern);
+            return RegExp(`^(${e.map((e)=>cleanRegex(e.source)).join("|")})$`);
+        }
+    });
+    let n = 1 === t.options.length, r = t.options[0]._zod.run;
+    e._zod.parse = (i, o)=>{
+        if (n) return r(i, o);
+        let s = !1, a = [];
+        for (let e of t.options){
+            let t = e._zod.run({
+                value: i.value,
+                issues: []
+            }, o);
+            if (t instanceof Promise) a.push(t), s = !0;
+            else {
+                if (0 === t.issues.length) return t;
+                a.push(t);
+            }
+        }
+        return s ? Promise.all(a).then((t)=>handleUnionResults(t, i, e, o)) : handleUnionResults(a, i, e, o);
+    };
+}), $ZodIntersection = $constructor("$ZodIntersection", (e, t)=>{
+    $ZodType.init(e, t), e._zod.parse = (e, n)=>{
+        let r = e.value, i = t.left._zod.run({
+            value: r,
+            issues: []
+        }, n), o = t.right._zod.run({
+            value: r,
+            issues: []
+        }, n);
+        return i instanceof Promise || o instanceof Promise ? Promise.all([
+            i,
+            o
+        ]).then(([t, n])=>handleIntersectionResults(e, t, n)) : handleIntersectionResults(e, i, o);
+    };
+});
+function mergeValues(e, t) {
+    if (e === t || e instanceof Date && t instanceof Date && +e == +t) return {
+        valid: !0,
+        data: e
+    };
+    if (isPlainObject(e) && isPlainObject(t)) {
+        let n = Object.keys(t), r = Object.keys(e).filter((e)=>-1 !== n.indexOf(e)), i = {
+            ...e,
+            ...t
+        };
+        for (let n of r){
+            let r = mergeValues(e[n], t[n]);
+            if (!r.valid) return {
+                valid: !1,
+                mergeErrorPath: [
+                    n,
+                    ...r.mergeErrorPath
+                ]
+            };
+            i[n] = r.data;
+        }
+        return {
+            valid: !0,
+            data: i
+        };
+    }
+    if (Array.isArray(e) && Array.isArray(t)) {
+        if (e.length !== t.length) return {
+            valid: !1,
+            mergeErrorPath: []
+        };
+        let n = [];
+        for(let r = 0; r < e.length; r++){
+            let i = mergeValues(e[r], t[r]);
+            if (!i.valid) return {
+                valid: !1,
+                mergeErrorPath: [
+                    r,
+                    ...i.mergeErrorPath
+                ]
+            };
+            n.push(i.data);
+        }
+        return {
+            valid: !0,
+            data: n
+        };
+    }
+    return {
+        valid: !1,
+        mergeErrorPath: []
+    };
+}
+function handleIntersectionResults(e, t, n) {
+    if (t.issues.length && e.issues.push(...t.issues), n.issues.length && e.issues.push(...n.issues), aborted(e)) return e;
+    let r = mergeValues(t.value, n.value);
+    if (!r.valid) throw Error(`Unmergable intersection. Error path: ${JSON.stringify(r.mergeErrorPath)}`);
+    return e.value = r.data, e;
+}
+const $ZodRecord = $constructor("$ZodRecord", (e, t)=>{
+    $ZodType.init(e, t), e._zod.parse = (n, r)=>{
+        let i = n.value;
+        if (!isPlainObject(i)) return n.issues.push({
+            expected: "record",
+            code: "invalid_type",
+            input: i,
+            inst: e
+        }), n;
+        let o = [];
+        if (t.keyType._zod.values) {
+            let s, a = t.keyType._zod.values;
+            for (let e of (n.value = {}, a))if ("string" == typeof e || "number" == typeof e || "symbol" == typeof e) {
+                let s = t.valueType._zod.run({
+                    value: i[e],
+                    issues: []
+                }, r);
+                s instanceof Promise ? o.push(s.then((t)=>{
+                    t.issues.length && n.issues.push(...prefixIssues(e, t.issues)), n.value[e] = t.value;
+                })) : (s.issues.length && n.issues.push(...prefixIssues(e, s.issues)), n.value[e] = s.value);
+            }
+            for(let e in i)a.has(e) || (s = s ?? []).push(e);
+            s && s.length > 0 && n.issues.push({
+                code: "unrecognized_keys",
+                input: i,
+                inst: e,
+                keys: s
+            });
+        } else for (let s of (n.value = {}, Reflect.ownKeys(i))){
+            if ("__proto__" === s) continue;
+            let a = t.keyType._zod.run({
+                value: s,
+                issues: []
+            }, r);
+            if (a instanceof Promise) throw Error("Async schemas not supported in object keys currently");
+            if (a.issues.length) {
+                n.issues.push({
+                    code: "invalid_key",
+                    origin: "record",
+                    issues: a.issues.map((e)=>finalizeIssue(e, r, core_config())),
+                    input: s,
+                    path: [
+                        s
+                    ],
+                    inst: e
+                }), n.value[a.value] = a.value;
+                continue;
+            }
+            let u = t.valueType._zod.run({
+                value: i[s],
+                issues: []
+            }, r);
+            u instanceof Promise ? o.push(u.then((e)=>{
+                e.issues.length && n.issues.push(...prefixIssues(s, e.issues)), n.value[a.value] = e.value;
+            })) : (u.issues.length && n.issues.push(...prefixIssues(s, u.issues)), n.value[a.value] = u.value);
+        }
+        return o.length ? Promise.all(o).then(()=>n) : n;
+    };
+}), $ZodEnum = $constructor("$ZodEnum", (e, t)=>{
+    $ZodType.init(e, t);
+    let n = getEnumValues(t.entries), r = new Set(n);
+    e._zod.values = r, e._zod.pattern = RegExp(`^(${n.filter((e)=>propertyKeyTypes.has(typeof e)).map((e)=>"string" == typeof e ? escapeRegex(e) : e.toString()).join("|")})$`), e._zod.parse = (t, i)=>{
+        let o = t.value;
+        return r.has(o) || t.issues.push({
+            code: "invalid_value",
+            values: n,
+            input: o,
+            inst: e
+        }), t;
+    };
+}), $ZodLiteral = $constructor("$ZodLiteral", (e, t)=>{
+    if ($ZodType.init(e, t), 0 === t.values.length) throw Error("Cannot create literal schema with no valid values");
+    e._zod.values = new Set(t.values), e._zod.pattern = RegExp(`^(${t.values.map((e)=>"string" == typeof e ? escapeRegex(e) : e ? escapeRegex(e.toString()) : String(e)).join("|")})$`), e._zod.parse = (n, r)=>{
+        let i = n.value;
+        return e._zod.values.has(i) || n.issues.push({
+            code: "invalid_value",
+            values: t.values,
+            input: i,
+            inst: e
+        }), n;
+    };
+}), $ZodTransform = $constructor("$ZodTransform", (e, t)=>{
+    $ZodType.init(e, t), e._zod.parse = (e, n)=>{
+        let r = t.transform(e.value, e);
+        if (n.async) return (r instanceof Promise ? r : Promise.resolve(r)).then((t)=>(e.value = t, e));
+        if (r instanceof Promise) throw new $ZodAsyncError();
+        return e.value = r, e;
+    };
+});
+function handleOptionalResult(e, t) {
+    return e.issues.length && void 0 === t ? {
+        issues: [],
+        value: void 0
+    } : e;
+}
+const $ZodOptional = $constructor("$ZodOptional", (e, t)=>{
+    $ZodType.init(e, t), e._zod.optin = "optional", e._zod.optout = "optional", defineLazy(e._zod, "values", ()=>t.innerType._zod.values ? new Set([
+            ...t.innerType._zod.values,
+            void 0
+        ]) : void 0), defineLazy(e._zod, "pattern", ()=>{
+        let e = t.innerType._zod.pattern;
+        return e ? RegExp(`^(${cleanRegex(e.source)})?$`) : void 0;
+    }), e._zod.parse = (e, n)=>{
+        if ("optional" === t.innerType._zod.optin) {
+            let r = t.innerType._zod.run(e, n);
+            return r instanceof Promise ? r.then((t)=>handleOptionalResult(t, e.value)) : handleOptionalResult(r, e.value);
+        }
+        return void 0 === e.value ? e : t.innerType._zod.run(e, n);
+    };
+}), $ZodNullable = $constructor("$ZodNullable", (e, t)=>{
+    $ZodType.init(e, t), defineLazy(e._zod, "optin", ()=>t.innerType._zod.optin), defineLazy(e._zod, "optout", ()=>t.innerType._zod.optout), defineLazy(e._zod, "pattern", ()=>{
+        let e = t.innerType._zod.pattern;
+        return e ? RegExp(`^(${cleanRegex(e.source)}|null)$`) : void 0;
+    }), defineLazy(e._zod, "values", ()=>t.innerType._zod.values ? new Set([
+            ...t.innerType._zod.values,
+            null
+        ]) : void 0), e._zod.parse = (e, n)=>null === e.value ? e : t.innerType._zod.run(e, n);
+}), $ZodDefault = $constructor("$ZodDefault", (e, t)=>{
+    $ZodType.init(e, t), e._zod.optin = "optional", defineLazy(e._zod, "values", ()=>t.innerType._zod.values), e._zod.parse = (e, n)=>{
+        if (void 0 === e.value) return e.value = t.defaultValue, e;
+        let r = t.innerType._zod.run(e, n);
+        return r instanceof Promise ? r.then((e)=>handleDefaultResult(e, t)) : handleDefaultResult(r, t);
+    };
+});
+function handleDefaultResult(e, t) {
+    return void 0 === e.value && (e.value = t.defaultValue), e;
+}
+const $ZodPrefault = $constructor("$ZodPrefault", (e, t)=>{
+    $ZodType.init(e, t), e._zod.optin = "optional", defineLazy(e._zod, "values", ()=>t.innerType._zod.values), e._zod.parse = (e, n)=>(void 0 === e.value && (e.value = t.defaultValue), t.innerType._zod.run(e, n));
+}), $ZodNonOptional = $constructor("$ZodNonOptional", (e, t)=>{
+    $ZodType.init(e, t), defineLazy(e._zod, "values", ()=>{
+        let e = t.innerType._zod.values;
+        return e ? new Set([
+            ...e
+        ].filter((e)=>void 0 !== e)) : void 0;
+    }), e._zod.parse = (n, r)=>{
+        let i = t.innerType._zod.run(n, r);
+        return i instanceof Promise ? i.then((t)=>handleNonOptionalResult(t, e)) : handleNonOptionalResult(i, e);
+    };
+});
+function handleNonOptionalResult(e, t) {
+    return e.issues.length || void 0 !== e.value || e.issues.push({
+        code: "invalid_type",
+        expected: "nonoptional",
+        input: e.value,
+        inst: t
+    }), e;
+}
+const $ZodCatch = $constructor("$ZodCatch", (e, t)=>{
+    $ZodType.init(e, t), defineLazy(e._zod, "optin", ()=>t.innerType._zod.optin), defineLazy(e._zod, "optout", ()=>t.innerType._zod.optout), defineLazy(e._zod, "values", ()=>t.innerType._zod.values), e._zod.parse = (e, n)=>{
+        let r = t.innerType._zod.run(e, n);
+        return r instanceof Promise ? r.then((r)=>(e.value = r.value, r.issues.length && (e.value = t.catchValue({
+                ...e,
+                error: {
+                    issues: r.issues.map((e)=>finalizeIssue(e, n, core_config()))
+                },
+                input: e.value
+            }), e.issues = []), e)) : (e.value = r.value, r.issues.length && (e.value = t.catchValue({
+            ...e,
+            error: {
+                issues: r.issues.map((e)=>finalizeIssue(e, n, core_config()))
+            },
+            input: e.value
+        }), e.issues = []), e);
+    };
+}), $ZodPipe = $constructor("$ZodPipe", (e, t)=>{
+    $ZodType.init(e, t), defineLazy(e._zod, "values", ()=>t.in._zod.values), defineLazy(e._zod, "optin", ()=>t.in._zod.optin), defineLazy(e._zod, "optout", ()=>t.out._zod.optout), defineLazy(e._zod, "propValues", ()=>t.in._zod.propValues), e._zod.parse = (e, n)=>{
+        let r = t.in._zod.run(e, n);
+        return r instanceof Promise ? r.then((e)=>handlePipeResult(e, t, n)) : handlePipeResult(r, t, n);
+    };
+});
+function handlePipeResult(e, t, n) {
+    return e.issues.length ? e : t.out._zod.run({
+        value: e.value,
+        issues: e.issues
+    }, n);
+}
+const $ZodReadonly = $constructor("$ZodReadonly", (e, t)=>{
+    $ZodType.init(e, t), defineLazy(e._zod, "propValues", ()=>t.innerType._zod.propValues), defineLazy(e._zod, "values", ()=>t.innerType._zod.values), defineLazy(e._zod, "optin", ()=>t.innerType._zod.optin), defineLazy(e._zod, "optout", ()=>t.innerType._zod.optout), e._zod.parse = (e, n)=>{
+        let r = t.innerType._zod.run(e, n);
+        return r instanceof Promise ? r.then(handleReadonlyResult) : handleReadonlyResult(r);
+    };
+});
+function handleReadonlyResult(e) {
+    return e.value = Object.freeze(e.value), e;
+}
+const $ZodCustom = $constructor("$ZodCustom", (e, t)=>{
+    $ZodCheck.init(e, t), $ZodType.init(e, t), e._zod.parse = (e, t)=>e, e._zod.check = (n)=>{
+        let r = n.value, i = t.fn(r);
+        if (i instanceof Promise) return i.then((t)=>handleRefineResult(t, n, r, e));
+        handleRefineResult(i, n, r, e);
+    };
+});
+function handleRefineResult(e, t, n, r) {
+    if (!e) {
+        let e = {
+            code: "custom",
+            input: n,
+            inst: r,
+            path: [
+                ...r._zod.def.path ?? []
+            ],
+            continue: !r._zod.def.abort
+        };
+        r._zod.def.params && (e.params = r._zod.def.params), t.issues.push(util_issue(e));
+    }
+}
+Symbol("ZodOutput"), Symbol("ZodInput");
+class $ZodRegistry {
+    constructor(){
+        this._map = new Map(), this._idmap = new Map();
+    }
+    add(e, ...t) {
+        let n = t[0];
+        if (this._map.set(e, n), n && "object" == typeof n && "id" in n) {
+            if (this._idmap.has(n.id)) throw Error(`ID ${n.id} already exists in the registry`);
+            this._idmap.set(n.id, e);
+        }
+        return this;
+    }
+    clear() {
+        return this._map = new Map(), this._idmap = new Map(), this;
+    }
+    remove(e) {
+        let t = this._map.get(e);
+        return t && "object" == typeof t && "id" in t && this._idmap.delete(t.id), this._map.delete(e), this;
+    }
+    get(e) {
+        let t = e._zod.parent;
+        if (t) {
+            let n = {
+                ...this.get(t) ?? {}
+            };
+            delete n.id;
+            let r = {
+                ...n,
+                ...this._map.get(e)
+            };
+            return Object.keys(r).length ? r : void 0;
+        }
+        return this._map.get(e);
+    }
+    has(e) {
+        return this._map.has(e);
+    }
+}
+function registry() {
+    return new $ZodRegistry();
+}
+const globalRegistry = registry();
+function _string(e, t) {
+    return new e({
+        type: "string",
+        ...normalizeParams(t)
+    });
+}
+function _email(e, t) {
+    return new e({
+        type: "string",
+        format: "email",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _guid(e, t) {
+    return new e({
+        type: "string",
+        format: "guid",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _uuid(e, t) {
+    return new e({
+        type: "string",
+        format: "uuid",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _uuidv4(e, t) {
+    return new e({
+        type: "string",
+        format: "uuid",
+        check: "string_format",
+        abort: !1,
+        version: "v4",
+        ...normalizeParams(t)
+    });
+}
+function _uuidv6(e, t) {
+    return new e({
+        type: "string",
+        format: "uuid",
+        check: "string_format",
+        abort: !1,
+        version: "v6",
+        ...normalizeParams(t)
+    });
+}
+function _uuidv7(e, t) {
+    return new e({
+        type: "string",
+        format: "uuid",
+        check: "string_format",
+        abort: !1,
+        version: "v7",
+        ...normalizeParams(t)
+    });
+}
+function _url(e, t) {
+    return new e({
+        type: "string",
+        format: "url",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function api_emoji(e, t) {
+    return new e({
+        type: "string",
+        format: "emoji",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _nanoid(e, t) {
+    return new e({
+        type: "string",
+        format: "nanoid",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _cuid(e, t) {
+    return new e({
+        type: "string",
+        format: "cuid",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _cuid2(e, t) {
+    return new e({
+        type: "string",
+        format: "cuid2",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _ulid(e, t) {
+    return new e({
+        type: "string",
+        format: "ulid",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _xid(e, t) {
+    return new e({
+        type: "string",
+        format: "xid",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _ksuid(e, t) {
+    return new e({
+        type: "string",
+        format: "ksuid",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _ipv4(e, t) {
+    return new e({
+        type: "string",
+        format: "ipv4",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _ipv6(e, t) {
+    return new e({
+        type: "string",
+        format: "ipv6",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _cidrv4(e, t) {
+    return new e({
+        type: "string",
+        format: "cidrv4",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _cidrv6(e, t) {
+    return new e({
+        type: "string",
+        format: "cidrv6",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _base64(e, t) {
+    return new e({
+        type: "string",
+        format: "base64",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _base64url(e, t) {
+    return new e({
+        type: "string",
+        format: "base64url",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _e164(e, t) {
+    return new e({
+        type: "string",
+        format: "e164",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _jwt(e, t) {
+    return new e({
+        type: "string",
+        format: "jwt",
+        check: "string_format",
+        abort: !1,
+        ...normalizeParams(t)
+    });
+}
+function _isoDateTime(e, t) {
+    return new e({
+        type: "string",
+        format: "datetime",
+        check: "string_format",
+        offset: !1,
+        local: !1,
+        precision: null,
+        ...normalizeParams(t)
+    });
+}
+function _isoDate(e, t) {
+    return new e({
+        type: "string",
+        format: "date",
+        check: "string_format",
+        ...normalizeParams(t)
+    });
+}
+function _isoTime(e, t) {
+    return new e({
+        type: "string",
+        format: "time",
+        check: "string_format",
+        precision: null,
+        ...normalizeParams(t)
+    });
+}
+function _isoDuration(e, t) {
+    return new e({
+        type: "string",
+        format: "duration",
+        check: "string_format",
+        ...normalizeParams(t)
+    });
+}
+function _number(e, t) {
+    return new e({
+        type: "number",
+        checks: [],
+        ...normalizeParams(t)
+    });
+}
+function _coercedNumber(e, t) {
+    return new e({
+        type: "number",
+        coerce: !0,
+        checks: [],
+        ...normalizeParams(t)
+    });
+}
+function _int(e, t) {
+    return new e({
+        type: "number",
+        check: "number_format",
+        abort: !1,
+        format: "safeint",
+        ...normalizeParams(t)
+    });
+}
+function _boolean(e, t) {
+    return new e({
+        type: "boolean",
+        ...normalizeParams(t)
+    });
+}
+function _unknown(e) {
+    return new e({
+        type: "unknown"
+    });
+}
+function _never(e, t) {
+    return new e({
+        type: "never",
+        ...normalizeParams(t)
+    });
+}
+function _lt(e, t) {
+    return new $ZodCheckLessThan({
+        check: "less_than",
+        ...normalizeParams(t),
+        value: e,
+        inclusive: !1
+    });
+}
+function _lte(e, t) {
+    return new $ZodCheckLessThan({
+        check: "less_than",
+        ...normalizeParams(t),
+        value: e,
+        inclusive: !0
+    });
+}
+function _gt(e, t) {
+    return new $ZodCheckGreaterThan({
+        check: "greater_than",
+        ...normalizeParams(t),
+        value: e,
+        inclusive: !1
+    });
+}
+function _gte(e, t) {
+    return new $ZodCheckGreaterThan({
+        check: "greater_than",
+        ...normalizeParams(t),
+        value: e,
+        inclusive: !0
+    });
+}
+function _multipleOf(e, t) {
+    return new $ZodCheckMultipleOf({
+        check: "multiple_of",
+        ...normalizeParams(t),
+        value: e
+    });
+}
+function _maxLength(e, t) {
+    return new $ZodCheckMaxLength({
+        check: "max_length",
+        ...normalizeParams(t),
+        maximum: e
+    });
+}
+function _minLength(e, t) {
+    return new $ZodCheckMinLength({
+        check: "min_length",
+        ...normalizeParams(t),
+        minimum: e
+    });
+}
+function _length(e, t) {
+    return new $ZodCheckLengthEquals({
+        check: "length_equals",
+        ...normalizeParams(t),
+        length: e
+    });
+}
+function _regex(e, t) {
+    return new $ZodCheckRegex({
+        check: "string_format",
+        format: "regex",
+        ...normalizeParams(t),
+        pattern: e
+    });
+}
+function _lowercase(e) {
+    return new $ZodCheckLowerCase({
+        check: "string_format",
+        format: "lowercase",
+        ...normalizeParams(e)
+    });
+}
+function _uppercase(e) {
+    return new $ZodCheckUpperCase({
+        check: "string_format",
+        format: "uppercase",
+        ...normalizeParams(e)
+    });
+}
+function _includes(e, t) {
+    return new $ZodCheckIncludes({
+        check: "string_format",
+        format: "includes",
+        ...normalizeParams(t),
+        includes: e
+    });
+}
+function _startsWith(e, t) {
+    return new $ZodCheckStartsWith({
+        check: "string_format",
+        format: "starts_with",
+        ...normalizeParams(t),
+        prefix: e
+    });
+}
+function _endsWith(e, t) {
+    return new $ZodCheckEndsWith({
+        check: "string_format",
+        format: "ends_with",
+        ...normalizeParams(t),
+        suffix: e
+    });
+}
+function _overwrite(e) {
+    return new $ZodCheckOverwrite({
+        check: "overwrite",
+        tx: e
+    });
+}
+function _normalize(e) {
+    return _overwrite((t)=>t.normalize(e));
+}
+function _trim() {
+    return _overwrite((e)=>e.trim());
+}
+function _toLowerCase() {
+    return _overwrite((e)=>e.toLowerCase());
+}
+function _toUpperCase() {
+    return _overwrite((e)=>e.toUpperCase());
+}
+function _array(e, t, n) {
+    return new e({
+        type: "array",
+        element: t,
+        ...normalizeParams(n)
+    });
+}
+function _refine(e, t, n) {
+    return new e({
+        type: "custom",
+        check: "custom",
+        fn: t,
+        ...normalizeParams(n)
+    });
+}
+function _superRefine(e) {
+    let t = _check((n)=>(n.addIssue = (e)=>{
+            if ("string" == typeof e) n.issues.push(util_issue(e, n.value, t._zod.def));
+            else {
+                let r = e;
+                r.fatal && (r.continue = !1), r.code ?? (r.code = "custom"), r.input ?? (r.input = n.value), r.inst ?? (r.inst = t), r.continue ?? (r.continue = !t._zod.def.abort), n.issues.push(util_issue(r));
+            }
+        }, e(n.value, n)));
+    return t;
+}
+function _check(e, t) {
+    let n = new $ZodCheck({
+        check: "custom",
+        ...normalizeParams(t)
+    });
+    return n._zod.check = e, n;
+}
+const ZodISODateTime = $constructor("ZodISODateTime", (e, t)=>{
+    $ZodISODateTime.init(e, t), ZodStringFormat.init(e, t);
+});
+function iso_datetime(e) {
+    return _isoDateTime(ZodISODateTime, e);
+}
+const ZodISODate = $constructor("ZodISODate", (e, t)=>{
+    $ZodISODate.init(e, t), ZodStringFormat.init(e, t);
+});
+function iso_date(e) {
+    return _isoDate(ZodISODate, e);
+}
+const ZodISOTime = $constructor("ZodISOTime", (e, t)=>{
+    $ZodISOTime.init(e, t), ZodStringFormat.init(e, t);
+});
+function iso_time(e) {
+    return _isoTime(ZodISOTime, e);
+}
+const ZodISODuration = $constructor("ZodISODuration", (e, t)=>{
+    $ZodISODuration.init(e, t), ZodStringFormat.init(e, t);
+});
+function iso_duration(e) {
+    return _isoDuration(ZodISODuration, e);
+}
+const classic_errors_initializer = (e, t)=>{
+    $ZodError.init(e, t), e.name = "ZodError", Object.defineProperties(e, {
+        format: {
+            value: (t)=>formatError(e, t)
+        },
+        flatten: {
+            value: (t)=>flattenError(e, t)
+        },
+        addIssue: {
+            value: (t)=>{
+                e.issues.push(t), e.message = JSON.stringify(e.issues, jsonStringifyReplacer, 2);
+            }
+        },
+        addIssues: {
+            value: (t)=>{
+                e.issues.push(...t), e.message = JSON.stringify(e.issues, jsonStringifyReplacer, 2);
+            }
+        },
+        isEmpty: {
+            get: ()=>0 === e.issues.length
+        }
+    });
+};
+$constructor("ZodError", classic_errors_initializer);
+const ZodRealError = $constructor("ZodError", classic_errors_initializer, {
+    Parent: Error
+}), parse_parse = _parse(ZodRealError), parse_parseAsync = _parseAsync(ZodRealError), parse_safeParse = _safeParse(ZodRealError), parse_safeParseAsync = _safeParseAsync(ZodRealError), ZodType = $constructor("ZodType", (e, t)=>($ZodType.init(e, t), e.def = t, Object.defineProperty(e, "_def", {
+        value: t
+    }), e.check = (...n)=>e.clone({
+            ...t,
+            checks: [
+                ...t.checks ?? [],
+                ...n.map((e)=>"function" == typeof e ? {
+                        _zod: {
+                            check: e,
+                            def: {
+                                check: "custom"
+                            },
+                            onattach: []
+                        }
+                    } : e)
+            ]
+        }), e.clone = (t, n)=>clone(e, t, n), e.brand = ()=>e, e.register = (t, n)=>(t.add(e, n), e), e.parse = (t, n)=>parse_parse(e, t, n, {
+            callee: e.parse
+        }), e.safeParse = (t, n)=>parse_safeParse(e, t, n), e.parseAsync = async (t, n)=>parse_parseAsync(e, t, n, {
+            callee: e.parseAsync
+        }), e.safeParseAsync = async (t, n)=>parse_safeParseAsync(e, t, n), e.spa = e.safeParseAsync, e.refine = (t, n)=>e.check(refine(t, n)), e.superRefine = (t)=>e.check(superRefine(t)), e.overwrite = (t)=>e.check(_overwrite(t)), e.optional = ()=>optional(e), e.nullable = ()=>nullable(e), e.nullish = ()=>optional(nullable(e)), e.nonoptional = (t)=>nonoptional(e, t), e.array = ()=>schemas_array(e), e.or = (t)=>union([
+            e,
+            t
+        ]), e.and = (t)=>intersection(e, t), e.transform = (t)=>pipe(e, transform(t)), e.default = (t)=>schemas_default(e, t), e.prefault = (t)=>prefault(e, t), e.catch = (t)=>schemas_catch(e, t), e.pipe = (t)=>pipe(e, t), e.readonly = ()=>readonly(e), e.describe = (t)=>{
+        let n = e.clone();
+        return globalRegistry.add(n, {
+            description: t
+        }), n;
+    }, Object.defineProperty(e, "description", {
+        get: ()=>globalRegistry.get(e)?.description,
+        configurable: !0
+    }), e.meta = (...t)=>{
+        if (0 === t.length) return globalRegistry.get(e);
+        let n = e.clone();
+        return globalRegistry.add(n, t[0]), n;
+    }, e.isOptional = ()=>e.safeParse(void 0).success, e.isNullable = ()=>e.safeParse(null).success, e)), _ZodString = $constructor("_ZodString", (e, t)=>{
+    $ZodString.init(e, t), ZodType.init(e, t);
+    let n = e._zod.bag;
+    e.format = n.format ?? null, e.minLength = n.minimum ?? null, e.maxLength = n.maximum ?? null, e.regex = (...t)=>e.check(_regex(...t)), e.includes = (...t)=>e.check(_includes(...t)), e.startsWith = (...t)=>e.check(_startsWith(...t)), e.endsWith = (...t)=>e.check(_endsWith(...t)), e.min = (...t)=>e.check(_minLength(...t)), e.max = (...t)=>e.check(_maxLength(...t)), e.length = (...t)=>e.check(_length(...t)), e.nonempty = (...t)=>e.check(_minLength(1, ...t)), e.lowercase = (t)=>e.check(_lowercase(t)), e.uppercase = (t)=>e.check(_uppercase(t)), e.trim = ()=>e.check(_trim()), e.normalize = (...t)=>e.check(_normalize(...t)), e.toLowerCase = ()=>e.check(_toLowerCase()), e.toUpperCase = ()=>e.check(_toUpperCase());
+}), ZodString = $constructor("ZodString", (e, t)=>{
+    $ZodString.init(e, t), _ZodString.init(e, t), e.email = (t)=>e.check(_email(ZodEmail, t)), e.url = (t)=>e.check(_url(ZodURL, t)), e.jwt = (t)=>e.check(_jwt(ZodJWT, t)), e.emoji = (t)=>e.check(api_emoji(ZodEmoji, t)), e.guid = (t)=>e.check(_guid(ZodGUID, t)), e.uuid = (t)=>e.check(_uuid(ZodUUID, t)), e.uuidv4 = (t)=>e.check(_uuidv4(ZodUUID, t)), e.uuidv6 = (t)=>e.check(_uuidv6(ZodUUID, t)), e.uuidv7 = (t)=>e.check(_uuidv7(ZodUUID, t)), e.nanoid = (t)=>e.check(_nanoid(ZodNanoID, t)), e.guid = (t)=>e.check(_guid(ZodGUID, t)), e.cuid = (t)=>e.check(_cuid(ZodCUID, t)), e.cuid2 = (t)=>e.check(_cuid2(ZodCUID2, t)), e.ulid = (t)=>e.check(_ulid(ZodULID, t)), e.base64 = (t)=>e.check(_base64(ZodBase64, t)), e.base64url = (t)=>e.check(_base64url(ZodBase64URL, t)), e.xid = (t)=>e.check(_xid(ZodXID, t)), e.ksuid = (t)=>e.check(_ksuid(ZodKSUID, t)), e.ipv4 = (t)=>e.check(_ipv4(ZodIPv4, t)), e.ipv6 = (t)=>e.check(_ipv6(ZodIPv6, t)), e.cidrv4 = (t)=>e.check(_cidrv4(ZodCIDRv4, t)), e.cidrv6 = (t)=>e.check(_cidrv6(ZodCIDRv6, t)), e.e164 = (t)=>e.check(_e164(ZodE164, t)), e.datetime = (t)=>e.check(iso_datetime(t)), e.date = (t)=>e.check(iso_date(t)), e.time = (t)=>e.check(iso_time(t)), e.duration = (t)=>e.check(iso_duration(t));
+});
+function schemas_string(e) {
+    return _string(ZodString, e);
+}
+const ZodStringFormat = $constructor("ZodStringFormat", (e, t)=>{
+    $ZodStringFormat.init(e, t), _ZodString.init(e, t);
+}), ZodEmail = $constructor("ZodEmail", (e, t)=>{
+    $ZodEmail.init(e, t), ZodStringFormat.init(e, t);
+}), ZodGUID = $constructor("ZodGUID", (e, t)=>{
+    $ZodGUID.init(e, t), ZodStringFormat.init(e, t);
+}), ZodUUID = $constructor("ZodUUID", (e, t)=>{
+    $ZodUUID.init(e, t), ZodStringFormat.init(e, t);
+}), ZodURL = $constructor("ZodURL", (e, t)=>{
+    $ZodURL.init(e, t), ZodStringFormat.init(e, t);
+}), ZodEmoji = $constructor("ZodEmoji", (e, t)=>{
+    $ZodEmoji.init(e, t), ZodStringFormat.init(e, t);
+}), ZodNanoID = $constructor("ZodNanoID", (e, t)=>{
+    $ZodNanoID.init(e, t), ZodStringFormat.init(e, t);
+}), ZodCUID = $constructor("ZodCUID", (e, t)=>{
+    $ZodCUID.init(e, t), ZodStringFormat.init(e, t);
+}), ZodCUID2 = $constructor("ZodCUID2", (e, t)=>{
+    $ZodCUID2.init(e, t), ZodStringFormat.init(e, t);
+}), ZodULID = $constructor("ZodULID", (e, t)=>{
+    $ZodULID.init(e, t), ZodStringFormat.init(e, t);
+}), ZodXID = $constructor("ZodXID", (e, t)=>{
+    $ZodXID.init(e, t), ZodStringFormat.init(e, t);
+}), ZodKSUID = $constructor("ZodKSUID", (e, t)=>{
+    $ZodKSUID.init(e, t), ZodStringFormat.init(e, t);
+}), ZodIPv4 = $constructor("ZodIPv4", (e, t)=>{
+    $ZodIPv4.init(e, t), ZodStringFormat.init(e, t);
+}), ZodIPv6 = $constructor("ZodIPv6", (e, t)=>{
+    $ZodIPv6.init(e, t), ZodStringFormat.init(e, t);
+}), ZodCIDRv4 = $constructor("ZodCIDRv4", (e, t)=>{
+    $ZodCIDRv4.init(e, t), ZodStringFormat.init(e, t);
+}), ZodCIDRv6 = $constructor("ZodCIDRv6", (e, t)=>{
+    $ZodCIDRv6.init(e, t), ZodStringFormat.init(e, t);
+}), ZodBase64 = $constructor("ZodBase64", (e, t)=>{
+    $ZodBase64.init(e, t), ZodStringFormat.init(e, t);
+}), ZodBase64URL = $constructor("ZodBase64URL", (e, t)=>{
+    $ZodBase64URL.init(e, t), ZodStringFormat.init(e, t);
+}), ZodE164 = $constructor("ZodE164", (e, t)=>{
+    $ZodE164.init(e, t), ZodStringFormat.init(e, t);
+}), ZodJWT = $constructor("ZodJWT", (e, t)=>{
+    $ZodJWT.init(e, t), ZodStringFormat.init(e, t);
+}), ZodNumber = $constructor("ZodNumber", (e, t)=>{
+    $ZodNumber.init(e, t), ZodType.init(e, t), e.gt = (t, n)=>e.check(_gt(t, n)), e.gte = (t, n)=>e.check(_gte(t, n)), e.min = (t, n)=>e.check(_gte(t, n)), e.lt = (t, n)=>e.check(_lt(t, n)), e.lte = (t, n)=>e.check(_lte(t, n)), e.max = (t, n)=>e.check(_lte(t, n)), e.int = (t)=>e.check(schemas_int(t)), e.safe = (t)=>e.check(schemas_int(t)), e.positive = (t)=>e.check(_gt(0, t)), e.nonnegative = (t)=>e.check(_gte(0, t)), e.negative = (t)=>e.check(_lt(0, t)), e.nonpositive = (t)=>e.check(_lte(0, t)), e.multipleOf = (t, n)=>e.check(_multipleOf(t, n)), e.step = (t, n)=>e.check(_multipleOf(t, n)), e.finite = ()=>e;
+    let n = e._zod.bag;
+    e.minValue = Math.max(n.minimum ?? -1 / 0, n.exclusiveMinimum ?? -1 / 0) ?? null, e.maxValue = Math.min(n.maximum ?? 1 / 0, n.exclusiveMaximum ?? 1 / 0) ?? null, e.isInt = (n.format ?? "").includes("int") || Number.isSafeInteger(n.multipleOf ?? 0.5), e.isFinite = !0, e.format = n.format ?? null;
+});
+function schemas_number(e) {
+    return _number(ZodNumber, e);
+}
+const ZodNumberFormat = $constructor("ZodNumberFormat", (e, t)=>{
+    $ZodNumberFormat.init(e, t), ZodNumber.init(e, t);
+});
+function schemas_int(e) {
+    return _int(ZodNumberFormat, e);
+}
+const ZodBoolean = $constructor("ZodBoolean", (e, t)=>{
+    $ZodBoolean.init(e, t), ZodType.init(e, t);
+});
+function schemas_boolean(e) {
+    return _boolean(ZodBoolean, e);
+}
+const ZodUnknown = $constructor("ZodUnknown", (e, t)=>{
+    $ZodUnknown.init(e, t), ZodType.init(e, t);
+});
+function unknown() {
+    return _unknown(ZodUnknown);
+}
+const ZodNever = $constructor("ZodNever", (e, t)=>{
+    $ZodNever.init(e, t), ZodType.init(e, t);
+});
+function never(e) {
+    return _never(ZodNever, e);
+}
+const ZodArray = $constructor("ZodArray", (e, t)=>{
+    $ZodArray.init(e, t), ZodType.init(e, t), e.element = t.element, e.min = (t, n)=>e.check(_minLength(t, n)), e.nonempty = (t)=>e.check(_minLength(1, t)), e.max = (t, n)=>e.check(_maxLength(t, n)), e.length = (t, n)=>e.check(_length(t, n)), e.unwrap = ()=>e.element;
+});
+function schemas_array(e, t) {
+    return _array(ZodArray, e, t);
+}
+const ZodObject = $constructor("ZodObject", (e, t)=>{
+    $ZodObject.init(e, t), ZodType.init(e, t), defineLazy(e, "shape", ()=>t.shape), e.keyof = ()=>schemas_enum(Object.keys(e._zod.def.shape)), e.catchall = (t)=>e.clone({
+            ...e._zod.def,
+            catchall: t
+        }), e.passthrough = ()=>e.clone({
+            ...e._zod.def,
+            catchall: unknown()
+        }), e.loose = ()=>e.clone({
+            ...e._zod.def,
+            catchall: unknown()
+        }), e.strict = ()=>e.clone({
+            ...e._zod.def,
+            catchall: never()
+        }), e.strip = ()=>e.clone({
+            ...e._zod.def,
+            catchall: void 0
+        }), e.extend = (t)=>extend(e, t), e.merge = (t)=>merge(e, t), e.pick = (t)=>pick(e, t), e.omit = (t)=>omit(e, t), e.partial = (...t)=>partial(ZodOptional, e, t[0]), e.required = (...t)=>required(ZodNonOptional, e, t[0]);
+});
+function schemas_object(e, t) {
+    return new ZodObject({
+        type: "object",
+        get shape () {
+            return assignProp(this, "shape", e ? objectClone(e) : {}), this.shape;
+        },
+        ...normalizeParams(t)
+    });
+}
+function looseObject(e, t) {
+    return new ZodObject({
+        type: "object",
+        get shape () {
+            return assignProp(this, "shape", objectClone(e)), this.shape;
+        },
+        catchall: unknown(),
+        ...normalizeParams(t)
+    });
+}
+const ZodUnion = $constructor("ZodUnion", (e, t)=>{
+    $ZodUnion.init(e, t), ZodType.init(e, t), e.options = t.options;
+});
+function union(e, t) {
+    return new ZodUnion({
+        type: "union",
+        options: e,
+        ...normalizeParams(t)
+    });
+}
+const ZodIntersection = $constructor("ZodIntersection", (e, t)=>{
+    $ZodIntersection.init(e, t), ZodType.init(e, t);
+});
+function intersection(e, t) {
+    return new ZodIntersection({
+        type: "intersection",
+        left: e,
+        right: t
+    });
+}
+const ZodRecord = $constructor("ZodRecord", (e, t)=>{
+    $ZodRecord.init(e, t), ZodType.init(e, t), e.keyType = t.keyType, e.valueType = t.valueType;
+});
+function record(e, t, n) {
+    return new ZodRecord({
+        type: "record",
+        keyType: e,
+        valueType: t,
+        ...normalizeParams(n)
+    });
+}
+const ZodEnum = $constructor("ZodEnum", (e, t)=>{
+    $ZodEnum.init(e, t), ZodType.init(e, t), e.enum = t.entries, e.options = Object.values(t.entries);
+    let n = new Set(Object.keys(t.entries));
+    e.extract = (e, r)=>{
+        let i = {};
+        for (let r of e)if (n.has(r)) i[r] = t.entries[r];
+        else throw Error(`Key ${r} not found in enum`);
+        return new ZodEnum({
+            ...t,
+            checks: [],
+            ...normalizeParams(r),
+            entries: i
+        });
+    }, e.exclude = (e, r)=>{
+        let i = {
+            ...t.entries
+        };
+        for (let t of e)if (n.has(t)) delete i[t];
+        else throw Error(`Key ${t} not found in enum`);
+        return new ZodEnum({
+            ...t,
+            checks: [],
+            ...normalizeParams(r),
+            entries: i
+        });
+    };
+});
+function schemas_enum(e, t) {
+    return new ZodEnum({
+        type: "enum",
+        entries: Array.isArray(e) ? Object.fromEntries(e.map((e)=>[
+                e,
+                e
+            ])) : e,
+        ...normalizeParams(t)
+    });
+}
+const ZodLiteral = $constructor("ZodLiteral", (e, t)=>{
+    $ZodLiteral.init(e, t), ZodType.init(e, t), e.values = new Set(t.values), Object.defineProperty(e, "value", {
+        get () {
+            if (t.values.length > 1) throw Error("This schema contains multiple valid literal values. Use `.values` instead.");
+            return t.values[0];
+        }
+    });
+});
+function literal(e, t) {
+    return new ZodLiteral({
+        type: "literal",
+        values: Array.isArray(e) ? e : [
+            e
+        ],
+        ...normalizeParams(t)
+    });
+}
+const ZodTransform = $constructor("ZodTransform", (e, t)=>{
+    $ZodTransform.init(e, t), ZodType.init(e, t), e._zod.parse = (n, r)=>{
+        n.addIssue = (r)=>{
+            if ("string" == typeof r) n.issues.push(util_issue(r, n.value, t));
+            else {
+                let t = r;
+                t.fatal && (t.continue = !1), t.code ?? (t.code = "custom"), t.input ?? (t.input = n.value), t.inst ?? (t.inst = e), n.issues.push(util_issue(t));
+            }
+        };
+        let i = t.transform(n.value, n);
+        return i instanceof Promise ? i.then((e)=>(n.value = e, n)) : (n.value = i, n);
+    };
+});
+function transform(e) {
+    return new ZodTransform({
+        type: "transform",
+        transform: e
+    });
+}
+const ZodOptional = $constructor("ZodOptional", (e, t)=>{
+    $ZodOptional.init(e, t), ZodType.init(e, t), e.unwrap = ()=>e._zod.def.innerType;
+});
+function optional(e) {
+    return new ZodOptional({
+        type: "optional",
+        innerType: e
+    });
+}
+const ZodNullable = $constructor("ZodNullable", (e, t)=>{
+    $ZodNullable.init(e, t), ZodType.init(e, t), e.unwrap = ()=>e._zod.def.innerType;
+});
+function nullable(e) {
+    return new ZodNullable({
+        type: "nullable",
+        innerType: e
+    });
+}
+const ZodDefault = $constructor("ZodDefault", (e, t)=>{
+    $ZodDefault.init(e, t), ZodType.init(e, t), e.unwrap = ()=>e._zod.def.innerType, e.removeDefault = e.unwrap;
+});
+function schemas_default(e, t) {
+    return new ZodDefault({
+        type: "default",
+        innerType: e,
+        get defaultValue () {
+            return "function" == typeof t ? t() : shallowClone(t);
+        }
+    });
+}
+const ZodPrefault = $constructor("ZodPrefault", (e, t)=>{
+    $ZodPrefault.init(e, t), ZodType.init(e, t), e.unwrap = ()=>e._zod.def.innerType;
+});
+function prefault(e, t) {
+    return new ZodPrefault({
+        type: "prefault",
+        innerType: e,
+        get defaultValue () {
+            return "function" == typeof t ? t() : shallowClone(t);
+        }
+    });
+}
+const ZodNonOptional = $constructor("ZodNonOptional", (e, t)=>{
+    $ZodNonOptional.init(e, t), ZodType.init(e, t), e.unwrap = ()=>e._zod.def.innerType;
+});
+function nonoptional(e, t) {
+    return new ZodNonOptional({
+        type: "nonoptional",
+        innerType: e,
+        ...normalizeParams(t)
+    });
+}
+const ZodCatch = $constructor("ZodCatch", (e, t)=>{
+    $ZodCatch.init(e, t), ZodType.init(e, t), e.unwrap = ()=>e._zod.def.innerType, e.removeCatch = e.unwrap;
+});
+function schemas_catch(e, t) {
+    return new ZodCatch({
+        type: "catch",
+        innerType: e,
+        catchValue: "function" == typeof t ? t : ()=>t
+    });
+}
+const ZodPipe = $constructor("ZodPipe", (e, t)=>{
+    $ZodPipe.init(e, t), ZodType.init(e, t), e.in = t.in, e.out = t.out;
+});
+function pipe(e, t) {
+    return new ZodPipe({
+        type: "pipe",
+        in: e,
+        out: t
+    });
+}
+const ZodReadonly = $constructor("ZodReadonly", (e, t)=>{
+    $ZodReadonly.init(e, t), ZodType.init(e, t), e.unwrap = ()=>e._zod.def.innerType;
+});
+function readonly(e) {
+    return new ZodReadonly({
+        type: "readonly",
+        innerType: e
+    });
+}
+const ZodCustom = $constructor("ZodCustom", (e, t)=>{
+    $ZodCustom.init(e, t), ZodType.init(e, t);
+});
+function refine(e, t = {}) {
+    return _refine(ZodCustom, e, t);
+}
+function superRefine(e) {
+    return _superRefine(e);
+}
+function omit_omit(e, t) {
+    let n = {
+        ...e
+    };
+    for(let e = 0; e < t.length; e++){
+        let r = t[e];
+        delete n[r];
+    }
+    return n;
+}
+function isUnsafeProperty(e) {
+    return '__proto__' === e;
+}
+function isPlainObject_isPlainObject(e) {
+    if (!e || 'object' != typeof e) return !1;
+    let t = Object.getPrototypeOf(e);
+    return (null === t || t === Object.prototype || null === Object.getPrototypeOf(t)) && '[object Object]' === Object.prototype.toString.call(e);
+}
+function merge_merge(e, t) {
+    let n = Object.keys(t);
+    for(let r = 0; r < n.length; r++){
+        let i = n[r];
+        if (isUnsafeProperty(i)) continue;
+        let o = t[i], s = e[i];
+        Array.isArray(o) ? Array.isArray(s) ? e[i] = merge_merge(s, o) : e[i] = merge_merge([], o) : isPlainObject_isPlainObject(o) ? isPlainObject_isPlainObject(s) ? e[i] = merge_merge(s, o) : e[i] = merge_merge({}, o) : (void 0 === s || void 0 !== o) && (e[i] = o);
+    }
+    return e;
+}
+var url_parse = __webpack_require__(337), url_parse_default = __webpack_require__.n(url_parse), enc_base64 = __webpack_require__(716), enc_base64_default = __webpack_require__.n(enc_base64);
+function safeJsonParse(e) {
+    try {
+        if (!e) return null;
+        return JSON.parse(e);
+    } catch (e) {
+        return null;
+    }
+}
+function safeJsonParseWithZod(e, t) {
+    let n = safeJsonParse(e);
+    if (!n) return null;
+    let { success: r, data: i, error: o } = t.safeParse(n);
+    return r ? i : (console.warn(`Failed to parse JSON with Zod: ${e}`, o), null);
+}
+function base64ToUint8Array(e) {
+    let t = enc_base64_default().parse(e), n = new Uint8Array(t.sigBytes);
+    for(let e = 0; e < t.sigBytes; e++){
+        let r = e >>> 2, i = e % 4;
+        n[e] = t.words[r] >>> 24 - 8 * i & 0xff;
+    }
+    return n;
+}
+function _define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+const TTL_7_DAYS = 604800000, TTL_1_DAY = 86400000, TTL_2_HOURS = 7200000, TTL_5_MINUTES = 300000, StorageValue = schemas_object({
+    value: schemas_string(),
+    expiresAt: schemas_number()
+});
+class Storage {
+    get(e) {
+        let t = Widget.storage.get(e);
+        if (!t) return null;
+        let n = safeJsonParseWithZod(t, StorageValue);
+        return n ? (null == n ? void 0 : n.expiresAt) < Date.now() ? (console.warn(`Storage value for key: ${e} has expired`), this.remove(e), null) : n.value : (console.warn(`Failed to parse storage value for key: ${e}`), this.remove(e), null);
+    }
+    set(e, t, n) {
+        var r;
+        let i = null != (r = null == n ? void 0 : n.ttl) ? r : this.defaultTTL, o = Date.now() + i, s = StorageValue.parse({
+            value: t,
+            expiresAt: o
+        });
+        return Widget.storage.set(e, JSON.stringify(s));
+    }
+    remove(e) {
+        return Widget.storage.remove(e);
+    }
+    clear() {
+        return Widget.storage.clear();
+    }
+    getJson(e) {
+        let t = this.get(e);
+        return t ? safeJsonParse(t) : null;
+    }
+    setJson(e, t, n) {
+        return this.set(e, JSON.stringify(t), n);
+    }
+    cleanup() {
+        try {
+            let e = "__storage_last_cleanup__";
+            this.get(e) || Widget.storage.keys().forEach((e)=>{
+                this.get(e);
+            }), this.set(e, "1", {
+                ttl: TTL_1_DAY
+            });
+        } catch (e) {
+            console.error("Failed to cleanup storage", e);
+        }
+    }
+    constructor(){
+        _define_property(this, "defaultTTL", TTL_5_MINUTES);
+    }
+}
+const storage = new Storage();
+function fetch_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+class HttpStatusError extends Error {
+    constructor(e, t, n, r){
+        super(`HTTP ${e} - Expected: [${t.join(", ")}] - ${n.method} ${n.url}`), fetch_define_property(this, "statusCode", void 0), fetch_define_property(this, "expectedStatus", void 0), fetch_define_property(this, "context", void 0), fetch_define_property(this, "response", void 0), this.statusCode = e, this.expectedStatus = t, this.context = n, this.response = r, this.name = "HttpStatusError", console.error(`\u{1F6AB} HTTP Request Failed: ${n.method} ${n.url}`, "Status", e), n.body && console.error("Request Body:", JSON.stringify(n.body)), n.options && console.error("Request Options:", omit_omit(n.options, [
+            "schema",
+            "successStatus"
+        ])), console.error("Response:", {
+            headers: r.headers,
+            data: r.data
+        });
+    }
+}
+class HttpSchemaError extends Error {
+    constructor(e, t, n){
+        super(`Failed to parse response with schema: ${prettifyError(n)}`), fetch_define_property(this, "context", void 0), fetch_define_property(this, "response", void 0), fetch_define_property(this, "error", void 0), this.context = e, this.response = t, this.error = n, this.name = "HttpSchemaError", console.error(`\u{1F6AB} HTTP Request Failed Failed to parse response with schema: ${prettifyError(n)}: ${e.method} ${e.url}`), console.error("Response:", {
+            headers: t.headers,
+            data: t.data
+        });
+    }
+}
+class Fetch {
+    setCookie(e) {
+        this.cookie = merge_merge(this.cookie, e);
+    }
+    getCookie(e) {
+        return this.cookie[e];
+    }
+    setHeaders(e) {
+        this.headers = merge_merge(this.headers, e);
+    }
+    async get(e, t) {
+        var n, r;
+        null != t || (t = {}), null != (r = (n = t).headers) || (n.headers = {}), t.headers = this.buildHeaders(t.headers);
+        let i = await this.executeRequest("GET", e, t), o = {
+            url: e,
+            method: "GET",
+            options: t
+        };
+        return this.handleResponse(i, o, t);
+    }
+    async post(e, t, n) {
+        var r, i;
+        null != n || (n = {}), null != (i = (r = n).headers) || (r.headers = {}), n.headers = this.buildHeaders(n.headers);
+        let o = await this.executeRequest("POST", e, t, n), s = {
+            url: e,
+            method: "POST",
+            body: t,
+            options: n
+        };
+        return this.handleResponse(o, s, n);
+    }
+    buildHeaders(e) {
+        let t = Object.entries(this.cookie).map((e)=>{
+            let [t, n] = e;
+            return `${t}=${n}`;
+        }).join("; ");
+        return {
+            ...this.headers,
+            ...t && {
+                Cookie: t
+            },
+            ...e
+        };
+    }
+    createTimeoutPromise(e) {
+        return new Promise((t, n)=>{
+            setTimeout(()=>{
+                n(Error(`Request timeout after ${e}ms`));
+            }, e);
+        });
+    }
+    executeRequest(e, t, n, r) {
+        var i;
+        let o = "GET" === e, s = null != (i = o ? n : r) ? i : {};
+        if (s.cache) {
+            let n = this.getCacheKey({
+                method: e,
+                url: t
+            }, s), r = storage.getJson(n);
+            if (r) return console.debug("fetch cache hit", n), Promise.resolve(r);
+        }
+        let a = o ? void 0 : n, { timeout: u, schema: l, params: c, ...d } = s, p = t;
+        c && (p = `${t}?${url_parse.qs.stringify(c)}`), console.debug("\u2B06\uFE0F fetch", p, null != a ? a : "", d);
+        let f = o ? Widget.http.get(p, d) : Widget.http.post(p, a, d);
+        return u && u > 0 ? Promise.race([
+            f,
+            this.createTimeoutPromise(u)
+        ]) : f;
+    }
+    getCacheKey(e, t) {
+        var n;
+        let r = null == t || null == (n = t.cache) ? void 0 : n.cacheKey;
+        return r || (r = `${e.method}#${e.url}`), r;
+    }
+    constructor(e = {}, t = {}){
+        fetch_define_property(this, "cookie", void 0), fetch_define_property(this, "headers", void 0), fetch_define_property(this, "handleResponse", void 0), this.cookie = e, this.headers = t, this.handleResponse = (e, t, n)=>{
+            var r;
+            if ((null == n || null == (r = n.successStatus) ? void 0 : r.length) && !n.successStatus.includes(e.statusCode)) throw new HttpStatusError(e.statusCode, n.successStatus, t, e);
+            let i = {
+                ...e
+            };
+            if (null == n ? void 0 : n.schema) {
+                let r = n.schema.safeParse(e.data);
+                if (!r.success) throw new HttpSchemaError(t, i, r.error);
+                e.data = r.data;
+            }
+            let o = e.headers["set-cookie"] || e.headers["Set-Cookie"];
+            if (o) {
+                let e = o.split(",").reduce((e, t)=>{
+                    if (!t) return e;
+                    let [n] = t.split(";"), [r, ...i] = n.split("=");
+                    return r && i.length > 0 && (e[r.trim()] = i.join("=").trim()), e;
+                }, {});
+                this.setCookie(e);
+            }
+            if (null == n ? void 0 : n.cache) {
+                let e = this.getCacheKey(t, n);
+                storage.setJson(e, i, {
+                    ttl: n.cache.ttl
+                });
+            }
+            return e;
+        };
+    }
+}
+const fetch_fetch = new Fetch();
+function coerce_number(e) {
+    return _coercedNumber(ZodNumber, e);
+}
+const BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRequestSchema = schemas_object({
+    season: coerce_number().optional().default(1),
+    pageSize: coerce_number().optional().default(20),
+    pageToken: schemas_string().optional()
+}), getImdbEpisodes = async (e, t)=>{
+    let { season: n, pageSize: r, pageToken: i } = episodesRequestSchema.parse(null != t ? t : {});
+    return (await imdb_fetch.get(`${BASE_URL}/titles/${e}/episodes`, {
+        params: {
+            season: n,
+            pageSize: r,
+            pageToken: i
+        },
+        cache: {
+            cacheKey: [
+                "imdb",
+                "episodes",
+                e,
+                n,
+                r,
+                i
+            ].filter(Boolean).join(":")
+        },
+        successStatus: [
+            200
+        ],
+        schema: schemas_object({
+            episodes: schemas_array(schemas_object({
+                id: schemas_string(),
+                title: schemas_string().optional(),
+                episodeNumber: schemas_number().optional()
+            })),
+            totalCount: schemas_number(),
+            nextPageToken: schemas_string().optional()
+        })
+    })).data;
+}, getImdbSeasons = async (e)=>(await imdb_fetch.get(`${BASE_URL}/titles/${e}/seasons`, {
+        cache: {
+            cacheKey: [
+                "imdb:seasons",
+                e
+            ].join(":")
+        },
+        schema: schemas_object({
+            seasons: schemas_array(schemas_object({
+                season: schemas_string(),
+                episodeCount: schemas_number().optional()
+            }))
+        })
+    })).data, DOUBAN_API_KEY = "0ac44ae016490db2204ce0a042db2916", doubanImdbResponseSchema = schemas_object({
+    id: schemas_string(),
+    rating: schemas_object({
+        min: schemas_number(),
+        max: schemas_number(),
+        average: schemas_string()
+    }).optional(),
+    title: schemas_string().optional(),
+    alt_title: schemas_string().optional(),
+    image: schemas_string().optional(),
+    summary: schemas_string().optional(),
+    attrs: record(schemas_string(), schemas_array(schemas_string())).optional(),
+    mobile_link: schemas_string().optional(),
+    tags: schemas_array(schemas_object({
+        count: schemas_number().optional(),
+        name: schemas_string().optional()
+    })).optional()
+}), getDoubanInfoByImdbId = async (e, t)=>{
+    var n, r, i, o, s, a;
+    let u = e;
+    if (t && "1" !== t.toString()) {
+        let n = await getImdbSeasons(e);
+        if (!n || parseInt(t.toString()) > n.seasons.length) return null;
+        let r = await getImdbEpisodes(e, {
+            season: t
+        });
+        u = null != (s = null == r || null == (o = r.episodes.find((e)=>1 === e.episodeNumber)) ? void 0 : o.id) ? s : "";
+    }
+    u || (u = e), console.log("Get douban info by imdb id", u);
+    let l = await fetch_fetch.post(`https://api.douban.com/v2/movie/imdb/${u}`, {
+        apikey: DOUBAN_API_KEY
+    }, {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        schema: doubanImdbResponseSchema,
+        cache: {
+            cacheKey: `douban:imdb:${u}`,
+            ttl: TTL_7_DAYS
+        }
+    });
+    if (200 !== l.statusCode) throw Error(`Failed to get Douban info: ${l.statusCode}, ${JSON.stringify(l.data)}`);
+    let c = null == (i = l.data) || null == (r = i.id) || null == (n = r.split("/")) ? void 0 : n.pop();
+    if (!c) throw Error(`Failed to extract Douban ID from response: ${null == (a = l.data) ? void 0 : a.id}`);
+    return /\d+/.test(c) ? {
+        doubanId: c,
+        originResponse: l.data
+    } : null;
+}, getExternalIdsByTmdbId = async (e, t)=>{
+    let n = null, r = `tmdb:${e}:${t}:external_ids`, i = storage.getJson(r);
+    return i ? n = i : (n = await Widget.tmdb.get(`/${e}/${t}/external_ids`), storage.setJson(r, n, {
+        ttl: TTL_7_DAYS
+    })), n;
+}, getDoubanInfoByTmdbId = async (e, t, n)=>{
+    let r = await getExternalIdsByTmdbId(e, t);
+    return (console.log("Get external ids by tmdb id", r), r.imdb_id) ? getDoubanInfoByImdbId(r.imdb_id, n) : null;
+}, doubanInfoResponseSchema = schemas_object({
+    is_tv: schemas_boolean().optional(),
+    vendors: schemas_array(schemas_object({
+        id: schemas_string(),
+        is_ad: schemas_boolean().optional(),
+        uri: schemas_string()
+    }))
+}), getVideoPlatformInfoByDoubanId = async (e)=>{
+    var t, n, r;
+    let i = await fetch_fetch.get(`https://m.douban.com/rexxar/api/v2/movie/${e}?for_mobile=1`, {
+        headers: {
+            Referer: `https://m.douban.com/movie/subject/${e}/?dt_dapp=1`,
+            "Content-Type": "application/json"
+        },
+        schema: doubanInfoResponseSchema,
+        cache: {
+            cacheKey: `douban:${e}:info`,
+            ttl: TTL_7_DAYS
+        }
+    });
+    if (200 !== i.statusCode) throw Error(`Failed to get video platform info: ${i.statusCode}, ${JSON.stringify(i.data)}`);
+    let o = {
+        mediaType: (null == (t = i.data) ? void 0 : t.is_tv) ? "tv" : "movie",
+        providers: {}
+    };
+    for (let e of null != (r = null == (n = i.data) ? void 0 : n.vendors) ? r : []){
+        if (e.is_ad) continue;
+        let t = url_parse_default()(e.uri, !0);
+        switch(e.id){
+            case "qq":
+                {
+                    let { cid: e, vid: n } = t.query;
+                    e && (o.providers.tencent = {
+                        cid: e,
+                        vid: n
+                    });
+                    break;
+                }
+            case "iqiyi":
+                {
+                    let { tvid: e } = t.query;
+                    e && (o.providers.iqiyi = {
+                        entityId: e
+                    });
+                    break;
+                }
+            case "youku":
+                {
+                    let { showid: e, vid: n } = t.query;
+                    (e || n) && (o.providers.youku = {
+                        showId: e,
+                        vid: n
+                    });
+                    break;
+                }
+            case "bilibili":
+                {
+                    let e = t.pathname.split("/").pop();
+                    e && /\d+/.test(e) && (o.providers.bilibili = {
+                        seasonId: e
+                    });
+                }
+        }
+    }
+    return o;
+};
+function compact(e) {
+    let t = [];
+    for(let n = 0; n < e.length; n++){
+        let r = e[n];
+        r && t.push(r);
+    }
+    return t;
+}
+const doubanSubjectItemSchema = schemas_object({
+    type_name: schemas_string(),
+    target_type: schemas_string(),
+    target_id: coerce_number(),
+    target: schemas_object({
+        title: schemas_string(),
+        has_linewatch: schemas_boolean().refine((e)=>e)
+    })
+});
+function keyBy(e, t) {
+    let n = {};
+    for(let r = 0; r < e.length; r++){
+        let i = e[r];
+        n[t(i)] = i;
+    }
+    return n;
+}
+function compareValues(e, t, n) {
+    return e < t ? 'asc' === n ? -1 : 1 : e > t ? 'asc' === n ? 1 : -1 : 0;
+}
+function orderBy(e, t, n) {
+    return e.slice().sort((e, r)=>{
+        let i = n.length;
+        for(let o = 0; o < t.length; o++){
+            let s = i > o ? n[o] : n[i - 1], a = t[o], u = 'function' == typeof a, l = compareValues(u ? a(e) : e[a], u ? a(r) : r[a], s);
+            if (0 !== l) return l;
+        }
+        return 0;
+    });
+}
+function sortBy(e, t) {
+    return orderBy(e, t, [
+        'asc'
+    ]);
+}
+function base_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+schemas_object({
+    subjects: schemas_object({
+        items: schemas_array(unknown().transform((e)=>{
+            var t;
+            return null != (t = doubanSubjectItemSchema.safeParse(e).data) ? t : null;
+        })).transform((e)=>compact(e))
+    })
+});
+class BaseScraper {
+    parseIdString(e) {
+        var t, n;
+        let r = safeJsonParse(decodeURIComponent(e)), i = null == (t = this.idSchema) ? void 0 : t.safeParse(r);
+        return i ? i.success ? null != (n = i.data) ? n : null : (console.log(this.providerName, "parseIdString", e, prettifyError(i.error)), null) : (console.log(this.providerName, "parseIdString", e, "idSchema is not defined"), null);
+    }
+    generateIdString(e) {
+        return encodeURIComponent(JSON.stringify(e));
+    }
+    sleep(e) {
+        return new Promise((t)=>setTimeout(t, e));
+    }
+    getEpisodeIndexFromTitle(e) {
+        if (!e) return null;
+        let t = /(?:第)?(\d+)(?:集|话)?$/.exec(e.trim());
+        if (t) try {
+            return parseInt(t[1], 10);
+        } catch (e) {}
+        return null;
+    }
+    getEpisodeBlacklistPattern() {
+        let e = this.GLOBAL_EPISODE_BLACKLIST_DEFAULT, t = this.PROVIDER_SPECIFIC_BLACKLIST_DEFAULT, n = [];
+        if ((null == e ? void 0 : e.trim()) && n.push(`(${e})`), (null == t ? void 0 : t.trim()) && n.push(`(${t})`), 0 === n.length) return null;
+        let r = n.join("|");
+        try {
+            return RegExp(r, "i");
+        } catch (e) {
+            console.error(`\u{7F16}\u{8BD1}\u{5206}\u{96C6}\u{9ED1}\u{540D}\u{5355}\u{6B63}\u{5219}\u{8868}\u{8FBE}\u{5F0F}\u{5931}\u{8D25}: '${r}'. \u{9519}\u{8BEF}: ${e}`);
+        }
+        return null;
+    }
+    constructor(){
+        base_define_property(this, "idSchema", void 0), base_define_property(this, "fetch", new Fetch()), base_define_property(this, "GLOBAL_EPISODE_BLACKLIST_DEFAULT", "^(.*?)((.+?\u7248)|(\u7279(\u522B|\u5178))|((\u5BFC|\u6F14)\u5458|\u5609\u5BBE|\u89D2\u8272)\u8BBF\u8C08|\u798F\u5229|\u5148\u5BFC|\u5F69\u86CB|\u82B1\u7D6E|\u9884\u544A|\u7279\u8F91|\u4E13\u8BBF|\u8BBF\u8C08|\u5E55\u540E|\u5468\u8FB9|\u8D44\u8BAF|\u770B\u70B9|\u901F\u770B|\u56DE\u987E|\u76D8\u70B9|\u5408\u96C6|PV|MV|CM|OST|ED|OP|BD|\u7279\u5178|SP|NCOP|NCED|MENU|Web-DL|rip|x264|x265|aac|flac)(.*?)$"), base_define_property(this, "PROVIDER_SPECIFIC_BLACKLIST_DEFAULT", "");
+    }
+}
+var dm_proto = __webpack_require__(252);
+function bilibili_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+const bilibiliIdSchema = schemas_object({
+    seasonId: schemas_string(),
+    aid: schemas_string().optional(),
+    cid: schemas_string().optional()
+}), pgcEpisodeSchema = schemas_object({
+    aid: schemas_int(),
+    cid: schemas_int(),
+    badge: schemas_string(),
+    duration: schemas_number(),
+    title: schemas_string(),
+    show_title: schemas_string(),
+    long_title: schemas_string()
+}), pgcEpisodeResultSchema = schemas_object({
+    code: literal(0),
+    result: schemas_object({
+        episodes: schemas_array(unknown().transform((e)=>pgcEpisodeSchema.safeParse(e).data)).transform((e)=>compact(e))
+    })
+});
+class BilibiliScraper extends BaseScraper {
+    async getEpisodes(e, t) {
+        let n = this.parseIdString(e);
+        if (!n) return [];
+        let r = [], i = await this.getPgcEpisodes(n.seasonId), o = this.getEpisodeBlacklistPattern(), s = 1;
+        for (let e of null != i ? i : [])"\u9884\u544A" !== e.badge && (null != o && o.test(e.title) || (r.push({
+            provider: this.providerName,
+            episodeId: this.generateIdString({
+                seasonId: n.seasonId,
+                aid: e.aid.toString(),
+                cid: e.cid.toString()
+            }),
+            episodeTitle: e.show_title || e.title,
+            episodeNumber: s
+        }), s += 1));
+        return t ? r.filter((e)=>e.episodeNumber === t) : r;
+    }
+    async getSegments(e) {
+        var t;
+        let { aid: n, cid: r, seasonId: i } = null != (t = this.parseIdString(e)) ? t : {};
+        if (!n || !r || !i) return [];
+        let o = await this.getPgcEpisodes(i), s = null == o ? void 0 : o.find((e)=>e.aid === parseInt(n) && e.cid === parseInt(r));
+        return s ? Array.from({
+            length: Math.floor(s.duration / 1000 / 360) + 1
+        }, (e, t)=>({
+                provider: this.providerName,
+                startTime: 360 * t,
+                segmentId: (t + 1).toString()
+            })) : [];
+    }
+    async getComments(e, t) {
+        var n;
+        let { aid: r, cid: i, seasonId: o } = null != (n = this.parseIdString(e)) ? n : {};
+        if (!r || !i || !o) return null;
+        let s = await this.getPgcEpisodes(o);
+        if (!(null == s ? void 0 : s.find((e)=>e.aid === parseInt(r) && e.cid === parseInt(i)))) return null;
+        let a = await this.fetchCommentsForCid(r, i, t);
+        return a ? a.map((e)=>{
+            var t, n, r;
+            if (!e.progress) return null;
+            let i = (null == (t = e.content) ? void 0 : t.toString().replace(/\0/g, "")) || "";
+            return i ? {
+                id: e.id.toString(),
+                timestamp: e.progress / 1000.0,
+                mode: null != (n = e.mode) ? n : 1,
+                color: null != (r = e.color) ? r : 16777215,
+                content: i
+            } : null;
+        }) : null;
+    }
+    async getPgcEpisodes(e) {
+        var t;
+        return null == (t = (await this.fetch.get("https://api.bilibili.com/pgc/view/web/ep/list", {
+            params: {
+                season_id: e
+            },
+            schema: pgcEpisodeResultSchema,
+            cache: {
+                cacheKey: `bilibili:episodes:${e}`
+            }
+        })).data) ? void 0 : t.result.episodes;
+    }
+    async fetchCommentsForCid(e, t, n) {
+        try {
+            let r = await this.fetch.get(`https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid=${t}&pid=${e}&segment_index=${n}`, {
+                base64Data: !0
+            });
+            if (404 === r.statusCode || 304 === r.statusCode) return null;
+            let i = this.DmSegMobileReply.decode(base64ToUint8Array(r.data));
+            return console.log(i), i.elems;
+        } catch (r) {
+            console.error(`\u{83B7}\u{53D6}\u{5206}\u{6BB5} ${n} \u{5931}\u{8D25} (aid=${e}, cid=${t}): ${r}`);
+        }
+        return null;
+    }
+    constructor(){
+        super(), bilibili_define_property(this, "providerName", "bilibili"), bilibili_define_property(this, "idSchema", bilibiliIdSchema), bilibili_define_property(this, "DmSegMobileReply", dm_proto.biliproto.community.service.dm.v1.DmSegMobileReply), this.fetch.setHeaders({
+            Referer: "https://www.bilibili.com/"
+        });
+    }
+}
+var md5 = __webpack_require__(478), md5_default = __webpack_require__.n(md5);
+const defaultOptions = {
+    preserveOrder: !1,
+    attributeNamePrefix: '@_',
+    attributesGroupName: !1,
+    textNodeName: '#text',
+    ignoreAttributes: !0,
+    removeNSPrefix: !1,
+    allowBooleanAttributes: !1,
+    parseTagValue: !0,
+    parseAttributeValue: !1,
+    trimValues: !0,
+    cdataPropName: !1,
+    numberParseOptions: {
+        hex: !0,
+        leadingZeros: !0,
+        eNotation: !0
+    },
+    tagValueProcessor: function(e, t) {
+        return t;
+    },
+    attributeValueProcessor: function(e, t) {
+        return t;
+    },
+    stopNodes: [],
+    alwaysCreateTextNode: !1,
+    isArray: ()=>!1,
+    commentPropName: !1,
+    unpairedTags: [],
+    processEntities: !0,
+    htmlEntities: !1,
+    ignoreDeclaration: !1,
+    ignorePiTags: !1,
+    transformTagName: !1,
+    transformAttributeName: !1,
+    updateTag: function(e, t, n) {
+        return e;
+    },
+    captureMetaData: !1
+}, buildOptions = function(e) {
+    return Object.assign({}, defaultOptions, e);
+}, nameStartChar = ':A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD', nameChar = nameStartChar + '\\-.\\d\\u00B7\\u0300-\\u036F\\u203F-\\u2040', nameRegexp = '[' + nameStartChar + '][' + nameChar + ']*', regexName = RegExp('^' + nameRegexp + '$');
+function getAllMatches(e, t) {
+    let n = [], r = t.exec(e);
+    for(; r;){
+        let i = [];
+        i.startIndex = t.lastIndex - r[0].length;
+        let o = r.length;
+        for(let e = 0; e < o; e++)i.push(r[e]);
+        n.push(i), r = t.exec(e);
+    }
+    return n;
+}
+const isName = function(e) {
+    return null != regexName.exec(e);
+};
+function isExist(e) {
+    return void 0 !== e;
+}
+METADATA_SYMBOL = "function" != typeof Symbol ? "@@xmlMetadata" : Symbol("XML Node Metadata");
+class XmlNode {
+    constructor(e){
+        this.tagname = e, this.child = [], this[":@"] = {};
+    }
+    add(e, t) {
+        "__proto__" === e && (e = "#__proto__"), this.child.push({
+            [e]: t
+        });
+    }
+    addChild(e, t) {
+        "__proto__" === e.tagname && (e.tagname = "#__proto__"), e[":@"] && Object.keys(e[":@"]).length > 0 ? this.child.push({
+            [e.tagname]: e.child,
+            ":@": e[":@"]
+        }) : this.child.push({
+            [e.tagname]: e.child
+        }), void 0 !== t && (this.child[this.child.length - 1][METADATA_SYMBOL] = {
+            startIndex: t
+        });
+    }
+    static getMetaDataSymbol() {
+        return METADATA_SYMBOL;
+    }
+}
+function readDocType(e, t) {
+    let n = {};
+    if ('O' === e[t + 3] && 'C' === e[t + 4] && 'T' === e[t + 5] && 'Y' === e[t + 6] && 'P' === e[t + 7] && 'E' === e[t + 8]) {
+        t += 9;
+        let r = 1, i = !1, o = !1, s = "";
+        for(; t < e.length; t++)if ('<' !== e[t] || o) if ('>' === e[t]) {
+            if (o ? "-" === e[t - 1] && "-" === e[t - 2] && (o = !1, r--) : r--, 0 === r) break;
+        } else '[' === e[t] ? i = !0 : s += e[t];
+        else {
+            if (i && hasSeq(e, "!ENTITY", t)) {
+                let r, i;
+                t += 7, [r, i, t] = readEntityExp(e, t + 1), -1 === i.indexOf("&") && (n[r] = {
+                    regx: RegExp(`&${r};`, "g"),
+                    val: i
+                });
+            } else if (i && hasSeq(e, "!ELEMENT", t)) {
+                let { index: n } = readElementExp(e, (t += 8) + 1);
+                t = n;
+            } else if (i && hasSeq(e, "!ATTLIST", t)) t += 8;
+            else if (i && hasSeq(e, "!NOTATION", t)) {
+                let { index: n } = readNotationExp(e, (t += 9) + 1);
+                t = n;
+            } else if (hasSeq(e, "!--", t)) o = !0;
+            else throw Error("Invalid DOCTYPE");
+            r++, s = "";
+        }
+        if (0 !== r) throw Error("Unclosed DOCTYPE");
+    } else throw Error("Invalid Tag instead of DOCTYPE");
+    return {
+        entities: n,
+        i: t
+    };
+}
+const skipWhitespace = (e, t)=>{
+    for(; t < e.length && /\s/.test(e[t]);)t++;
+    return t;
+};
+function readEntityExp(e, t) {
+    t = skipWhitespace(e, t);
+    let n = "";
+    for(; t < e.length && !/\s/.test(e[t]) && '"' !== e[t] && "'" !== e[t];)n += e[t], t++;
+    if (validateEntityName(n), t = skipWhitespace(e, t), "SYSTEM" === e.substring(t, t + 6).toUpperCase()) throw Error("External entities are not supported");
+    if ("%" === e[t]) throw Error("Parameter entities are not supported");
+    let r = "";
+    return [t, r] = readIdentifierVal(e, t, "entity"), [
+        n,
+        r,
+        --t
+    ];
+}
+function readNotationExp(e, t) {
+    t = skipWhitespace(e, t);
+    let n = "";
+    for(; t < e.length && !/\s/.test(e[t]);)n += e[t], t++;
+    validateEntityName(n), t = skipWhitespace(e, t);
+    let r = e.substring(t, t + 6).toUpperCase();
+    if ("SYSTEM" !== r && "PUBLIC" !== r) throw Error(`Expected SYSTEM or PUBLIC, found "${r}"`);
+    t += r.length, t = skipWhitespace(e, t);
+    let i = null, o = null;
+    if ("PUBLIC" === r) [t, i] = readIdentifierVal(e, t, "publicIdentifier"), t = skipWhitespace(e, t), ('"' === e[t] || "'" === e[t]) && ([t, o] = readIdentifierVal(e, t, "systemIdentifier"));
+    else if ("SYSTEM" === r && ([t, o] = readIdentifierVal(e, t, "systemIdentifier"), !o)) throw Error("Missing mandatory system identifier for SYSTEM notation");
+    return {
+        notationName: n,
+        publicIdentifier: i,
+        systemIdentifier: o,
+        index: --t
+    };
+}
+function readIdentifierVal(e, t, n) {
+    let r = "", i = e[t];
+    if ('"' !== i && "'" !== i) throw Error(`Expected quoted string, found "${i}"`);
+    for(t++; t < e.length && e[t] !== i;)r += e[t], t++;
+    if (e[t] !== i) throw Error(`Unterminated ${n} value`);
+    return [
+        ++t,
+        r
+    ];
+}
+function readElementExp(e, t) {
+    t = skipWhitespace(e, t);
+    let n = "";
+    for(; t < e.length && !/\s/.test(e[t]);)n += e[t], t++;
+    if (!validateEntityName(n)) throw Error(`Invalid element name: "${n}"`);
+    t = skipWhitespace(e, t);
+    let r = "";
+    if ("E" === e[t] && hasSeq(e, "MPTY", t)) t += 4;
+    else if ("A" === e[t] && hasSeq(e, "NY", t)) t += 2;
+    else if ("(" === e[t]) {
+        for(t++; t < e.length && ")" !== e[t];)r += e[t], t++;
+        if (")" !== e[t]) throw Error("Unterminated content model");
+    } else throw Error(`Invalid Element Expression, found "${e[t]}"`);
+    return {
+        elementName: n,
+        contentModel: r.trim(),
+        index: t
+    };
+}
+function hasSeq(e, t, n) {
+    for(let r = 0; r < t.length; r++)if (t[r] !== e[n + r + 1]) return !1;
+    return !0;
+}
+function validateEntityName(e) {
+    if (isName(e)) return e;
+    throw Error(`Invalid entity name ${e}`);
+}
+const hexRegex = /^[-+]?0x[a-fA-F0-9]+$/, numRegex = /^([\-\+])?(0*)([0-9]*(\.[0-9]*)?)$/, consider = {
+    hex: !0,
+    leadingZeros: !0,
+    decimalPoint: "\.",
+    eNotation: !0
+};
+function toNumber(e, t = {}) {
+    if (t = Object.assign({}, consider, t), !e || "string" != typeof e) return e;
+    let n = e.trim();
+    if (void 0 !== t.skipLike && t.skipLike.test(n)) return e;
+    {
+        if ("0" === e) return 0;
+        if (t.hex && hexRegex.test(n)) return parse_int(n, 16);
+        if (-1 !== n.search(/.+[eE].+/)) return resolveEnotation(e, n, t);
+        let r = numRegex.exec(n);
+        if (!r) return e;
+        {
+            let i = r[1] || "", o = r[2], s = trimZeros(r[3]), a = i ? "." === e[o.length + 1] : "." === e[o.length];
+            if (!t.leadingZeros && (o.length > 1 || 1 === o.length && !a)) return e;
+            {
+                let r = Number(n), a = String(r);
+                if (0 === r) return r;
+                if (-1 !== a.search(/[eE]/)) if (t.eNotation) return r;
+                else return e;
+                if (-1 !== n.indexOf(".")) if ("0" === a) return r;
+                else if (a === s) return r;
+                else if (a === `${i}${s}`) return r;
+                else return e;
+                let u = o ? s : n;
+                return o ? u === a || i + u === a ? r : e : u === a || u === i + a ? r : e;
+            }
+        }
+    }
+}
+const eNotationRegx = /^([-+])?(0*)(\d*(\.\d*)?[eE][-\+]?\d+)$/;
+function resolveEnotation(e, t, n) {
+    if (!n.eNotation) return e;
+    let r = t.match(eNotationRegx);
+    if (!r) return e;
+    {
+        let i = r[1] || "", o = -1 === r[3].indexOf("e") ? "E" : "e", s = r[2], a = i ? e[s.length + 1] === o : e[s.length] === o;
+        return s.length > 1 && a ? e : 1 === s.length && (r[3].startsWith(`.${o}`) || r[3][0] === o) ? Number(t) : n.leadingZeros && !a ? Number(t = (r[1] || "") + r[3]) : e;
+    }
+}
+function trimZeros(e) {
+    return e && -1 !== e.indexOf(".") && ("." === (e = e.replace(/0+$/, "")) ? e = "0" : "." === e[0] ? e = "0" + e : "." === e[e.length - 1] && (e = e.substring(0, e.length - 1))), e;
+}
+function parse_int(e, t) {
+    if (parseInt) return parseInt(e, t);
+    if (Number.parseInt) return Number.parseInt(e, t);
+    if (window && window.parseInt) return window.parseInt(e, t);
+    throw Error("parseInt, Number.parseInt, window.parseInt are not supported");
+}
+function getIgnoreAttributesFn(e) {
+    return 'function' == typeof e ? e : Array.isArray(e) ? (t)=>{
+        for (let n of e)if ('string' == typeof n && t === n || n instanceof RegExp && n.test(t)) return !0;
+    } : ()=>!1;
+}
+class OrderedObjParser {
+    constructor(e){
+        this.options = e, this.currentNode = null, this.tagsNodeStack = [], this.docTypeEntities = {}, this.lastEntities = {
+            apos: {
+                regex: /&(apos|#39|#x27);/g,
+                val: "'"
+            },
+            gt: {
+                regex: /&(gt|#62|#x3E);/g,
+                val: ">"
+            },
+            lt: {
+                regex: /&(lt|#60|#x3C);/g,
+                val: "<"
+            },
+            quot: {
+                regex: /&(quot|#34|#x22);/g,
+                val: "\""
+            }
+        }, this.ampEntity = {
+            regex: /&(amp|#38|#x26);/g,
+            val: "&"
+        }, this.htmlEntities = {
+            space: {
+                regex: /&(nbsp|#160);/g,
+                val: " "
+            },
+            cent: {
+                regex: /&(cent|#162);/g,
+                val: "¢"
+            },
+            pound: {
+                regex: /&(pound|#163);/g,
+                val: "£"
+            },
+            yen: {
+                regex: /&(yen|#165);/g,
+                val: "¥"
+            },
+            euro: {
+                regex: /&(euro|#8364);/g,
+                val: "€"
+            },
+            copyright: {
+                regex: /&(copy|#169);/g,
+                val: "©"
+            },
+            reg: {
+                regex: /&(reg|#174);/g,
+                val: "®"
+            },
+            inr: {
+                regex: /&(inr|#8377);/g,
+                val: "₹"
+            },
+            num_dec: {
+                regex: /&#([0-9]{1,7});/g,
+                val: (e, t)=>String.fromCodePoint(Number.parseInt(t, 10))
+            },
+            num_hex: {
+                regex: /&#x([0-9a-fA-F]{1,6});/g,
+                val: (e, t)=>String.fromCodePoint(Number.parseInt(t, 16))
+            }
+        }, this.addExternalEntities = addExternalEntities, this.parseXml = parseXml, this.parseTextData = parseTextData, this.resolveNameSpace = resolveNameSpace, this.buildAttributesMap = buildAttributesMap, this.isItStopNode = isItStopNode, this.replaceEntitiesValue = replaceEntitiesValue, this.readStopNodeData = readStopNodeData, this.saveTextToParentTag = saveTextToParentTag, this.addChild = addChild, this.ignoreAttributesFn = getIgnoreAttributesFn(this.options.ignoreAttributes);
+    }
+}
+function addExternalEntities(e) {
+    let t = Object.keys(e);
+    for(let n = 0; n < t.length; n++){
+        let r = t[n];
+        this.lastEntities[r] = {
+            regex: RegExp("&" + r + ";", "g"),
+            val: e[r]
+        };
+    }
+}
+function parseTextData(e, t, n, r, i, o, s) {
+    if (void 0 !== e && (this.options.trimValues && !r && (e = e.trim()), e.length > 0)) {
+        s || (e = this.replaceEntitiesValue(e));
+        let r = this.options.tagValueProcessor(t, e, n, i, o);
+        return null == r ? e : typeof r != typeof e || r !== e ? r : this.options.trimValues || e.trim() === e ? parseValue(e, this.options.parseTagValue, this.options.numberParseOptions) : e;
+    }
+}
+function resolveNameSpace(e) {
+    if (this.options.removeNSPrefix) {
+        let t = e.split(':'), n = '/' === e.charAt(0) ? '/' : '';
+        if ('xmlns' === t[0]) return '';
+        2 === t.length && (e = n + t[1]);
+    }
+    return e;
+}
+const attrsRegx = RegExp('([^\\s=]+)\\s*(=\\s*([\'"])([\\s\\S]*?)\\3)?', 'gm');
+function buildAttributesMap(e, t, n) {
+    if (!0 !== this.options.ignoreAttributes && 'string' == typeof e) {
+        let n = getAllMatches(e, attrsRegx), r = n.length, i = {};
+        for(let e = 0; e < r; e++){
+            let r = this.resolveNameSpace(n[e][1]);
+            if (this.ignoreAttributesFn(r, t)) continue;
+            let o = n[e][4], s = this.options.attributeNamePrefix + r;
+            if (r.length) if (this.options.transformAttributeName && (s = this.options.transformAttributeName(s)), "__proto__" === s && (s = "#__proto__"), void 0 !== o) {
+                this.options.trimValues && (o = o.trim()), o = this.replaceEntitiesValue(o);
+                let e = this.options.attributeValueProcessor(r, o, t);
+                null == e ? i[s] = o : typeof e != typeof o || e !== o ? i[s] = e : i[s] = parseValue(o, this.options.parseAttributeValue, this.options.numberParseOptions);
+            } else this.options.allowBooleanAttributes && (i[s] = !0);
+        }
+        if (Object.keys(i).length) {
+            if (this.options.attributesGroupName) {
+                let e = {};
+                return e[this.options.attributesGroupName] = i, e;
+            }
+            return i;
+        }
+    }
+}
+const parseXml = function(e) {
+    e = e.replace(/\r\n?/g, "\n");
+    let t = new XmlNode('!xml'), n = t, r = "", i = "";
+    for(let o = 0; o < e.length; o++)if ('<' === e[o]) if ('/' === e[o + 1]) {
+        let t = findClosingIndex(e, ">", o, "Closing Tag is not closed."), s = e.substring(o + 2, t).trim();
+        if (this.options.removeNSPrefix) {
+            let e = s.indexOf(":");
+            -1 !== e && (s = s.substr(e + 1));
+        }
+        this.options.transformTagName && (s = this.options.transformTagName(s)), n && (r = this.saveTextToParentTag(r, n, i));
+        let a = i.substring(i.lastIndexOf(".") + 1);
+        if (s && -1 !== this.options.unpairedTags.indexOf(s)) throw Error(`Unpaired tag can not be used as closing tag: </${s}>`);
+        let u = 0;
+        a && -1 !== this.options.unpairedTags.indexOf(a) ? (u = i.lastIndexOf('.', i.lastIndexOf('.') - 1), this.tagsNodeStack.pop()) : u = i.lastIndexOf("."), i = i.substring(0, u), n = this.tagsNodeStack.pop(), r = "", o = t;
+    } else if ('?' === e[o + 1]) {
+        let t = readTagExp(e, o, !1, "?>");
+        if (!t) throw Error("Pi Tag is not closed.");
+        if (r = this.saveTextToParentTag(r, n, i), this.options.ignoreDeclaration && "?xml" === t.tagName || this.options.ignorePiTags) ;
+        else {
+            let e = new XmlNode(t.tagName);
+            e.add(this.options.textNodeName, ""), t.tagName !== t.tagExp && t.attrExpPresent && (e[":@"] = this.buildAttributesMap(t.tagExp, i, t.tagName)), this.addChild(n, e, i, o);
+        }
+        o = t.closeIndex + 1;
+    } else if ('!--' === e.substr(o + 1, 3)) {
+        let t = findClosingIndex(e, "-->", o + 4, "Comment is not closed.");
+        if (this.options.commentPropName) {
+            let s = e.substring(o + 4, t - 2);
+            r = this.saveTextToParentTag(r, n, i), n.add(this.options.commentPropName, [
+                {
+                    [this.options.textNodeName]: s
+                }
+            ]);
+        }
+        o = t;
+    } else if ('!D' === e.substr(o + 1, 2)) {
+        let t = readDocType(e, o);
+        this.docTypeEntities = t.entities, o = t.i;
+    } else if ('![' === e.substr(o + 1, 2)) {
+        let t = findClosingIndex(e, "]]>", o, "CDATA is not closed.") - 2, s = e.substring(o + 9, t);
+        r = this.saveTextToParentTag(r, n, i);
+        let a = this.parseTextData(s, n.tagname, i, !0, !1, !0, !0);
+        void 0 == a && (a = ""), this.options.cdataPropName ? n.add(this.options.cdataPropName, [
+            {
+                [this.options.textNodeName]: s
+            }
+        ]) : n.add(this.options.textNodeName, a), o = t + 2;
+    } else {
+        let s = readTagExp(e, o, this.options.removeNSPrefix), a = s.tagName, u = s.rawTagName, l = s.tagExp, c = s.attrExpPresent, d = s.closeIndex;
+        this.options.transformTagName && (a = this.options.transformTagName(a)), n && r && '!xml' !== n.tagname && (r = this.saveTextToParentTag(r, n, i, !1));
+        let p = n;
+        p && -1 !== this.options.unpairedTags.indexOf(p.tagname) && (n = this.tagsNodeStack.pop(), i = i.substring(0, i.lastIndexOf("."))), a !== t.tagname && (i += i ? "." + a : a);
+        let f = o;
+        if (this.isItStopNode(this.options.stopNodes, i, a)) {
+            let t = "";
+            if (l.length > 0 && l.lastIndexOf("/") === l.length - 1) "/" === a[a.length - 1] ? (a = a.substr(0, a.length - 1), i = i.substr(0, i.length - 1), l = a) : l = l.substr(0, l.length - 1), o = s.closeIndex;
+            else if (-1 !== this.options.unpairedTags.indexOf(a)) o = s.closeIndex;
+            else {
+                let n = this.readStopNodeData(e, u, d + 1);
+                if (!n) throw Error(`Unexpected end of ${u}`);
+                o = n.i, t = n.tagContent;
+            }
+            let r = new XmlNode(a);
+            a !== l && c && (r[":@"] = this.buildAttributesMap(l, i, a)), t && (t = this.parseTextData(t, a, i, !0, c, !0, !0)), i = i.substr(0, i.lastIndexOf(".")), r.add(this.options.textNodeName, t), this.addChild(n, r, i, f);
+        } else {
+            if (l.length > 0 && l.lastIndexOf("/") === l.length - 1) {
+                "/" === a[a.length - 1] ? (a = a.substr(0, a.length - 1), i = i.substr(0, i.length - 1), l = a) : l = l.substr(0, l.length - 1), this.options.transformTagName && (a = this.options.transformTagName(a));
+                let e = new XmlNode(a);
+                a !== l && c && (e[":@"] = this.buildAttributesMap(l, i, a)), this.addChild(n, e, i, f), i = i.substr(0, i.lastIndexOf("."));
+            } else {
+                let e = new XmlNode(a);
+                this.tagsNodeStack.push(n), a !== l && c && (e[":@"] = this.buildAttributesMap(l, i, a)), this.addChild(n, e, i, f), n = e;
+            }
+            r = "", o = d;
+        }
+    }
+    else r += e[o];
+    return t.child;
+};
+function addChild(e, t, n, r) {
+    this.options.captureMetaData || (r = void 0);
+    let i = this.options.updateTag(t.tagname, n, t[":@"]);
+    !1 === i || ("string" == typeof i && (t.tagname = i), e.addChild(t, r));
+}
+const replaceEntitiesValue = function(e) {
+    if (this.options.processEntities) {
+        for(let t in this.docTypeEntities){
+            let n = this.docTypeEntities[t];
+            e = e.replace(n.regx, n.val);
+        }
+        for(let t in this.lastEntities){
+            let n = this.lastEntities[t];
+            e = e.replace(n.regex, n.val);
+        }
+        if (this.options.htmlEntities) for(let t in this.htmlEntities){
+            let n = this.htmlEntities[t];
+            e = e.replace(n.regex, n.val);
+        }
+        e = e.replace(this.ampEntity.regex, this.ampEntity.val);
+    }
+    return e;
+};
+function saveTextToParentTag(e, t, n, r) {
+    return e && (void 0 === r && (r = 0 === t.child.length), void 0 !== (e = this.parseTextData(e, t.tagname, n, !1, !!t[":@"] && 0 !== Object.keys(t[":@"]).length, r)) && "" !== e && t.add(this.options.textNodeName, e), e = ""), e;
+}
+function isItStopNode(e, t, n) {
+    let r = "*." + n;
+    for(let n in e){
+        let i = e[n];
+        if (r === i || t === i) return !0;
+    }
+    return !1;
+}
+function tagExpWithClosingIndex(e, t, n = ">") {
+    let r, i = "";
+    for(let o = t; o < e.length; o++){
+        let t = e[o];
+        if (r) t === r && (r = "");
+        else if ('"' === t || "'" === t) r = t;
+        else if (t === n[0]) {
+            if (!n[1]) return {
+                data: i,
+                index: o
+            };
+            else if (e[o + 1] === n[1]) return {
+                data: i,
+                index: o
+            };
+        } else '\t' === t && (t = " ");
+        i += t;
+    }
+}
+function findClosingIndex(e, t, n, r) {
+    let i = e.indexOf(t, n);
+    if (-1 !== i) return i + t.length - 1;
+    throw Error(r);
+}
+function readTagExp(e, t, n, r = ">") {
+    let i = tagExpWithClosingIndex(e, t + 1, r);
+    if (!i) return;
+    let o = i.data, s = i.index, a = o.search(/\s/), u = o, l = !0;
+    -1 !== a && (u = o.substring(0, a), o = o.substring(a + 1).trimStart());
+    let c = u;
+    if (n) {
+        let e = u.indexOf(":");
+        -1 !== e && (l = (u = u.substr(e + 1)) !== i.data.substr(e + 1));
+    }
+    return {
+        tagName: u,
+        tagExp: o,
+        closeIndex: s,
+        attrExpPresent: l,
+        rawTagName: c
+    };
+}
+function readStopNodeData(e, t, n) {
+    let r = n, i = 1;
+    for(; n < e.length; n++)if ("<" === e[n]) if ("/" === e[n + 1]) {
+        let o = findClosingIndex(e, ">", n, `${t} is not closed`);
+        if (e.substring(n + 2, o).trim() === t && 0 == --i) return {
+            tagContent: e.substring(r, n),
+            i: o
+        };
+        n = o;
+    } else if ('?' === e[n + 1]) n = findClosingIndex(e, "?>", n + 1, "StopNode is not closed.");
+    else if ('!--' === e.substr(n + 1, 3)) n = findClosingIndex(e, "-->", n + 3, "StopNode is not closed.");
+    else if ('![' === e.substr(n + 1, 2)) n = findClosingIndex(e, "]]>", n, "StopNode is not closed.") - 2;
+    else {
+        let r = readTagExp(e, n, '>');
+        r && ((r && r.tagName) === t && "/" !== r.tagExp[r.tagExp.length - 1] && i++, n = r.closeIndex);
+    }
+}
+function parseValue(e, t, n) {
+    if (t && 'string' == typeof e) {
+        let t = e.trim();
+        return 'true' === t || 'false' !== t && toNumber(e, n);
+    }
+    return isExist(e) ? e : '';
+}
+const node2json_METADATA_SYMBOL = XmlNode.getMetaDataSymbol();
+function prettify(e, t) {
+    return compress(e, t);
+}
+function compress(e, t, n) {
+    let r, i = {};
+    for(let o = 0; o < e.length; o++){
+        let s = e[o], a = propName(s), u = "";
+        if (u = void 0 === n ? a : n + "." + a, a === t.textNodeName) void 0 === r ? r = s[a] : r += "" + s[a];
+        else if (void 0 === a) continue;
+        else if (s[a]) {
+            let e = compress(s[a], t, u), n = isLeafTag(e, t);
+            void 0 !== s[node2json_METADATA_SYMBOL] && (e[node2json_METADATA_SYMBOL] = s[node2json_METADATA_SYMBOL]), s[":@"] ? assignAttributes(e, s[":@"], u, t) : 1 !== Object.keys(e).length || void 0 === e[t.textNodeName] || t.alwaysCreateTextNode ? 0 === Object.keys(e).length && (t.alwaysCreateTextNode ? e[t.textNodeName] = "" : e = "") : e = e[t.textNodeName], void 0 !== i[a] && i.hasOwnProperty(a) ? (Array.isArray(i[a]) || (i[a] = [
+                i[a]
+            ]), i[a].push(e)) : t.isArray(a, u, n) ? i[a] = [
+                e
+            ] : i[a] = e;
+        }
+    }
+    return "string" == typeof r ? r.length > 0 && (i[t.textNodeName] = r) : void 0 !== r && (i[t.textNodeName] = r), i;
+}
+function propName(e) {
+    let t = Object.keys(e);
+    for(let e = 0; e < t.length; e++){
+        let n = t[e];
+        if (":@" !== n) return n;
+    }
+}
+function assignAttributes(e, t, n, r) {
+    if (t) {
+        let i = Object.keys(t), o = i.length;
+        for(let s = 0; s < o; s++){
+            let o = i[s];
+            r.isArray(o, n + "." + o, !0, !0) ? e[o] = [
+                t[o]
+            ] : e[o] = t[o];
+        }
+    }
+}
+function isLeafTag(e, t) {
+    let { textNodeName: n } = t, r = Object.keys(e).length;
+    return 0 === r || 1 === r && (!!e[n] || "boolean" == typeof e[n] || 0 === e[n]);
+}
+const validator_defaultOptions = {
+    allowBooleanAttributes: !1,
+    unpairedTags: []
+};
+function validate(e, t) {
+    t = Object.assign({}, validator_defaultOptions, t);
+    let n = [], r = !1, i = !1;
+    '\ufeff' === e[0] && (e = e.substr(1));
+    for(let o = 0; o < e.length; o++)if ('<' === e[o] && '?' === e[o + 1]) {
+        if (o += 2, (o = readPI(e, o)).err) return o;
+    } else if ('<' === e[o]) {
+        let s = o;
+        if ('!' === e[++o]) {
+            o = readCommentAndCDATA(e, o);
+            continue;
+        }
+        {
+            let a = !1;
+            '/' === e[o] && (a = !0, o++);
+            let u = '';
+            for(; o < e.length && '>' !== e[o] && ' ' !== e[o] && '\t' !== e[o] && '\n' !== e[o] && '\r' !== e[o]; o++)u += e[o];
+            if ('/' === (u = u.trim())[u.length - 1] && (u = u.substring(0, u.length - 1), o--), !validateTagName(u)) {
+                let t;
+                return getErrorObject('InvalidTag', t = 0 === u.trim().length ? "Invalid space after '<'." : "Tag '" + u + "' is an invalid name.", getLineNumberForPosition(e, o));
+            }
+            let l = readAttributeStr(e, o);
+            if (!1 === l) return getErrorObject('InvalidAttr', "Attributes for '" + u + "' have open quote.", getLineNumberForPosition(e, o));
+            let c = l.value;
+            if (o = l.index, '/' === c[c.length - 1]) {
+                let n = o - c.length, i = validateAttributeString(c = c.substring(0, c.length - 1), t);
+                if (!0 !== i) return getErrorObject(i.err.code, i.err.msg, getLineNumberForPosition(e, n + i.err.line));
+                r = !0;
+            } else if (a) if (!l.tagClosed) return getErrorObject('InvalidTag', "Closing tag '" + u + "' doesn't have proper closing.", getLineNumberForPosition(e, o));
+            else {
+                if (c.trim().length > 0) return getErrorObject('InvalidTag', "Closing tag '" + u + "' can't have attributes or invalid starting.", getLineNumberForPosition(e, s));
+                if (0 === n.length) return getErrorObject('InvalidTag', "Closing tag '" + u + "' has not been opened.", getLineNumberForPosition(e, s));
+                let t = n.pop();
+                if (u !== t.tagName) {
+                    let n = getLineNumberForPosition(e, t.tagStartPos);
+                    return getErrorObject('InvalidTag', "Expected closing tag '" + t.tagName + "' (opened in line " + n.line + ", col " + n.col + ") instead of closing tag '" + u + "'.", getLineNumberForPosition(e, s));
+                }
+                0 == n.length && (i = !0);
+            }
+            else {
+                let a = validateAttributeString(c, t);
+                if (!0 !== a) return getErrorObject(a.err.code, a.err.msg, getLineNumberForPosition(e, o - c.length + a.err.line));
+                if (!0 === i) return getErrorObject('InvalidXml', 'Multiple possible root nodes found.', getLineNumberForPosition(e, o));
+                -1 !== t.unpairedTags.indexOf(u) || n.push({
+                    tagName: u,
+                    tagStartPos: s
+                }), r = !0;
+            }
+            for(o++; o < e.length; o++)if ('<' === e[o]) if ('!' === e[o + 1]) {
+                o = readCommentAndCDATA(e, ++o);
+                continue;
+            } else if ('?' === e[o + 1]) {
+                if ((o = readPI(e, ++o)).err) return o;
+            } else break;
+            else if ('&' === e[o]) {
+                let t = validateAmpersand(e, o);
+                if (-1 == t) return getErrorObject('InvalidChar', "char '&' is not expected.", getLineNumberForPosition(e, o));
+                o = t;
+            } else if (!0 === i && !isWhiteSpace(e[o])) return getErrorObject('InvalidXml', "Extra text at the end", getLineNumberForPosition(e, o));
+            '<' === e[o] && o--;
+        }
+    } else {
+        if (isWhiteSpace(e[o])) continue;
+        return getErrorObject('InvalidChar', "char '" + e[o] + "' is not expected.", getLineNumberForPosition(e, o));
+    }
+    return r ? 1 == n.length ? getErrorObject('InvalidTag', "Unclosed tag '" + n[0].tagName + "'.", getLineNumberForPosition(e, n[0].tagStartPos)) : !(n.length > 0) || getErrorObject('InvalidXml', "Invalid '" + JSON.stringify(n.map((e)=>e.tagName), null, 4).replace(/\r?\n/g, '') + "' found.", {
+        line: 1,
+        col: 1
+    }) : getErrorObject('InvalidXml', 'Start tag expected.', 1);
+}
+function isWhiteSpace(e) {
+    return ' ' === e || '\t' === e || '\n' === e || '\r' === e;
+}
+function readPI(e, t) {
+    let n = t;
+    for(; t < e.length; t++)if ('?' == e[t] || ' ' == e[t]) {
+        let r = e.substr(n, t - n);
+        if (t > 5 && 'xml' === r) return getErrorObject('InvalidXml', 'XML declaration allowed only at the start of the document.', getLineNumberForPosition(e, t));
+        if ('?' != e[t] || '>' != e[t + 1]) continue;
+        t++;
+        break;
+    }
+    return t;
+}
+function readCommentAndCDATA(e, t) {
+    if (e.length > t + 5 && '-' === e[t + 1] && '-' === e[t + 2]) {
+        for(t += 3; t < e.length; t++)if ('-' === e[t] && '-' === e[t + 1] && '>' === e[t + 2]) {
+            t += 2;
+            break;
+        }
+    } else if (e.length > t + 8 && 'D' === e[t + 1] && 'O' === e[t + 2] && 'C' === e[t + 3] && 'T' === e[t + 4] && 'Y' === e[t + 5] && 'P' === e[t + 6] && 'E' === e[t + 7]) {
+        let n = 1;
+        for(t += 8; t < e.length; t++)if ('<' === e[t]) n++;
+        else if ('>' === e[t] && 0 == --n) break;
+    } else if (e.length > t + 9 && '[' === e[t + 1] && 'C' === e[t + 2] && 'D' === e[t + 3] && 'A' === e[t + 4] && 'T' === e[t + 5] && 'A' === e[t + 6] && '[' === e[t + 7]) {
+        for(t += 8; t < e.length; t++)if (']' === e[t] && ']' === e[t + 1] && '>' === e[t + 2]) {
+            t += 2;
+            break;
+        }
+    }
+    return t;
+}
+const doubleQuote = '"', singleQuote = "'";
+function readAttributeStr(e, t) {
+    let n = '', r = '', i = !1;
+    for(; t < e.length; t++){
+        if (e[t] === doubleQuote || e[t] === singleQuote) '' === r ? r = e[t] : r !== e[t] || (r = '');
+        else if ('>' === e[t] && '' === r) {
+            i = !0;
+            break;
+        }
+        n += e[t];
+    }
+    return '' === r && {
+        value: n,
+        index: t,
+        tagClosed: i
+    };
+}
+const validAttrStrRegxp = RegExp('(\\s*)([^\\s=]+)(\\s*=)?(\\s*([\'"])(([\\s\\S])*?)\\5)?', 'g');
+function validateAttributeString(e, t) {
+    let n = getAllMatches(e, validAttrStrRegxp), r = {};
+    for(let e = 0; e < n.length; e++){
+        if (0 === n[e][1].length) return getErrorObject('InvalidAttr', "Attribute '" + n[e][2] + "' has no space in starting.", getPositionFromMatch(n[e]));
+        if (void 0 !== n[e][3] && void 0 === n[e][4]) return getErrorObject('InvalidAttr', "Attribute '" + n[e][2] + "' is without value.", getPositionFromMatch(n[e]));
+        if (void 0 === n[e][3] && !t.allowBooleanAttributes) return getErrorObject('InvalidAttr', "boolean attribute '" + n[e][2] + "' is not allowed.", getPositionFromMatch(n[e]));
+        let i = n[e][2];
+        if (!validateAttrName(i)) return getErrorObject('InvalidAttr', "Attribute '" + i + "' is an invalid name.", getPositionFromMatch(n[e]));
+        if (r.hasOwnProperty(i)) return getErrorObject('InvalidAttr', "Attribute '" + i + "' is repeated.", getPositionFromMatch(n[e]));
+        r[i] = 1;
+    }
+    return !0;
+}
+function validateNumberAmpersand(e, t) {
+    let n = /\d/;
+    for('x' === e[t] && (t++, n = /[\da-fA-F]/); t < e.length; t++){
+        if (';' === e[t]) return t;
+        if (!e[t].match(n)) break;
+    }
+    return -1;
+}
+function validateAmpersand(e, t) {
+    if (';' === e[++t]) return -1;
+    if ('#' === e[t]) return validateNumberAmpersand(e, ++t);
+    let n = 0;
+    for(; t < e.length; t++, n++)if (!e[t].match(/\w/) || !(n < 20)) {
+        if (';' === e[t]) break;
+        return -1;
+    }
+    return t;
+}
+function getErrorObject(e, t, n) {
+    return {
+        err: {
+            code: e,
+            msg: t,
+            line: n.line || n,
+            col: n.col
+        }
+    };
+}
+function validateAttrName(e) {
+    return isName(e);
+}
+function validateTagName(e) {
+    return isName(e);
+}
+function getLineNumberForPosition(e, t) {
+    let n = e.substring(0, t).split(/\r?\n/);
+    return {
+        line: n.length,
+        col: n[n.length - 1].length + 1
+    };
+}
+function getPositionFromMatch(e) {
+    return e.startIndex + e[1].length;
+}
+class XMLParser {
+    constructor(e){
+        this.externalEntities = {}, this.options = buildOptions(e);
+    }
+    parse(e, t) {
+        if ("string" == typeof e) ;
+        else if (e.toString) e = e.toString();
+        else throw Error("XML data is accepted in String or Bytes[] form.");
+        if (t) {
+            !0 === t && (t = {});
+            let n = validate(e, t);
+            if (!0 !== n) throw Error(`${n.err.msg}:${n.err.line}:${n.err.col}`);
+        }
+        let n = new OrderedObjParser(this.options);
+        n.addExternalEntities(this.externalEntities);
+        let r = n.parseXml(e);
+        return this.options.preserveOrder || void 0 === r ? r : prettify(r, this.options);
+    }
+    addEntity(e, t) {
+        if (-1 !== t.indexOf("&")) throw Error("Entity value can't have '&'");
+        if (-1 !== e.indexOf("&") || -1 !== e.indexOf(";")) throw Error("An entity must be set without '&' and ';'. Eg. use '#xD' for '&#xD;'");
+        if ("&" === t) throw Error("An entity with value '&' is not permitted");
+        this.externalEntities[e] = t;
+    }
+    static getMetaDataSymbol() {
+        return XmlNode.getMetaDataSymbol();
+    }
+}
+function iqiyi_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+const iqiyiIdSchema = schemas_object({
+    entityId: schemas_string()
+}), iqiyiEpisodeTabDataVideoSchema = schemas_object({
+    page_url: schemas_string(),
+    short_display_name: schemas_string().optional(),
+    title: schemas_string(),
+    mark_type_show: schemas_int().optional()
+}).transform((e)=>({
+        ...e,
+        get videoId () {
+            var t;
+            let n = e.page_url.match(/v_(\S+)\.html/);
+            return null != (t = null == n ? void 0 : n[1]) ? t : "";
+        }
+    })), safeParseVideo = (e)=>{
+    let t = iqiyiEpisodeTabDataVideoSchema.safeParse(e);
+    return t.success ? t.data : (console.warn("\u7231\u5947\u827A: \u89E3\u6790\u5206\u96C6\u6570\u636E\u65F6\u53D1\u751F\u9519\u8BEF:", t.error.format(), e), null);
+}, iqiyiTvTabDataSchema = schemas_object({
+    data: schemas_array(schemas_object({
+        videos: schemas_object({
+            feature_paged: record(schemas_string(), schemas_array(unknown().transform((e)=>safeParseVideo(e)))).optional().transform((e)=>compact(Object.values(null != e ? e : {}).flat()))
+        }).optional()
+    }).transform((e)=>{
+        var t;
+        return null == (t = e.videos) ? void 0 : t.feature_paged;
+    })).transform((e)=>compact(e.flat()))
+}), iqiyiMovieTabDataSchema = schemas_object({
+    data: schemas_object({
+        videos: schemas_array(unknown().transform((e)=>safeParseVideo(e)))
+    }).transform((e)=>compact(e.videos))
+}), iqiyiEpisodeTabDataSchema = union([
+    iqiyiTvTabDataSchema,
+    iqiyiMovieTabDataSchema
+]), iqiyiV3ApiResponseSchema = schemas_object({
+    status_code: schemas_number(),
+    data: schemas_object({
+        base_data: schemas_object({
+            video_list: schemas_array(schemas_object({
+                tv_id: schemas_string(),
+                name: schemas_string(),
+                order: schemas_number(),
+                play_url: schemas_string()
+            })).optional()
+        }),
+        template: schemas_object({
+            tabs: schemas_array(schemas_object({
+                tab_id: schemas_string(),
+                tab_title: schemas_string(),
+                blocks: schemas_array(schemas_object({
+                    bk_id: schemas_string(),
+                    bk_type: schemas_string(),
+                    data: unknown().optional()
+                }))
+            }))
+        })
+    }).optional()
+}), iqiyiVideoBaseInfoResponseSchema = schemas_object({
+    code: literal("A00000"),
+    data: schemas_object({
+        tvId: schemas_int(),
+        albumId: schemas_int(),
+        durationSec: schemas_int()
+    })
+}), iqiyiBulletInfoSchema = schemas_object({
+    contentId: schemas_string(),
+    content: schemas_string(),
+    showTime: schemas_number(),
+    color: schemas_string().optional().default("FFFFFF")
+}), iqiyiCommentsEntrySchema = schemas_object({
+    int: schemas_number(),
+    list: schemas_object({
+        bulletInfo: schemas_array(unknown().transform((e)=>iqiyiBulletInfoSchema.safeParse(e).data)).transform((e)=>compact(e))
+    })
+}), iqiyiCommentsResponseSchema = schemas_object({
+    danmu: looseObject({
+        code: literal("A00000"),
+        data: schemas_object({
+            entry: schemas_array(unknown().transform((e)=>{
+                var t;
+                return null == (t = iqiyiCommentsEntrySchema.safeParse(e).data) ? void 0 : t.list.bulletInfo;
+            })).transform((e)=>compact(e.flat()))
+        })
+    })
+}).transform((e)=>e.danmu.data.entry);
+class IqiyiScraper extends BaseScraper {
+    async getEpisodes(e, t) {
+        let n = this.parseIdString(e);
+        if (!n) return [];
+        let r = [];
+        try {
+            r = await this.getEpisodesV3(n.entityId);
+        } catch (e) {
+            console.warn(`\u{7231}\u{5947}\u{827A}: \u{65B0}\u{7248}API (v3) \u{83B7}\u{53D6}\u{5206}\u{96C6}\u{65F6}\u{53D1}\u{751F}\u{9519}\u{8BEF}: ${e}`, e), r = [];
+        }
+        return !r.length, this.filterAndFinalizeEpisodes(r, t);
+    }
+    async getSegments(e) {
+        let t = this.parseIdString(e);
+        if (!t) return [];
+        let n = await this.getVideoBaseInfo(t.entityId), r = null == n ? void 0 : n.durationSec;
+        return r ? Array.from({
+            length: Math.floor(r / 300) + 1
+        }, (e, t)=>({
+                provider: this.providerName,
+                startTime: 300 * t,
+                segmentId: (t + 1).toString()
+            })) : [];
+    }
+    async getComments(e, t) {
+        let n = this.parseIdString(e);
+        if (!n) return [];
+        let r = n.entityId;
+        if (!r || r.length < 4) return [];
+        let i = r.slice(-4, -2), o = r.slice(-2), s = `http://cmts.iqiyi.com/bullet/${i}/${o}/${r}_300_${t}.z`;
+        console.debug(`URL\u{6784}\u{5EFA}: s1=${i}, s2=${o}, \u{5B8C}\u{6574}URL=${s}`);
+        let a = await this.fetch.get(s, {
+            zlibMode: !0
+        }), u = this.xmlParser.parse(a.data), { success: l, data: c, error: d } = iqiyiCommentsResponseSchema.safeParse(u);
+        return l ? c.map((e)=>{
+            let t = 16777215;
+            try {
+                t = parseInt(e.color, 16);
+            } catch (e) {}
+            return {
+                id: e.contentId.toString(),
+                timestamp: e.showTime,
+                mode: 1,
+                color: t,
+                content: e.content
+            };
+        }) : (console.warn(`\u{7231}\u{5947}\u{827A}: \u{89E3}\u{6790}\u{5F39}\u{5E55}\u{6570}\u{636E}\u{65F6}\u{53D1}\u{751F}\u{9519}\u{8BEF}:`, prettifyError(d)), []);
+    }
+    async getEpisodesV3(e) {
+        let t = {
+            entity_id: e,
+            device_id: "qd5fwuaj4hunxxdgzwkcqmefeb3ww5hx",
+            auth_cookie: "",
+            user_id: "0",
+            vip_type: "-1",
+            vip_status: "0",
+            conduit_id: "",
+            pcv: "13.082.22866",
+            app_version: "13.082.22866",
+            ext: "",
+            app_mode: "standard",
+            scale: "100",
+            timestamp: Date.now().toString(),
+            src: "pca_tvg",
+            os: "",
+            ad_ext: '{"r":"2.2.0-ares6-pure"}'
+        };
+        t.sign = this.createSign(t);
+        try {
+            var n, r, i, o, s, a, u, l;
+            let e = (await this.fetch.get("https://www.iqiyi.com/prelw/tvg/v2/lw/base_info", {
+                params: t,
+                schema: iqiyiV3ApiResponseSchema
+            })).data, c = null != (o = null == e || null == (i = e.data) || null == (r = i.base_data) || null == (n = r.video_list) ? void 0 : n.map((e)=>({
+                    provider: this.providerName,
+                    episodeId: e.tv_id.toString(),
+                    episodeTitle: e.name,
+                    episodeNumber: e.order,
+                    url: e.play_url
+                }))) ? o : [];
+            if (!c.length) {
+                let t = null == e || null == (u = e.data) || null == (a = u.template) || null == (s = a.tabs) ? void 0 : s.flatMap((e)=>e.blocks || []).find((e)=>"selector_bk" === e.bk_id && "album_episodes" === e.bk_type || "film_feature_bk" === e.bk_id && "video_list" === e.bk_type), { success: n, data: r, error: i } = iqiyiEpisodeTabDataSchema.safeParse(null == t ? void 0 : t.data);
+                if (!n) return console.warn(`\u{7231}\u{5947}\u{827A}: \u{89E3}\u{6790}\u{5206}\u{96C6}\u{6570}\u{636E}\u{65F6}\u{53D1}\u{751F}\u{9519}\u{8BEF}:`, prettifyError(i), t), [];
+                let o = this.getEpisodeBlacklistPattern(), d = 1;
+                for (let e of r.data){
+                    if (17 === e.mark_type_show) continue;
+                    let t = this.videoIdToEntityId(e.videoId);
+                    t && (null != o && o.test(e.title) || (c.push({
+                        provider: this.providerName,
+                        episodeId: this.generateIdString({
+                            entityId: t
+                        }),
+                        episodeTitle: e.title,
+                        episodeNumber: e.short_display_name && null != (l = this.getEpisodeIndexFromTitle(e.short_display_name)) ? l : d
+                    }), d += 1));
+                }
+            }
+            return c;
+        } catch (e) {
+            return console.error(`\u{7231}\u{5947}\u{827A} (v3): \u{83B7}\u{53D6}\u{5206}\u{96C6}\u{65F6}\u{53D1}\u{751F}\u{9519}\u{8BEF}: ${e}`), [];
+        }
+    }
+    videoIdToEntityId(e) {
+        try {
+            let t, n = parseInt(e, 36), r = BigInt(n) ^ BigInt(0x75706971676c);
+            return (t = r < BigInt(9e5) ? BigInt(100) * (r + BigInt(9e5)) : r).toString();
+        } catch (t) {
+            return console.error(`\u{5C06} video_id '${e}' \u{8F6C}\u{6362}\u{4E3A} entity_id \u{65F6}\u{51FA}\u{9519}: ${t}`), null;
+        }
+    }
+    createSign(e) {
+        let t = Object.keys(e).filter((e)=>"sign" !== e).sort().map((t)=>{
+            var n;
+            return `${t}=${null != (n = e[t]) ? n : ""}`;
+        }).join("&");
+        return md5_default()(`${t}&secret_key=howcuteitis`).toString().toUpperCase();
+    }
+    filterAndFinalizeEpisodes(e, t) {
+        let n = this.getEpisodeBlacklistPattern();
+        if (n) {
+            let t = e.length;
+            t > (e = e.filter((e)=>!n.test(e.episodeTitle))).length && console.info(`\u{7231}\u{5947}\u{827A}: \u{6839}\u{636E}\u{9ED1}\u{540D}\u{5355}\u{89C4}\u{5219}\u{8FC7}\u{6EE4}\u{6389}\u{4E86} ${t - e.length} \u{4E2A}\u{5206}\u{96C6}\u{3002}`);
+        }
+        return t ? e.filter((e)=>e.episodeNumber === t) : e;
+    }
+    async getVideoBaseInfo(e) {
+        var t;
+        return null == (t = (await this.fetch.get(`https://pcw-api.iqiyi.com/video/video/baseinfo/${e}`, {
+            schema: iqiyiVideoBaseInfoResponseSchema,
+            cache: {
+                cacheKey: `iqiyi:video:baseinfo:${e}`
+            }
+        })).data) ? void 0 : t.data;
+    }
+    constructor(){
+        super(), iqiyi_define_property(this, "providerName", "iqiyi"), iqiyi_define_property(this, "xmlParser", new XMLParser()), iqiyi_define_property(this, "idSchema", iqiyiIdSchema), iqiyi_define_property(this, "PROVIDER_SPECIFIC_BLACKLIST_DEFAULT", "^(.*?)(\u62A2\u5148(\u7248|\u7BC7)?|\u52A0\u66F4(\u7248|\u7BC7)?|\u82B1\u7D6E|\u9884\u544A|\u7279\u8F91|\u5F69\u86CB|\u4E13\u8BBF|\u5E55\u540E(\u6545\u4E8B|\u82B1\u7D6E)?|\u76F4\u64AD|\u7EAF\u4EAB|\u672A\u64AD|\u884D\u751F|\u756A\u5916|\u4F1A\u5458(\u4E13\u5C5E|\u52A0\u957F)?|\u7247\u82B1|\u7CBE\u534E|\u770B\u70B9|\u901F\u89C8|\u89E3\u8BFB|reaction|\u5F71\u8BC4)(.*?)$"), this.fetch.setCookie({
+            pgv_pvid: "40b67e3b06027f3d",
+            video_platform: "2",
+            vversion_name: "8.2.95",
+            video_bucketid: "4",
+            video_omgid: "0a1ff6bc9407c0b1cff86ee5d359614d"
+        }), this.fetch.setHeaders({
+            "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36 Edg/136.0.0.0"
+        });
+    }
+}
+function tencent_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+const tencentIdSchema = schemas_object({
+    cid: schemas_string(),
+    vid: schemas_string().optional()
+}), tencentEpisodeSchema = schemas_object({
+    vid: schemas_string().refine((e)=>!!e),
+    is_trailer: schemas_string().refine((e)=>"1" !== e),
+    title: schemas_string().refine((e)=>{
+        for (let t of [
+            "\u9884\u544A",
+            "\u5F69\u86CB",
+            "\u76F4\u62CD",
+            "\u76F4\u64AD\u56DE\u987E",
+            "\u52A0\u66F4",
+            "\u8D70\u5FC3",
+            "\u89E3\u5FE7",
+            "\u7EAF\u4EAB",
+            "\u8282\u70B9",
+            "\u91C7\u8BBF",
+            "\u82B1\u7D6E"
+        ])if (e.includes(t)) return !1;
+        return !0;
+    }),
+    union_title: optional(schemas_string()).refine((e)=>null == e || !e.includes("\u9884\u544A"))
+}), tencentEpisodeResultSchema = schemas_object({
+    data: schemas_object({
+        module_list_datas: schemas_array(schemas_object({
+            module_datas: schemas_array(schemas_object({
+                item_data_lists: schemas_object({
+                    item_datas: schemas_array(schemas_object({
+                        item_params: unknown().transform((e)=>{
+                            var t;
+                            return null != (t = tencentEpisodeSchema.safeParse(e).data) ? t : null;
+                        })
+                    }).transform((e)=>{
+                        var t;
+                        return null != (t = e.item_params) ? t : null;
+                    })).transform((e)=>compact(e))
+                })
+            }))
+        }))
+    })
+}).transform((e)=>{
+    var t, n, r, i, o, s;
+    return null != (s = null == (o = e.data.module_list_datas) || null == (i = o[0]) || null == (r = i.module_datas) || null == (n = r[0]) || null == (t = n.item_data_lists) ? void 0 : t.item_datas) ? s : [];
+}), tencentSegmentIndexSchema = schemas_object({
+    segment_index: record(schemas_string(), schemas_object({
+        segment_name: schemas_string()
+    }))
+}), tencentContentStyleSchema = schemas_object({
+    color: schemas_string().optional(),
+    position: schemas_number().optional()
+}), tencentCommentItemSchema = schemas_object({
+    id: schemas_string(),
+    content: schemas_string(),
+    time_offset: schemas_string(),
+    content_style: schemas_string().optional().transform((e)=>safeJsonParseWithZod(null != e ? e : "", tencentContentStyleSchema))
+}), tencentSegmentSchema = schemas_object({
+    barrage_list: schemas_array(unknown().transform((e)=>{
+        var t;
+        return null != (t = tencentCommentItemSchema.safeParse(e).data) ? t : null;
+    })).transform((e)=>e.filter((e)=>null !== e))
+}), tencent_pageSize = 100;
+class TencentScraper extends BaseScraper {
+    async getEpisodes(e, t) {
+        let n = this.parseIdString(e);
+        if (!n) return [];
+        let r = (await this.internalGetEpisodes(n.cid)).map((e, t)=>{
+            let r = this.getEpisodeIndexFromTitle(e.title);
+            return r || (r = t + 1), {
+                provider: this.providerName,
+                episodeId: this.generateIdString({
+                    cid: n.cid,
+                    vid: e.vid
+                }),
+                episodeTitle: e.union_title && e.union_title !== e.title ? e.union_title : e.title,
+                episodeNumber: r
+            };
+        });
+        if (void 0 !== t) {
+            let e = r.find((e)=>e.episodeNumber === t);
+            return e ? [
+                e
+            ] : [];
+        }
+        return r;
+    }
+    async getSegments(e) {
+        let t = this.parseIdString(e);
+        if (!t) return [];
+        let n = {};
+        try {
+            var r;
+            let e = await this.fetch.get(`https://dm.video.qq.com/barrage/base/${t.vid}`, {
+                schema: tencentSegmentIndexSchema,
+                cache: {
+                    cacheKey: `tencent:segment:${t.vid}`,
+                    ttl: TTL_2_HOURS
+                }
+            });
+            if (!e.data) return [];
+            if (!(null == (r = e.data) ? void 0 : r.segment_index)) return console.info(`vid='${t.vid}' \u{6CA1}\u{6709}\u{627E}\u{5230}\u{5F39}\u{5E55}\u{5206}\u{6BB5}\u{7D22}\u{5F15}\u{3002}`), [];
+            n = e.data.segment_index;
+        } catch (e) {
+            return console.error(`\u{83B7}\u{53D6}\u{5F39}\u{5E55}\u{7D22}\u{5F15}\u{5931}\u{8D25} (vid=${t.vid})`, e), [];
+        }
+        let i = Object.keys(n).sort((e, t)=>parseInt(e, 10) - parseInt(t, 10));
+        return console.debug(`\u{4E3A} vid='${t.vid}' \u{627E}\u{5230} ${i.length} \u{4E2A}\u{5F39}\u{5E55}\u{5206}\u{6BB5}`), i.map((e)=>{
+            var t;
+            return {
+                provider: this.providerName,
+                startTime: parseInt(e, 10) / 1000.0,
+                segmentId: null == (t = n[e]) ? void 0 : t.segment_name
+            };
+        });
+    }
+    async getComments(e, t) {
+        let n = this.parseIdString(e);
+        if (!(null == n ? void 0 : n.vid)) return [];
+        let r = await this.internalGetComments(n.vid, t);
+        return (console.log("\u627E\u5230", r.length, "\u6761\u5F39\u5E55"), r && 0 !== r.length) ? r.map((e)=>{
+            let t = 1, n = 16777215;
+            if (e.content_style && (2 === e.content_style.position ? t = 5 : 3 === e.content_style.position && (t = 4), e.content_style.color)) try {
+                n = parseInt(e.content_style.color, 10);
+            } catch (e) {}
+            return {
+                id: e.id.toString(),
+                timestamp: parseInt(e.time_offset, 10) / 1000.0,
+                mode: t,
+                color: n,
+                content: e.content
+            };
+        }) : [];
+    }
+    async internalGetEpisodes(e) {
+        let t = [], n = 0, r = "";
+        for(this.fetch.setHeaders({
+            Referer: `https://v.qq.com/x/cover/${e}.html`
+        });;)try {
+            var i;
+            let o = null != (i = (await this.fetch.post("https://pbaccess.video.qq.com/trpc.universal_backend_service.page_server_rpc.PageServer/GetPageData?video_appid=3000010&vplatform=2", {
+                page_params: {
+                    cid: e,
+                    page_type: "detail_operation",
+                    page_id: "vsite_episode_list",
+                    id_type: "1",
+                    page_size: tencent_pageSize.toString(),
+                    lid: "0",
+                    req_from: "web_mobile",
+                    page_context: r
+                },
+                has_cache: 1
+            }, {
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                schema: tencentEpisodeResultSchema,
+                cache: {
+                    cacheKey: `tencent:episodes:${e}:${n}`
+                }
+            })).data) ? i : [];
+            if (o.length >= tencent_pageSize ? (n += 1, r = url_parse.qs.stringify({
+                episode_begin: n * tencent_pageSize,
+                episode_end: (n + 1) * tencent_pageSize,
+                episode_step: tencent_pageSize
+            })) : r = "", t.push(...o), !r) break;
+        } catch (t) {
+            console.error(`\u{83B7}\u{53D6}\u{5206}\u{96C6}\u{5217}\u{8868}\u{5931}\u{8D25} (cid=${e})`, t);
+            break;
+        }
+        return t;
+    }
+    async internalGetComments(e, t) {
+        try {
+            var n, r;
+            return null != (r = null == (n = (await this.fetch.get(`https://dm.video.qq.com/barrage/segment/${e}/${t}`, {
+                schema: tencentSegmentSchema
+            })).data) ? void 0 : n.barrage_list) ? r : [];
+        } catch (n) {
+            return console.error(`\u{83B7}\u{53D6}\u{5206}\u{6BB5} ${t} \u{5931}\u{8D25} (vid=${e}): ${n.message}`, n), [];
+        }
+    }
+    constructor(){
+        super(), tencent_define_property(this, "providerName", "tencent"), tencent_define_property(this, "idSchema", tencentIdSchema), this.fetch.setCookie({
+            pgv_pvid: "40b67e3b06027f3d",
+            video_platform: "2",
+            vversion_name: "8.2.95",
+            video_bucketid: "4",
+            video_omgid: "0a1ff6bc9407c0b1cff86ee5d359614d"
+        }), this.fetch.setHeaders({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        });
+    }
+}
+var enc_utf8 = __webpack_require__(60), enc_utf8_default = __webpack_require__.n(enc_utf8);
+function youku_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+const youkuIdSchema = schemas_object({
+    showId: schemas_string().optional(),
+    vid: schemas_string().optional()
+}), youkuEpisodeInfoSchema = schemas_object({
+    id: schemas_string(),
+    show_id: schemas_string().optional(),
+    title: schemas_string(),
+    seq: coerce_number().optional(),
+    duration: schemas_string(),
+    category: schemas_string(),
+    link: schemas_string()
+}).transform((e)=>({
+        ...e,
+        get totalMat () {
+            try {
+                let t = parseFloat(e.duration);
+                return Math.floor(t / 60) + 1;
+            } catch (e) {
+                return 0;
+            }
+        }
+    })), youkuVideoResultSchema = schemas_object({
+    total: schemas_number().or(schemas_string().transform((e)=>parseInt(e))),
+    videos: schemas_array(youkuEpisodeInfoSchema)
+}), youkuCommentPropertySchema = schemas_object({
+    color: schemas_number().optional(),
+    pos: schemas_number().optional(),
+    size: schemas_number().optional()
+}), youkuCommentSchema = schemas_object({
+    id: schemas_number(),
+    content: schemas_string(),
+    playat: schemas_number(),
+    propertis: schemas_string().transform((e)=>safeJsonParseWithZod(e, youkuCommentPropertySchema)).optional(),
+    uid: schemas_string()
+}), youkuDanmuResultSchema = schemas_object({
+    data: schemas_object({
+        result: schemas_array(youkuCommentSchema)
+    })
+});
+class YoukuScraper extends BaseScraper {
+    get token() {
+        var e, t;
+        return (null != (t = null == (e = this.fetch.getCookie("_m_h5_tk")) ? void 0 : e.split("_")[0]) ? t : "").substring(0, 32);
+    }
+    get cna() {
+        var e;
+        return null != (e = this.fetch.getCookie("cna")) ? e : "";
+    }
+    async getEpisodes(e, t) {
+        var n, r, i;
+        let o = this.parseIdString(e);
+        if (!o) return [];
+        let s = o.showId;
+        if (!s && o.vid) {
+            let e = await this.getVideoInfo(o.vid);
+            s = null != (n = null == e ? void 0 : e.show_id) ? n : "";
+        }
+        if (!s) return [];
+        let a = 20, u = null != t ? t : 1, l = Math.max(1, Math.ceil(u / 20));
+        try {
+            let e = (e)=>e.filter((e)=>!this.EPISODE_BLACKLIST_KEYWORDS.some((t)=>e.title.includes(t))), n = (e, t)=>({
+                    provider: this.providerName,
+                    episodeId: this.generateIdString({
+                        showId: s,
+                        vid: e.id
+                    }),
+                    episodeTitle: e.title,
+                    episodeNumber: t
+                }), o = await this.getEpisodesPage(s, l, a), c = e(null != (r = null == o ? void 0 : o.videos) ? r : []), d = c.find((e)=>e.seq === u);
+            if (d) return [
+                n(d, u)
+            ];
+            let p = Number(null != (i = null == o ? void 0 : o.total) ? i : 0), f = Math.max(1, Math.ceil(p / a)), h = Array.from({
+                length: f
+            }, (e, t)=>t + 1).filter((e)=>e !== l), m = [];
+            for (let e of h){
+                await this.sleep(500);
+                let t = await this.getEpisodesPage(s, e, a);
+                m.push(t);
+            }
+            let g = e(m.flatMap((e)=>{
+                var t;
+                return null != (t = null == e ? void 0 : e.videos) ? t : [];
+            })), v = [
+                ...c,
+                ...g
+            ];
+            if (void 0 !== t) {
+                let e = v.find((e)=>e.seq === u);
+                return e ? [
+                    n(e, u)
+                ] : [];
+            }
+            return v.sort((e, t)=>{
+                var n, r;
+                return (null != (n = e.seq) ? n : Number.MAX_SAFE_INTEGER) - (null != (r = t.seq) ? r : Number.MAX_SAFE_INTEGER);
+            }).map((e, t)=>n(e, t + 1));
+        } catch (e) {
+            return console.error(`Youku: \u{83B7}\u{53D6}\u{5206}\u{96C6}\u{5931}\u{8D25} showId=${s}:`, e), [];
+        }
+    }
+    async getSegments(e) {
+        var t;
+        let { vid: n } = null != (t = this.parseIdString(e)) ? t : {};
+        if (!n) return [];
+        try {
+            await this.ensureTokenCookie();
+            let e = await this.getVideoInfo(n);
+            if (!e) return console.warn(`Youku: Failed to get episode info for vid ${n}`), [];
+            let t = e.totalMat;
+            if (0 === t) return console.warn(`Youku: Video ${n} has duration 0, no danmaku to fetch.`), [];
+            return Array.from({
+                length: t
+            }, (e, t)=>({
+                    provider: this.providerName,
+                    startTime: 60 * t,
+                    segmentId: t.toString()
+                }));
+        } catch (e) {
+            return console.error(`Youku: Failed to get segments for vid ${n}:`, e), [];
+        }
+    }
+    async getComments(e, t) {
+        var n;
+        let { vid: r } = null != (n = this.parseIdString(e)) ? n : {};
+        if (!r) return [];
+        try {
+            return await this.ensureTokenCookie(), this.getDanmuContentByMat(r, parseInt(t, 10));
+        } catch (e) {
+            return console.error(`Youku: Failed to get danmaku for vid ${r}:`, e), [];
+        }
+    }
+    async getVideoInfo(e) {
+        return (await this.fetch.get("https://openapi.youku.com/v2/videos/show_basic.json", {
+            params: {
+                client_id: "53e6cc67237fc59a",
+                package: "com.huawei.hwvplayer.youku",
+                video_id: e
+            },
+            schema: youkuEpisodeInfoSchema,
+            cache: {
+                cacheKey: `youku:segments:${e}`
+            }
+        })).data;
+    }
+    async getEpisodesPage(e, t, n) {
+        return (await this.fetch.get("https://openapi.youku.com/v2/shows/videos.json", {
+            params: {
+                client_id: "53e6cc67237fc59a",
+                package: "com.huawei.hwvplayer.youku",
+                ext: "show",
+                show_id: e,
+                page: t.toString(),
+                count: n.toString()
+            },
+            schema: youkuVideoResultSchema,
+            cache: {
+                cacheKey: `youku:episodes:${e}:${t}:${n}`
+            }
+        })).data;
+    }
+    async getDanmuContentByMat(e, t) {
+        if (!this.token || !this.cna) return console.error("Youku: Cannot get danmaku, _m_h5_tk is missing."), [];
+        let n = {
+            pid: 0,
+            ctype: 10004,
+            sver: "3.1.0",
+            cver: "v1.0",
+            ctime: Date.now(),
+            guid: this.cna,
+            vid: e,
+            mat: t,
+            mcount: 1,
+            type: 1
+        }, r = JSON.stringify(Object.fromEntries(Object.entries(n).sort())), i = enc_base64_default().stringify(enc_utf8_default().parse(r));
+        n.msg = i, n.sign = this.generateMsgSign(i);
+        let o = "24679788", s = JSON.stringify(n), a = Date.now().toString();
+        try {
+            var u, l, c;
+            let e = null != (c = null == (l = (await this.fetch.post("https://acs.youku.com/h5/mopen.youku.danmu.list/1.0/", url_parse.qs.stringify({
+                data: s
+            }), {
+                params: {
+                    jsv: "2.7.0",
+                    appKey: o,
+                    t: a,
+                    sign: this.generateTokenSign(a, o, s),
+                    api: "mopen.youku.danmu.list",
+                    v: "1.0",
+                    type: "originaljson",
+                    dataType: "jsonp",
+                    timeout: "20000",
+                    jsonpIncPrefix: "utility"
+                },
+                headers: {
+                    Referer: "https://v.youku.com",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                successStatus: [
+                    200
+                ],
+                schema: looseObject({
+                    data: schemas_object({
+                        result: schemas_string().transform((e)=>safeJsonParseWithZod(e, youkuDanmuResultSchema)).optional()
+                    })
+                })
+            })).data) || null == (u = l.data.result) ? void 0 : u.data.result) ? c : [];
+            if (console.log(`Youku: \u{83B7}\u{53D6}\u{5230}\u{5206}\u{6BB5} ${t} \u{7684}\u{5F39}\u{5E55} ${e.length} \u{6761}`), !e || 0 === e.length) return [];
+            return e.map((e)=>{
+                let t = 1, n = 16777215;
+                try {
+                    let r = e.propertis;
+                    r && (r.color && (n = r.color), 1 === r.pos ? t = 5 : 2 === r.pos && (t = 4));
+                } catch (e) {}
+                let r = e.playat / 1000.0;
+                return {
+                    id: e.id.toString(),
+                    timestamp: r,
+                    mode: t,
+                    color: n,
+                    content: e.content
+                };
+            });
+        } catch (n) {
+            return console.error(`Youku: \u{89E3}\u{6790}\u{5F39}\u{5E55}\u{54CD}\u{5E94}\u{5931}\u{8D25} (vid=${e}, mat=${t}):`, n), [];
+        }
+    }
+    generateMsgSign(e) {
+        return md5_default()(`${e}MkmC9SoIw6xCkSKHhJ7b5D2r51kBiREr`).toString().toLowerCase();
+    }
+    generateTokenSign(e, t, n) {
+        return md5_default()([
+            this.token,
+            e,
+            t,
+            n
+        ].join("&")).toString().toLowerCase();
+    }
+    async ensureTokenCookie() {
+        this.fetch.cookie = {};
+        try {
+            await this.fetch.get("https://log.mmstat.com/eg.js", {
+                headers: {
+                    Cookie: "",
+                    "If-None-Match": ""
+                }
+            });
+        } catch (e) {
+            console.warn(`Youku: \u{65E0}\u{6CD5}\u{8FDE}\u{63A5}\u{5230} youku.com \u{83B7}\u{53D6} 'cna' cookie\u{3002}\u{9519}\u{8BEF}: ${e}`);
+        }
+        try {
+            await this.fetch.get("https://acs.youku.com/h5/mtop.com.youku.aplatform.weakget/1.0/?jsv=2.5.1&appKey=24679788");
+        } catch (e) {
+            console.error(`Youku: \u{65E0}\u{6CD5}\u{8FDE}\u{63A5}\u{5230} acs.youku.com \u{83B7}\u{53D6}\u{4EE4}\u{724C} cookie\u{3002}\u{5F39}\u{5E55}\u{83B7}\u{53D6}\u{5F88}\u{53EF}\u{80FD}\u{4F1A}\u{5931}\u{8D25}\u{3002}\u{9519}\u{8BEF}: ${e}`);
+        }
+        this.cna && this.token || console.warn(`Youku: \u{672A}\u{80FD}\u{83B7}\u{53D6}\u{5230}\u{5F39}\u{5E55}\u{7B7E}\u{540D}\u{6240}\u{9700}\u{7684}\u{5168}\u{90E8} cookie\u{3002} cna: '${this.cna}', token: '${this.token}'`);
+    }
+    constructor(){
+        super(), youku_define_property(this, "providerName", "youku"), youku_define_property(this, "idSchema", youkuIdSchema), youku_define_property(this, "EPISODE_BLACKLIST_KEYWORDS", [
+            "\u5F69\u86CB",
+            "\u52A0\u66F4",
+            "\u8D70\u5FC3",
+            "\u89E3\u5FE7",
+            "\u7EAF\u4EAB"
+        ]), this.fetch.setHeaders({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        });
+    }
+}
+function scrapers_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+const scrapers = [
+    TencentScraper,
+    YoukuScraper,
+    IqiyiScraper,
+    BilibiliScraper
+];
+class scrapers_Scraper {
+    get scraperMap() {
+        return keyBy(this.scrapers, (e)=>e.providerName);
+    }
+    async getSegmentsByProvider(e, t) {
+        let n = this.scraperMap[e];
+        if (!n) return [];
+        let r = await n.getSegments(t);
+        return sortBy(r, [
+            "startTime"
+        ]);
+    }
+    findSegmentAtTime(e, t) {
+        var n;
+        if (!e.length) return null;
+        let r = 0, i = e.length - 1;
+        for(; r <= i;){
+            let n = r + i >> 1;
+            e[n].startTime <= t ? r = n + 1 : i = n - 1;
+        }
+        let o = i;
+        return o < 0 ? null : null != (n = e[o]) ? n : null;
+    }
+    async getSegmentWithTime() {
+        let e = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : 0;
+        for(var t, n = arguments.length, r = Array(n > 1 ? n - 1 : 0), i = 1; i < n; i++)r[i - 1] = arguments[i];
+        let o = [];
+        for (let { provider: t, idString: n } of r)o.push((async ()=>{
+            let r = await this.getSegmentsByProvider(t, n);
+            if (!r.length) return null;
+            let i = this.findSegmentAtTime(r, e);
+            if (!i) return null;
+            let o = this.scraperMap[t];
+            if (!o) return null;
+            let s = await o.getComments(n, i.segmentId);
+            return s ? {
+                comments: s,
+                provider: t
+            } : null;
+        })());
+        let s = await Promise.all(o), a = new Map();
+        for (let e of s)if (null == e || null == (t = e.comments) ? void 0 : t.length) for (let t of e.comments){
+            if (!t) continue;
+            let n = [
+                t.mode,
+                t.color,
+                t.content
+            ].join("___"), r = a.get(n);
+            r ? (t.timestamp < r.item.timestamp && (r.item = t), r.count += 1) : a.set(n, {
+                item: t,
+                count: 1,
+                provider: e.provider
+            });
+        }
+        let u = [];
+        return a.forEach((e)=>{
+            let { item: t, count: n, provider: r } = e, i = n > 1 ? `${t.content} \xd7 ${n}` : t.content;
+            u.push({
+                cid: t.id,
+                p: `${t.timestamp.toFixed(2)},${t.mode},${t.color},[${r}]`,
+                m: i
+            });
+        }), u;
+    }
+    getDanmuWithSegmentTimeByVideoId(e, t) {
+        let n = e.split(",").map((e)=>{
+            let [t, n] = e.split(":");
+            return {
+                provider: t,
+                idString: n
+            };
+        });
+        return this.getSegmentWithTime(t, ...n);
+    }
+    async getEpisodes() {
+        for(var e = arguments.length, t = Array(e), n = 0; n < e; n++)t[n] = arguments[n];
+        let r = [];
+        for (let { provider: e, idString: n, episodeNumber: i } of t){
+            let t = this.scraperMap[e];
+            t && r.push(t.getEpisodes(n, i).catch((e)=>(console.error(e), [])));
+        }
+        return (await Promise.all(r).catch((e)=>(console.error(e), []))).flat().map((e)=>({
+                ...e,
+                episodeId: `${e.provider}:${e.episodeId}`
+            }));
+    }
+    getEpisodeNumber(e, t) {
+        if ("tv" === e && t) return parseInt(t);
+    }
+    async getDetailWithAnimeId(e, t, n) {
+        let [r, i] = e.split(":");
+        return await this.getEpisodes({
+            provider: r,
+            idString: i,
+            episodeNumber: this.getEpisodeNumber(t, n)
+        });
+    }
+    async getDetailWithDoubanId(e, t, n) {
+        let r = await getVideoPlatformInfoByDoubanId(e.toString()), i = this.getEpisodeNumber(t, n), o = [];
+        return Object.entries(r.providers).forEach((e)=>{
+            var t, n;
+            let [r, s] = e;
+            o.push({
+                provider: r,
+                idString: null != (n = null == (t = this.scraperMap[r]) ? void 0 : t.generateIdString(s)) ? n : "",
+                episodeNumber: i
+            });
+        }), this.getEpisodes(...o);
+    }
+    constructor(){
+        scrapers_define_property(this, "scrapers", []), scrapers.forEach((e)=>{
+            this.scrapers.push(new e());
+        });
+    }
+}
+const widgetVersion = "0.0.16";
+WidgetMetadata = {
+    id: "baranwang.danmu.universe",
+    title: "\u901A\u7528\u5F39\u5E55",
+    description: "\u901A\u7528\u5F39\u5E55\u63D2\u4EF6\uFF0C\u652F\u6301\u817E\u8BAF\u3001\u4F18\u9177\u3001\u7231\u5947\u827A\u3001\u54D4\u54E9\u54D4\u54E9\u7B49\u5E73\u53F0",
+    author: "Baran",
+    version: widgetVersion,
+    site: "https://github.com/baranwang/forward-widgets/tree/main/packages/danmu-universe",
+    requiredVersion: "0.0.2",
+    modules: [
+        {
+            type: "danmu",
+            id: "searchDanmu",
+            title: "\u641C\u7D22\u5F39\u5E55",
+            functionName: "searchDanmu",
+            description: "\u641C\u7D22\u5F39\u5E55"
+        },
+        {
+            type: "danmu",
+            id: "getComments",
+            title: "\u83B7\u53D6\u5F39\u5E55",
+            functionName: "getComments",
+            description: "\u83B7\u53D6\u5F39\u5E55"
+        },
+        {
+            type: "danmu",
+            id: "getDetail",
+            title: "\u83B7\u53D6\u8BE6\u60C5",
+            functionName: "getDetail",
+            description: "\u83B7\u53D6\u8BE6\u60C5"
+        },
+        {
+            type: "danmu",
+            id: "getDanmuWithSegmentTime",
+            title: "\u83B7\u53D6\u5F39\u5E55\u5207\u7247",
+            functionName: "getComments",
+            description: "\u83B7\u53D6\u5F39\u5E55\u5207\u7247"
+        }
+    ]
+};
+const src_scraper = new scrapers_Scraper();
+searchDanmu = async (e)=>{
+    let { tmdbId: t, type: n, season: r, episode: i } = e;
+    if (!t) return null;
+    let o = await getDoubanInfoByTmdbId(n, t, r);
+    return (null == o ? void 0 : o.doubanId) ? {
+        animes: (await src_scraper.getDetailWithDoubanId(o.doubanId, n, i)).map((e)=>{
+            let t = `[${PROVIDER_NAMES[e.provider]}] `;
+            return e.episodeTitle && (t += e.episodeTitle), {
+                animeId: e.episodeId,
+                animeTitle: t
+            };
+        })
+    } : null;
+}, getDetail = async (e)=>{
+    var t;
+    let { animeId: n, tmdbId: r, type: i, season: o, episode: s } = e;
+    if (!r && !n) return null;
+    if (n) return src_scraper.getDetailWithAnimeId(n.toString(), i, s);
+    let a = await getDoubanInfoByTmdbId(i, null != r ? r : "", o);
+    return src_scraper.getDetailWithDoubanId(null != (t = null == a ? void 0 : a.doubanId) ? t : "", i, s);
+}, getComments = async (e)=>{
+    let { animeId: t, commentId: n, segmentTime: r, tmdbId: i, type: o, season: s, episode: a } = e, u = null != n ? n : t;
+    if (!u) {
+        var l;
+        if (!i) return null;
+        let e = await getDoubanInfoByTmdbId(o, i, s);
+        u = (await src_scraper.getDetailWithDoubanId(null != (l = null == e ? void 0 : e.doubanId) ? l : "", o, a)).map((e)=>[
+                e.provider,
+                e.episodeId
+            ].join(":")).join(",");
+    }
+    let c = await src_scraper.getDanmuWithSegmentTimeByVideoId(u.toString(), r);
+    return {
+        comments: c,
+        count: c.length
+    };
+};
