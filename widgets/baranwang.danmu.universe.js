@@ -464,6 +464,262 @@ var __webpack_modules__ = {
             }(), i;
         });
     },
+    129: function(e, t, n) {
+        !function(r, i, o) {
+            e.exports = t = i(n(95), n(716), n(478), n(516), n(947));
+        }(0, function(e) {
+            return !function() {
+                var t = e, n = t.lib.BlockCipher, r = t.algo, i = [], o = [], s = [], a = [], u = [], l = [], c = [], d = [], f = [], p = [];
+                !function() {
+                    for(var e = [], t = 0; t < 256; t++)t < 128 ? e[t] = t << 1 : e[t] = t << 1 ^ 0x11b;
+                    for(var n = 0, r = 0, t = 0; t < 256; t++){
+                        var h = r ^ r << 1 ^ r << 2 ^ r << 3 ^ r << 4;
+                        h = h >>> 8 ^ 0xff & h ^ 0x63, i[n] = h, o[h] = n;
+                        var m = e[n], g = e[m], v = e[g], y = 0x101 * e[h] ^ 0x1010100 * h;
+                        s[n] = y << 24 | y >>> 8, a[n] = y << 16 | y >>> 16, u[n] = y << 8 | y >>> 24, l[n] = y;
+                        var y = 0x1010101 * v ^ 0x10001 * g ^ 0x101 * m ^ 0x1010100 * n;
+                        c[h] = y << 24 | y >>> 8, d[h] = y << 16 | y >>> 16, f[h] = y << 8 | y >>> 24, p[h] = y, n ? (n = m ^ e[e[e[v ^ m]]], r ^= e[e[r]]) : n = r = 1;
+                    }
+                }();
+                var h = [
+                    0x00,
+                    0x01,
+                    0x02,
+                    0x04,
+                    0x08,
+                    0x10,
+                    0x20,
+                    0x40,
+                    0x80,
+                    0x1b,
+                    0x36
+                ], m = r.AES = n.extend({
+                    _doReset: function() {
+                        if (!this._nRounds || this._keyPriorReset !== this._key) {
+                            for(var e, t = this._keyPriorReset = this._key, n = t.words, r = t.sigBytes / 4, o = this._nRounds = r + 6, s = (o + 1) * 4, a = this._keySchedule = [], u = 0; u < s; u++)u < r ? a[u] = n[u] : (e = a[u - 1], u % r ? r > 6 && u % r == 4 && (e = i[e >>> 24] << 24 | i[e >>> 16 & 0xff] << 16 | i[e >>> 8 & 0xff] << 8 | i[0xff & e]) : e = (i[(e = e << 8 | e >>> 24) >>> 24] << 24 | i[e >>> 16 & 0xff] << 16 | i[e >>> 8 & 0xff] << 8 | i[0xff & e]) ^ h[u / r | 0] << 24, a[u] = a[u - r] ^ e);
+                            for(var l = this._invKeySchedule = [], m = 0; m < s; m++){
+                                var u = s - m;
+                                if (m % 4) var e = a[u];
+                                else var e = a[u - 4];
+                                m < 4 || u <= 4 ? l[m] = e : l[m] = c[i[e >>> 24]] ^ d[i[e >>> 16 & 0xff]] ^ f[i[e >>> 8 & 0xff]] ^ p[i[0xff & e]];
+                            }
+                        }
+                    },
+                    encryptBlock: function(e, t) {
+                        this._doCryptBlock(e, t, this._keySchedule, s, a, u, l, i);
+                    },
+                    decryptBlock: function(e, t) {
+                        var n = e[t + 1];
+                        e[t + 1] = e[t + 3], e[t + 3] = n, this._doCryptBlock(e, t, this._invKeySchedule, c, d, f, p, o);
+                        var n = e[t + 1];
+                        e[t + 1] = e[t + 3], e[t + 3] = n;
+                    },
+                    _doCryptBlock: function(e, t, n, r, i, o, s, a) {
+                        for(var u = this._nRounds, l = e[t] ^ n[0], c = e[t + 1] ^ n[1], d = e[t + 2] ^ n[2], f = e[t + 3] ^ n[3], p = 4, h = 1; h < u; h++){
+                            var m = r[l >>> 24] ^ i[c >>> 16 & 0xff] ^ o[d >>> 8 & 0xff] ^ s[0xff & f] ^ n[p++], g = r[c >>> 24] ^ i[d >>> 16 & 0xff] ^ o[f >>> 8 & 0xff] ^ s[0xff & l] ^ n[p++], v = r[d >>> 24] ^ i[f >>> 16 & 0xff] ^ o[l >>> 8 & 0xff] ^ s[0xff & c] ^ n[p++], y = r[f >>> 24] ^ i[l >>> 16 & 0xff] ^ o[c >>> 8 & 0xff] ^ s[0xff & d] ^ n[p++];
+                            l = m, c = g, d = v, f = y;
+                        }
+                        var m = (a[l >>> 24] << 24 | a[c >>> 16 & 0xff] << 16 | a[d >>> 8 & 0xff] << 8 | a[0xff & f]) ^ n[p++], g = (a[c >>> 24] << 24 | a[d >>> 16 & 0xff] << 16 | a[f >>> 8 & 0xff] << 8 | a[0xff & l]) ^ n[p++], v = (a[d >>> 24] << 24 | a[f >>> 16 & 0xff] << 16 | a[l >>> 8 & 0xff] << 8 | a[0xff & c]) ^ n[p++], y = (a[f >>> 24] << 24 | a[l >>> 16 & 0xff] << 16 | a[c >>> 8 & 0xff] << 8 | a[0xff & d]) ^ n[p++];
+                        e[t] = m, e[t + 1] = g, e[t + 2] = v, e[t + 3] = y;
+                    },
+                    keySize: 8
+                });
+                t.AES = n._createHelper(m);
+            }(), e.AES;
+        });
+    },
+    947: function(e, t, n) {
+        !function(r, i, o) {
+            e.exports = t = i(n(95), n(516));
+        }(0, function(e) {
+            e.lib.Cipher || function() {
+                var t = e, n = t.lib, r = n.Base, i = n.WordArray, o = n.BufferedBlockAlgorithm, s = t.enc;
+                s.Utf8;
+                var a = s.Base64, u = t.algo.EvpKDF, l = n.Cipher = o.extend({
+                    cfg: r.extend(),
+                    createEncryptor: function(e, t) {
+                        return this.create(this._ENC_XFORM_MODE, e, t);
+                    },
+                    createDecryptor: function(e, t) {
+                        return this.create(this._DEC_XFORM_MODE, e, t);
+                    },
+                    init: function(e, t, n) {
+                        this.cfg = this.cfg.extend(n), this._xformMode = e, this._key = t, this.reset();
+                    },
+                    reset: function() {
+                        o.reset.call(this), this._doReset();
+                    },
+                    process: function(e) {
+                        return this._append(e), this._process();
+                    },
+                    finalize: function(e) {
+                        return e && this._append(e), this._doFinalize();
+                    },
+                    keySize: 4,
+                    ivSize: 4,
+                    _ENC_XFORM_MODE: 1,
+                    _DEC_XFORM_MODE: 2,
+                    _createHelper: function() {
+                        function e(e) {
+                            return 'string' == typeof e ? y : g;
+                        }
+                        return function(t) {
+                            return {
+                                encrypt: function(n, r, i) {
+                                    return e(r).encrypt(t, n, r, i);
+                                },
+                                decrypt: function(n, r, i) {
+                                    return e(r).decrypt(t, n, r, i);
+                                }
+                            };
+                        };
+                    }()
+                });
+                n.StreamCipher = l.extend({
+                    _doFinalize: function() {
+                        return this._process(!0);
+                    },
+                    blockSize: 1
+                });
+                var c = t.mode = {}, d = n.BlockCipherMode = r.extend({
+                    createEncryptor: function(e, t) {
+                        return this.Encryptor.create(e, t);
+                    },
+                    createDecryptor: function(e, t) {
+                        return this.Decryptor.create(e, t);
+                    },
+                    init: function(e, t) {
+                        this._cipher = e, this._iv = t;
+                    }
+                }), f = c.CBC = function() {
+                    var e = d.extend();
+                    function t(e, t, n) {
+                        var r, i = this._iv;
+                        i ? (r = i, this._iv = void 0) : r = this._prevBlock;
+                        for(var o = 0; o < n; o++)e[t + o] ^= r[o];
+                    }
+                    return e.Encryptor = e.extend({
+                        processBlock: function(e, n) {
+                            var r = this._cipher, i = r.blockSize;
+                            t.call(this, e, n, i), r.encryptBlock(e, n), this._prevBlock = e.slice(n, n + i);
+                        }
+                    }), e.Decryptor = e.extend({
+                        processBlock: function(e, n) {
+                            var r = this._cipher, i = r.blockSize, o = e.slice(n, n + i);
+                            r.decryptBlock(e, n), t.call(this, e, n, i), this._prevBlock = o;
+                        }
+                    }), e;
+                }(), p = (t.pad = {}).Pkcs7 = {
+                    pad: function(e, t) {
+                        for(var n = 4 * t, r = n - e.sigBytes % n, o = r << 24 | r << 16 | r << 8 | r, s = [], a = 0; a < r; a += 4)s.push(o);
+                        var u = i.create(s, r);
+                        e.concat(u);
+                    },
+                    unpad: function(e) {
+                        var t = 0xff & e.words[e.sigBytes - 1 >>> 2];
+                        e.sigBytes -= t;
+                    }
+                };
+                n.BlockCipher = l.extend({
+                    cfg: l.cfg.extend({
+                        mode: f,
+                        padding: p
+                    }),
+                    reset: function() {
+                        l.reset.call(this);
+                        var e, t = this.cfg, n = t.iv, r = t.mode;
+                        this._xformMode == this._ENC_XFORM_MODE ? e = r.createEncryptor : (e = r.createDecryptor, this._minBufferSize = 1), this._mode && this._mode.__creator == e ? this._mode.init(this, n && n.words) : (this._mode = e.call(r, this, n && n.words), this._mode.__creator = e);
+                    },
+                    _doProcessBlock: function(e, t) {
+                        this._mode.processBlock(e, t);
+                    },
+                    _doFinalize: function() {
+                        var e, t = this.cfg.padding;
+                        return this._xformMode == this._ENC_XFORM_MODE ? (t.pad(this._data, this.blockSize), e = this._process(!0)) : (e = this._process(!0), t.unpad(e)), e;
+                    },
+                    blockSize: 4
+                });
+                var h = n.CipherParams = r.extend({
+                    init: function(e) {
+                        this.mixIn(e);
+                    },
+                    toString: function(e) {
+                        return (e || this.formatter).stringify(this);
+                    }
+                }), m = (t.format = {}).OpenSSL = {
+                    stringify: function(e) {
+                        var t, n = e.ciphertext, r = e.salt;
+                        return (t = r ? i.create([
+                            0x53616c74,
+                            0x65645f5f
+                        ]).concat(r).concat(n) : n).toString(a);
+                    },
+                    parse: function(e) {
+                        var t, n = a.parse(e), r = n.words;
+                        return 0x53616c74 == r[0] && 0x65645f5f == r[1] && (t = i.create(r.slice(2, 4)), r.splice(0, 4), n.sigBytes -= 16), h.create({
+                            ciphertext: n,
+                            salt: t
+                        });
+                    }
+                }, g = n.SerializableCipher = r.extend({
+                    cfg: r.extend({
+                        format: m
+                    }),
+                    encrypt: function(e, t, n, r) {
+                        r = this.cfg.extend(r);
+                        var i = e.createEncryptor(n, r), o = i.finalize(t), s = i.cfg;
+                        return h.create({
+                            ciphertext: o,
+                            key: n,
+                            iv: s.iv,
+                            algorithm: e,
+                            mode: s.mode,
+                            padding: s.padding,
+                            blockSize: e.blockSize,
+                            formatter: r.format
+                        });
+                    },
+                    decrypt: function(e, t, n, r) {
+                        return r = this.cfg.extend(r), t = this._parse(t, r.format), e.createDecryptor(n, r).finalize(t.ciphertext);
+                    },
+                    _parse: function(e, t) {
+                        return 'string' == typeof e ? t.parse(e, this) : e;
+                    }
+                }), v = (t.kdf = {}).OpenSSL = {
+                    execute: function(e, t, n, r, o) {
+                        if (r || (r = i.random(8)), o) var s = u.create({
+                            keySize: t + n,
+                            hasher: o
+                        }).compute(e, r);
+                        else var s = u.create({
+                            keySize: t + n
+                        }).compute(e, r);
+                        var a = i.create(s.words.slice(t), 4 * n);
+                        return s.sigBytes = 4 * t, h.create({
+                            key: s,
+                            iv: a,
+                            salt: r
+                        });
+                    }
+                }, y = n.PasswordBasedCipher = g.extend({
+                    cfg: g.cfg.extend({
+                        kdf: v
+                    }),
+                    encrypt: function(e, t, n, r) {
+                        var i = (r = this.cfg.extend(r)).kdf.execute(n, e.keySize, e.ivSize, r.salt, r.hasher);
+                        r.iv = i.iv;
+                        var o = g.encrypt.call(this, e, t, i.key, r);
+                        return o.mixIn(i), o;
+                    },
+                    decrypt: function(e, t, n, r) {
+                        r = this.cfg.extend(r), t = this._parse(t, r.format);
+                        var i = r.kdf.execute(n, e.keySize, e.ivSize, t.salt, r.hasher);
+                        return r.iv = i.iv, g.decrypt.call(this, e, t, i.key, r);
+                    }
+                });
+            }();
+        });
+    },
     95: function(e, t, n) {
         !function(n, r) {
             e.exports = t = r();
@@ -549,7 +805,7 @@ var __webpack_modules__ = {
                         for(var t = e.length, n = [], r = 0; r < t; r += 2)n[r >>> 3] |= parseInt(e.substr(r, 2), 16) << 24 - r % 8 * 4;
                         return new l.init(n, t / 2);
                     }
-                }, p = c.Latin1 = {
+                }, f = c.Latin1 = {
                     stringify: function(e) {
                         for(var t = e.words, n = e.sigBytes, r = [], i = 0; i < n; i++){
                             var o = t[i >>> 2] >>> 24 - i % 4 * 8 & 0xff;
@@ -561,23 +817,23 @@ var __webpack_modules__ = {
                         for(var t = e.length, n = [], r = 0; r < t; r++)n[r >>> 2] |= (0xff & e.charCodeAt(r)) << 24 - r % 4 * 8;
                         return new l.init(n, t);
                     }
-                }, f = c.Utf8 = {
+                }, p = c.Utf8 = {
                     stringify: function(e) {
                         try {
-                            return decodeURIComponent(escape(p.stringify(e)));
+                            return decodeURIComponent(escape(f.stringify(e)));
                         } catch (e) {
                             throw Error('Malformed UTF-8 data');
                         }
                     },
                     parse: function(e) {
-                        return p.parse(unescape(encodeURIComponent(e)));
+                        return f.parse(unescape(encodeURIComponent(e)));
                     }
                 }, h = a.BufferedBlockAlgorithm = u.extend({
                     reset: function() {
                         this._data = new l.init(), this._nDataBytes = 0;
                     },
                     _append: function(e) {
-                        'string' == typeof e && (e = f.parse(e)), this._data.concat(e), this._nDataBytes += e.sigBytes;
+                        'string' == typeof e && (e = p.parse(e)), this._data.concat(e), this._nDataBytes += e.sigBytes;
                     },
                     _process: function(t) {
                         var n, r = this._data, i = r.words, o = r.sigBytes, s = this.blockSize, a = o / (4 * s), u = (a = t ? e.ceil(a) : e.max((0 | a) - this._minBufferSize, 0)) * s, c = e.min(4 * u, o);
@@ -672,6 +928,71 @@ var __webpack_modules__ = {
             return e.enc.Utf8;
         });
     },
+    516: function(e, t, n) {
+        !function(r, i, o) {
+            e.exports = t = i(n(95), n(825), n(979));
+        }(0, function(e) {
+            return !function() {
+                var t = e, n = t.lib, r = n.Base, i = n.WordArray, o = t.algo, s = o.MD5, a = o.EvpKDF = r.extend({
+                    cfg: r.extend({
+                        keySize: 4,
+                        hasher: s,
+                        iterations: 1
+                    }),
+                    init: function(e) {
+                        this.cfg = this.cfg.extend(e);
+                    },
+                    compute: function(e, t) {
+                        for(var n, r = this.cfg, o = r.hasher.create(), s = i.create(), a = s.words, u = r.keySize, l = r.iterations; a.length < u;){
+                            n && o.update(n), n = o.update(e).finalize(t), o.reset();
+                            for(var c = 1; c < l; c++)n = o.finalize(n), o.reset();
+                            s.concat(n);
+                        }
+                        return s.sigBytes = 4 * u, s;
+                    }
+                });
+                t.EvpKDF = function(e, t, n) {
+                    return a.create(n).compute(e, t);
+                };
+            }(), e.EvpKDF;
+        });
+    },
+    939: function(e, t, n) {
+        !function(r, i, o) {
+            e.exports = t = i(n(95), n(331), n(979));
+        }(0, function(e) {
+            return e.HmacSHA256;
+        });
+    },
+    979: function(e, t, n) {
+        !function(r, i) {
+            e.exports = t = i(n(95));
+        }(0, function(e) {
+            !function() {
+                var t = e, n = t.lib.Base, r = t.enc.Utf8;
+                t.algo.HMAC = n.extend({
+                    init: function(e, t) {
+                        e = this._hasher = new e.init(), 'string' == typeof t && (t = r.parse(t));
+                        var n = e.blockSize, i = 4 * n;
+                        t.sigBytes > i && (t = e.finalize(t)), t.clamp();
+                        for(var o = this._oKey = t.clone(), s = this._iKey = t.clone(), a = o.words, u = s.words, l = 0; l < n; l++)a[l] ^= 0x5c5c5c5c, u[l] ^= 0x36363636;
+                        o.sigBytes = s.sigBytes = i, this.reset();
+                    },
+                    reset: function() {
+                        var e = this._hasher;
+                        e.reset(), e.update(this._iKey);
+                    },
+                    update: function(e) {
+                        return this._hasher.update(e), this;
+                    },
+                    finalize: function(e) {
+                        var t = this._hasher, n = t.finalize(e);
+                        return t.reset(), t.finalize(this._oKey.clone().concat(n));
+                    }
+                });
+            }();
+        });
+    },
     478: function(e, t, n) {
         !function(r, i) {
             e.exports = t = i(n(95));
@@ -695,8 +1016,8 @@ var __webpack_modules__ = {
                             var r = t + n, i = e[r];
                             e[r] = (i << 8 | i >>> 24) & 0x00ff00ff | (i << 24 | i >>> 8) & 0xff00ff00;
                         }
-                        var o = this._hash.words, s = e[t + 0], u = e[t + 1], f = e[t + 2], h = e[t + 3], m = e[t + 4], g = e[t + 5], v = e[t + 6], y = e[t + 7], b = e[t + 8], _ = e[t + 9], w = e[t + 10], k = e[t + 11], x = e[t + 12], S = e[t + 13], E = e[t + 14], z = e[t + 15], O = o[0], I = o[1], $ = o[2], P = o[3];
-                        O = l(O, I, $, P, s, 7, a[0]), P = l(P, O, I, $, u, 12, a[1]), $ = l($, P, O, I, f, 17, a[2]), I = l(I, $, P, O, h, 22, a[3]), O = l(O, I, $, P, m, 7, a[4]), P = l(P, O, I, $, g, 12, a[5]), $ = l($, P, O, I, v, 17, a[6]), I = l(I, $, P, O, y, 22, a[7]), O = l(O, I, $, P, b, 7, a[8]), P = l(P, O, I, $, _, 12, a[9]), $ = l($, P, O, I, w, 17, a[10]), I = l(I, $, P, O, k, 22, a[11]), O = l(O, I, $, P, x, 7, a[12]), P = l(P, O, I, $, S, 12, a[13]), $ = l($, P, O, I, E, 17, a[14]), I = l(I, $, P, O, z, 22, a[15]), O = c(O, I, $, P, u, 5, a[16]), P = c(P, O, I, $, v, 9, a[17]), $ = c($, P, O, I, k, 14, a[18]), I = c(I, $, P, O, s, 20, a[19]), O = c(O, I, $, P, g, 5, a[20]), P = c(P, O, I, $, w, 9, a[21]), $ = c($, P, O, I, z, 14, a[22]), I = c(I, $, P, O, m, 20, a[23]), O = c(O, I, $, P, _, 5, a[24]), P = c(P, O, I, $, E, 9, a[25]), $ = c($, P, O, I, h, 14, a[26]), I = c(I, $, P, O, b, 20, a[27]), O = c(O, I, $, P, S, 5, a[28]), P = c(P, O, I, $, f, 9, a[29]), $ = c($, P, O, I, y, 14, a[30]), I = c(I, $, P, O, x, 20, a[31]), O = d(O, I, $, P, g, 4, a[32]), P = d(P, O, I, $, b, 11, a[33]), $ = d($, P, O, I, k, 16, a[34]), I = d(I, $, P, O, E, 23, a[35]), O = d(O, I, $, P, u, 4, a[36]), P = d(P, O, I, $, m, 11, a[37]), $ = d($, P, O, I, y, 16, a[38]), I = d(I, $, P, O, w, 23, a[39]), O = d(O, I, $, P, S, 4, a[40]), P = d(P, O, I, $, s, 11, a[41]), $ = d($, P, O, I, h, 16, a[42]), I = d(I, $, P, O, v, 23, a[43]), O = d(O, I, $, P, _, 4, a[44]), P = d(P, O, I, $, x, 11, a[45]), $ = d($, P, O, I, z, 16, a[46]), I = d(I, $, P, O, f, 23, a[47]), O = p(O, I, $, P, s, 6, a[48]), P = p(P, O, I, $, y, 10, a[49]), $ = p($, P, O, I, E, 15, a[50]), I = p(I, $, P, O, g, 21, a[51]), O = p(O, I, $, P, x, 6, a[52]), P = p(P, O, I, $, h, 10, a[53]), $ = p($, P, O, I, w, 15, a[54]), I = p(I, $, P, O, u, 21, a[55]), O = p(O, I, $, P, b, 6, a[56]), P = p(P, O, I, $, z, 10, a[57]), $ = p($, P, O, I, v, 15, a[58]), I = p(I, $, P, O, S, 21, a[59]), O = p(O, I, $, P, m, 6, a[60]), P = p(P, O, I, $, k, 10, a[61]), $ = p($, P, O, I, f, 15, a[62]), I = p(I, $, P, O, _, 21, a[63]), o[0] = o[0] + O | 0, o[1] = o[1] + I | 0, o[2] = o[2] + $ | 0, o[3] = o[3] + P | 0;
+                        var o = this._hash.words, s = e[t + 0], u = e[t + 1], p = e[t + 2], h = e[t + 3], m = e[t + 4], g = e[t + 5], v = e[t + 6], y = e[t + 7], b = e[t + 8], _ = e[t + 9], w = e[t + 10], x = e[t + 11], k = e[t + 12], S = e[t + 13], E = e[t + 14], z = e[t + 15], O = o[0], I = o[1], $ = o[2], A = o[3];
+                        O = l(O, I, $, A, s, 7, a[0]), A = l(A, O, I, $, u, 12, a[1]), $ = l($, A, O, I, p, 17, a[2]), I = l(I, $, A, O, h, 22, a[3]), O = l(O, I, $, A, m, 7, a[4]), A = l(A, O, I, $, g, 12, a[5]), $ = l($, A, O, I, v, 17, a[6]), I = l(I, $, A, O, y, 22, a[7]), O = l(O, I, $, A, b, 7, a[8]), A = l(A, O, I, $, _, 12, a[9]), $ = l($, A, O, I, w, 17, a[10]), I = l(I, $, A, O, x, 22, a[11]), O = l(O, I, $, A, k, 7, a[12]), A = l(A, O, I, $, S, 12, a[13]), $ = l($, A, O, I, E, 17, a[14]), I = l(I, $, A, O, z, 22, a[15]), O = c(O, I, $, A, u, 5, a[16]), A = c(A, O, I, $, v, 9, a[17]), $ = c($, A, O, I, x, 14, a[18]), I = c(I, $, A, O, s, 20, a[19]), O = c(O, I, $, A, g, 5, a[20]), A = c(A, O, I, $, w, 9, a[21]), $ = c($, A, O, I, z, 14, a[22]), I = c(I, $, A, O, m, 20, a[23]), O = c(O, I, $, A, _, 5, a[24]), A = c(A, O, I, $, E, 9, a[25]), $ = c($, A, O, I, h, 14, a[26]), I = c(I, $, A, O, b, 20, a[27]), O = c(O, I, $, A, S, 5, a[28]), A = c(A, O, I, $, p, 9, a[29]), $ = c($, A, O, I, y, 14, a[30]), I = c(I, $, A, O, k, 20, a[31]), O = d(O, I, $, A, g, 4, a[32]), A = d(A, O, I, $, b, 11, a[33]), $ = d($, A, O, I, x, 16, a[34]), I = d(I, $, A, O, E, 23, a[35]), O = d(O, I, $, A, u, 4, a[36]), A = d(A, O, I, $, m, 11, a[37]), $ = d($, A, O, I, y, 16, a[38]), I = d(I, $, A, O, w, 23, a[39]), O = d(O, I, $, A, S, 4, a[40]), A = d(A, O, I, $, s, 11, a[41]), $ = d($, A, O, I, h, 16, a[42]), I = d(I, $, A, O, v, 23, a[43]), O = d(O, I, $, A, _, 4, a[44]), A = d(A, O, I, $, k, 11, a[45]), $ = d($, A, O, I, z, 16, a[46]), I = d(I, $, A, O, p, 23, a[47]), O = f(O, I, $, A, s, 6, a[48]), A = f(A, O, I, $, y, 10, a[49]), $ = f($, A, O, I, E, 15, a[50]), I = f(I, $, A, O, g, 21, a[51]), O = f(O, I, $, A, k, 6, a[52]), A = f(A, O, I, $, h, 10, a[53]), $ = f($, A, O, I, w, 15, a[54]), I = f(I, $, A, O, u, 21, a[55]), O = f(O, I, $, A, b, 6, a[56]), A = f(A, O, I, $, z, 10, a[57]), $ = f($, A, O, I, v, 15, a[58]), I = f(I, $, A, O, S, 21, a[59]), O = f(O, I, $, A, m, 6, a[60]), A = f(A, O, I, $, x, 10, a[61]), $ = f($, A, O, I, p, 15, a[62]), I = f(I, $, A, O, _, 21, a[63]), o[0] = o[0] + O | 0, o[1] = o[1] + I | 0, o[2] = o[2] + $ | 0, o[3] = o[3] + A | 0;
                     },
                     _doFinalize: function() {
                         var e = this._data, n = e.words, r = 8 * this._nDataBytes, i = 8 * e.sigBytes;
@@ -726,12 +1047,122 @@ var __webpack_modules__ = {
                     var a = e + (t ^ n ^ r) + i + s;
                     return (a << o | a >>> 32 - o) + t;
                 }
-                function p(e, t, n, r, i, o, s) {
+                function f(e, t, n, r, i, o, s) {
                     var a = e + (n ^ (t | ~r)) + i + s;
                     return (a << o | a >>> 32 - o) + t;
                 }
                 n.MD5 = o._createHelper(u), n.HmacMD5 = o._createHmacHelper(u);
             }(Math), e.MD5;
+        });
+    },
+    760: function(e, t, n) {
+        !function(r, i, o) {
+            e.exports = t = i(n(95), n(947));
+        }(0, function(e) {
+            return e.mode.ECB = function() {
+                var t = e.lib.BlockCipherMode.extend();
+                return t.Encryptor = t.extend({
+                    processBlock: function(e, t) {
+                        this._cipher.encryptBlock(e, t);
+                    }
+                }), t.Decryptor = t.extend({
+                    processBlock: function(e, t) {
+                        this._cipher.decryptBlock(e, t);
+                    }
+                }), t;
+            }(), e.mode.ECB;
+        });
+    },
+    186: function(e, t, n) {
+        !function(r, i, o) {
+            e.exports = t = i(n(95), n(947));
+        }(0, function(e) {
+            return e.pad.Pkcs7;
+        });
+    },
+    825: function(e, t, n) {
+        !function(r, i) {
+            e.exports = t = i(n(95));
+        }(0, function(e) {
+            return !function() {
+                var t = e, n = t.lib, r = n.WordArray, i = n.Hasher, o = t.algo, s = [], a = o.SHA1 = i.extend({
+                    _doReset: function() {
+                        this._hash = new r.init([
+                            0x67452301,
+                            0xefcdab89,
+                            0x98badcfe,
+                            0x10325476,
+                            0xc3d2e1f0
+                        ]);
+                    },
+                    _doProcessBlock: function(e, t) {
+                        for(var n = this._hash.words, r = n[0], i = n[1], o = n[2], a = n[3], u = n[4], l = 0; l < 80; l++){
+                            if (l < 16) s[l] = 0 | e[t + l];
+                            else {
+                                var c = s[l - 3] ^ s[l - 8] ^ s[l - 14] ^ s[l - 16];
+                                s[l] = c << 1 | c >>> 31;
+                            }
+                            var d = (r << 5 | r >>> 27) + u + s[l];
+                            l < 20 ? d += (i & o | ~i & a) + 0x5a827999 : l < 40 ? d += (i ^ o ^ a) + 0x6ed9eba1 : l < 60 ? d += (i & o | i & a | o & a) - 0x70e44324 : d += (i ^ o ^ a) - 0x359d3e2a, u = a, a = o, o = i << 30 | i >>> 2, i = r, r = d;
+                        }
+                        n[0] = n[0] + r | 0, n[1] = n[1] + i | 0, n[2] = n[2] + o | 0, n[3] = n[3] + a | 0, n[4] = n[4] + u | 0;
+                    },
+                    _doFinalize: function() {
+                        var e = this._data, t = e.words, n = 8 * this._nDataBytes, r = 8 * e.sigBytes;
+                        return t[r >>> 5] |= 0x80 << 24 - r % 32, t[(r + 64 >>> 9 << 4) + 14] = Math.floor(n / 0x100000000), t[(r + 64 >>> 9 << 4) + 15] = n, e.sigBytes = 4 * t.length, this._process(), this._hash;
+                    },
+                    clone: function() {
+                        var e = i.clone.call(this);
+                        return e._hash = this._hash.clone(), e;
+                    }
+                });
+                t.SHA1 = i._createHelper(a), t.HmacSHA1 = i._createHmacHelper(a);
+            }(), e.SHA1;
+        });
+    },
+    331: function(e, t, n) {
+        !function(r, i) {
+            e.exports = t = i(n(95));
+        }(0, function(e) {
+            return !function(t) {
+                var n = e, r = n.lib, i = r.WordArray, o = r.Hasher, s = n.algo, a = [], u = [];
+                !function() {
+                    function e(e) {
+                        for(var n = t.sqrt(e), r = 2; r <= n; r++)if (!(e % r)) return !1;
+                        return !0;
+                    }
+                    function n(e) {
+                        return (e - (0 | e)) * 0x100000000 | 0;
+                    }
+                    for(var r = 2, i = 0; i < 64;)e(r) && (i < 8 && (a[i] = n(t.pow(r, 0.5))), u[i] = n(t.pow(r, 1 / 3)), i++), r++;
+                }();
+                var l = [], c = s.SHA256 = o.extend({
+                    _doReset: function() {
+                        this._hash = new i.init(a.slice(0));
+                    },
+                    _doProcessBlock: function(e, t) {
+                        for(var n = this._hash.words, r = n[0], i = n[1], o = n[2], s = n[3], a = n[4], c = n[5], d = n[6], f = n[7], p = 0; p < 64; p++){
+                            if (p < 16) l[p] = 0 | e[t + p];
+                            else {
+                                var h = l[p - 15], m = (h << 25 | h >>> 7) ^ (h << 14 | h >>> 18) ^ h >>> 3, g = l[p - 2], v = (g << 15 | g >>> 17) ^ (g << 13 | g >>> 19) ^ g >>> 10;
+                                l[p] = m + l[p - 7] + v + l[p - 16];
+                            }
+                            var y = a & c ^ ~a & d, b = r & i ^ r & o ^ i & o, _ = (r << 30 | r >>> 2) ^ (r << 19 | r >>> 13) ^ (r << 10 | r >>> 22), w = f + ((a << 26 | a >>> 6) ^ (a << 21 | a >>> 11) ^ (a << 7 | a >>> 25)) + y + u[p] + l[p], x = _ + b;
+                            f = d, d = c, c = a, a = s + w | 0, s = o, o = i, i = r, r = w + x | 0;
+                        }
+                        n[0] = n[0] + r | 0, n[1] = n[1] + i | 0, n[2] = n[2] + o | 0, n[3] = n[3] + s | 0, n[4] = n[4] + a | 0, n[5] = n[5] + c | 0, n[6] = n[6] + d | 0, n[7] = n[7] + f | 0;
+                    },
+                    _doFinalize: function() {
+                        var e = this._data, n = e.words, r = 8 * this._nDataBytes, i = 8 * e.sigBytes;
+                        return n[i >>> 5] |= 0x80 << 24 - i % 32, n[(i + 64 >>> 9 << 4) + 14] = t.floor(r / 0x100000000), n[(i + 64 >>> 9 << 4) + 15] = r, e.sigBytes = 4 * n.length, this._process(), this._hash;
+                    },
+                    clone: function() {
+                        var e = o.clone.call(this);
+                        return e._hash = this._hash.clone(), e;
+                    }
+                });
+                n.SHA256 = o._createHelper(c), n.HmacSHA256 = o._createHmacHelper(c);
+            }(Math), e.SHA256;
         });
     },
     643: function(e, t, n) {
@@ -787,12 +1218,12 @@ var __webpack_modules__ = {
             }
             throw Error("invalid varint encoding");
         }
-        function p(e, t) {
+        function f(e, t) {
             return (e[t - 4] | e[t - 3] << 8 | e[t - 2] << 16 | e[t - 1] << 24) >>> 0;
         }
-        function f() {
+        function p() {
             if (this.pos + 8 > this.len) throw a(this, 8);
-            return new o(p(this.buf, this.pos += 4), p(this.buf, this.pos += 4));
+            return new o(f(this.buf, this.pos += 4), f(this.buf, this.pos += 4));
         }
         u.create = c(), u.prototype._slice = i.Array.prototype.subarray || i.Array.prototype.slice, u.prototype.uint32 = function() {
             var e = 4294967295;
@@ -810,10 +1241,10 @@ var __webpack_modules__ = {
             return 0 !== this.uint32();
         }, u.prototype.fixed32 = function() {
             if (this.pos + 4 > this.len) throw a(this, 4);
-            return p(this.buf, this.pos += 4);
+            return f(this.buf, this.pos += 4);
         }, u.prototype.sfixed32 = function() {
             if (this.pos + 4 > this.len) throw a(this, 4);
-            return 0 | p(this.buf, this.pos += 4);
+            return 0 | f(this.buf, this.pos += 4);
         }, u.prototype.float = function() {
             if (this.pos + 4 > this.len) throw a(this, 4);
             var e = i.float.readFloatLE(this.buf, this.pos);
@@ -876,10 +1307,10 @@ var __webpack_modules__ = {
                     return d.call(this).zzDecode()[t](!1);
                 },
                 fixed64: function() {
-                    return f.call(this)[t](!0);
+                    return p.call(this)[t](!0);
                 },
                 sfixed64: function() {
-                    return f.call(this)[t](!1);
+                    return p.call(this)[t](!1);
                 }
             });
         };
@@ -1102,7 +1533,7 @@ var __webpack_modules__ = {
         function d() {
             this.len = 0, this.head = new u(l, 0, 0), this.tail = this.head, this.states = null;
         }
-        var p = function() {
+        var f = function() {
             return i.Buffer ? function() {
                 return (d.create = function() {
                     return new r();
@@ -1111,7 +1542,7 @@ var __webpack_modules__ = {
                 return new d();
             };
         };
-        function f(e, t, n) {
+        function p(e, t, n) {
             t[n] = 255 & e;
         }
         function h(e, t, n) {
@@ -1129,7 +1560,7 @@ var __webpack_modules__ = {
         function v(e, t, n) {
             t[n] = 255 & e, t[n + 1] = e >>> 8 & 255, t[n + 2] = e >>> 16 & 255, t[n + 3] = e >>> 24;
         }
-        d.create = p(), d.alloc = function(e) {
+        d.create = f(), d.alloc = function(e) {
             return new i.Array(e);
         }, i.Array !== Array && (d.alloc = i.pool(d.alloc, i.Array.prototype.subarray)), d.prototype._push = function(e, t, n) {
             return this.tail = this.tail.next = new u(e, t, n), this.len += t, this;
@@ -1146,7 +1577,7 @@ var __webpack_modules__ = {
             var t = o.from(e).zzEncode();
             return this._push(g, t.length(), t);
         }, d.prototype.bool = function(e) {
-            return this._push(f, 1, +!!e);
+            return this._push(p, 1, +!!e);
         }, d.prototype.fixed32 = function(e) {
             return this._push(v, 4, e >>> 0);
         }, d.prototype.sfixed32 = d.prototype.fixed32, d.prototype.fixed64 = function(e) {
@@ -1164,7 +1595,7 @@ var __webpack_modules__ = {
         };
         d.prototype.bytes = function(e) {
             var t = e.length >>> 0;
-            if (!t) return this._push(f, 1, 0);
+            if (!t) return this._push(p, 1, 0);
             if (i.isString(e)) {
                 var n = d.alloc(t = s.length(e));
                 s.decode(e, n, 0), e = n;
@@ -1172,7 +1603,7 @@ var __webpack_modules__ = {
             return this.uint32(t)._push(y, t, e);
         }, d.prototype.string = function(e) {
             var t = a.length(e);
-            return t ? this.uint32(t)._push(a.write, t, e) : this._push(f, 1, 0);
+            return t ? this.uint32(t)._push(a.write, t, e) : this._push(p, 1, 0);
         }, d.prototype.fork = function() {
             return this.states = new c(this), this.head = this.tail = new u(l, 0, 0), this.len = 0, this;
         }, d.prototype.reset = function() {
@@ -1184,7 +1615,7 @@ var __webpack_modules__ = {
             for(var e = this.head.next, t = this.constructor.alloc(this.len), n = 0; e;)e.fn(e.val, t, n), n += e.len, e = e.next;
             return t;
         }, d._configure = function(e) {
-            r = e, d.create = p(), r._configure();
+            r = e, d.create = f(), r._configure();
         };
     },
     491: function(e, t, n) {
@@ -1271,7 +1702,7 @@ var __webpack_modules__ = {
         function d(e) {
             return (e || '').toString().replace(o, '');
         }
-        var p = [
+        var f = [
             [
                 '#',
                 'hash'
@@ -1312,16 +1743,16 @@ var __webpack_modules__ = {
                 1,
                 1
             ]
-        ], f = {
+        ], p = {
             hash: 1,
             query: 1
         };
         function h(e) {
             var t, r, i = (t = 'undefined' != typeof window ? window : void 0 !== n.g ? n.g : 'undefined' != typeof self ? self : {}).location || {}, o = {}, s = typeof (e = e || i);
             if ('blob:' === e.protocol) o = new y(unescape(e.pathname), {});
-            else if ('string' === s) for(r in o = new y(e, {}), f)delete o[r];
+            else if ('string' === s) for(r in o = new y(e, {}), p)delete o[r];
             else if ('object' === s) {
-                for(r in e)r in f || (o[r] = e[r]);
+                for(r in e)r in p || (o[r] = e[r]);
                 void 0 === o.slashes && (o.slashes = a.test(e.href));
             }
             return o;
@@ -1346,18 +1777,18 @@ var __webpack_modules__ = {
         }
         function y(e, t, n) {
             if (e = (e = d(e)).replace(s, ''), !(this instanceof y)) return new y(e, t, n);
-            var o, a, u, l, f, b, _ = p.slice(), w = typeof t, k = this, x = 0;
-            for('object' !== w && 'string' !== w && (n = t, t = null), n && 'function' != typeof n && (n = i.parse), o = !(a = g(e || '', t = h(t))).protocol && !a.slashes, k.slashes = a.slashes || o && t.slashes, k.protocol = a.protocol || t.protocol || '', e = a.rest, ('file:' === a.protocol && (2 !== a.slashesCount || c.test(e)) || !a.slashes && (a.protocol || a.slashesCount < 2 || !m(k.protocol))) && (_[3] = [
+            var o, a, u, l, p, b, _ = f.slice(), w = typeof t, x = this, k = 0;
+            for('object' !== w && 'string' !== w && (n = t, t = null), n && 'function' != typeof n && (n = i.parse), o = !(a = g(e || '', t = h(t))).protocol && !a.slashes, x.slashes = a.slashes || o && t.slashes, x.protocol = a.protocol || t.protocol || '', e = a.rest, ('file:' === a.protocol && (2 !== a.slashesCount || c.test(e)) || !a.slashes && (a.protocol || a.slashesCount < 2 || !m(x.protocol))) && (_[3] = [
                 /(.*)/,
                 'pathname'
-            ]); x < _.length; x++){
-                if ('function' == typeof (l = _[x])) {
-                    e = l(e, k);
+            ]); k < _.length; k++){
+                if ('function' == typeof (l = _[k])) {
+                    e = l(e, x);
                     continue;
                 }
-                u = l[0], b = l[1], u != u ? k[b] = e : 'string' == typeof u ? ~(f = '@' === u ? e.lastIndexOf(u) : e.indexOf(u)) && ('number' == typeof l[2] ? (k[b] = e.slice(0, f), e = e.slice(f + l[2])) : (k[b] = e.slice(f), e = e.slice(0, f))) : (f = u.exec(e)) && (k[b] = f[1], e = e.slice(0, f.index)), k[b] = k[b] || o && l[3] && t[b] || '', l[4] && (k[b] = k[b].toLowerCase());
+                u = l[0], b = l[1], u != u ? x[b] = e : 'string' == typeof u ? ~(p = '@' === u ? e.lastIndexOf(u) : e.indexOf(u)) && ('number' == typeof l[2] ? (x[b] = e.slice(0, p), e = e.slice(p + l[2])) : (x[b] = e.slice(p), e = e.slice(0, p))) : (p = u.exec(e)) && (x[b] = p[1], e = e.slice(0, p.index)), x[b] = x[b] || o && l[3] && t[b] || '', l[4] && (x[b] = x[b].toLowerCase());
             }
-            n && (k.query = n(k.query)), o && t.slashes && '/' !== k.pathname.charAt(0) && ('' !== k.pathname || '' !== t.pathname) && (k.pathname = v(k.pathname, t.pathname)), '/' !== k.pathname.charAt(0) && m(k.protocol) && (k.pathname = '/' + k.pathname), r(k.port, k.protocol) || (k.host = k.hostname, k.port = ''), k.username = k.password = '', k.auth && (~(f = k.auth.indexOf(':')) ? (k.username = k.auth.slice(0, f), k.username = encodeURIComponent(decodeURIComponent(k.username)), k.password = k.auth.slice(f + 1), k.password = encodeURIComponent(decodeURIComponent(k.password))) : k.username = encodeURIComponent(decodeURIComponent(k.auth)), k.auth = k.password ? k.username + ':' + k.password : k.username), k.origin = 'file:' !== k.protocol && m(k.protocol) && k.host ? k.protocol + '//' + k.host : 'null', k.href = k.toString();
+            n && (x.query = n(x.query)), o && t.slashes && '/' !== x.pathname.charAt(0) && ('' !== x.pathname || '' !== t.pathname) && (x.pathname = v(x.pathname, t.pathname)), '/' !== x.pathname.charAt(0) && m(x.protocol) && (x.pathname = '/' + x.pathname), r(x.port, x.protocol) || (x.host = x.hostname, x.port = ''), x.username = x.password = '', x.auth && (~(p = x.auth.indexOf(':')) ? (x.username = x.auth.slice(0, p), x.username = encodeURIComponent(decodeURIComponent(x.username)), x.password = x.auth.slice(p + 1), x.password = encodeURIComponent(decodeURIComponent(x.password))) : x.username = encodeURIComponent(decodeURIComponent(x.auth)), x.auth = x.password ? x.username + ':' + x.password : x.username), x.origin = 'file:' !== x.protocol && m(x.protocol) && x.host ? x.protocol + '//' + x.host : 'null', x.href = x.toString();
         }
         y.prototype = {
             set: function(e, t, n) {
@@ -1393,8 +1824,8 @@ var __webpack_modules__ = {
                         var a = t.indexOf(':');
                         ~a ? (o.username = t.slice(0, a), o.username = encodeURIComponent(decodeURIComponent(o.username)), o.password = t.slice(a + 1), o.password = encodeURIComponent(decodeURIComponent(o.password))) : o.username = encodeURIComponent(decodeURIComponent(t));
                 }
-                for(var l = 0; l < p.length; l++){
-                    var c = p[l];
+                for(var l = 0; l < f.length; l++){
+                    var c = f[l];
                     c[4] && (o[c[1]] = o[c[1]].toLowerCase());
                 }
                 return o.auth = o.password ? o.username + ':' + o.password : o.username, o.origin = 'file:' !== o.protocol && m(o.protocol) && o.host ? o.protocol + '//' + o.host : 'null', o.href = o.toString(), o;
@@ -1420,40 +1851,6 @@ function __webpack_require__(e) {
     };
     return __webpack_modules__[e].call(n.exports, n, n.exports, __webpack_require__), n.loaded = !0, n.exports;
 }
-(()=>{
-    __webpack_require__.n = (e)=>{
-        var t = e && e.__esModule ? ()=>e.default : ()=>e;
-        return __webpack_require__.d(t, {
-            a: t
-        }), t;
-    };
-})(), (()=>{
-    __webpack_require__.d = (e, t)=>{
-        for(var n in t)__webpack_require__.o(t, n) && !__webpack_require__.o(e, n) && Object.defineProperty(e, n, {
-            enumerable: !0,
-            get: t[n]
-        });
-    };
-})(), (()=>{
-    __webpack_require__.g = (()=>{
-        if ('object' == typeof globalThis) return globalThis;
-        try {
-            return this || Function('return this')();
-        } catch (e) {
-            if ('object' == typeof window) return window;
-        }
-    })();
-})(), (()=>{
-    __webpack_require__.o = (e, t)=>Object.prototype.hasOwnProperty.call(e, t);
-})(), (()=>{
-    __webpack_require__.nmd = (e)=>(e.paths = [], e.children || (e.children = []), e);
-})();
-const PROVIDER_NAMES = {
-    tencent: "\u817E\u8BAF\u89C6\u9891",
-    iqiyi: "\u7231\u5947\u827A",
-    youku: "\u4F18\u9177\u89C6\u9891",
-    bilibili: "\u54D4\u54E9\u54D4\u54E9"
-};
 function $constructor(e, t, n) {
     function r(n, r) {
         var i;
@@ -1484,7 +1881,34 @@ function $constructor(e, t, n) {
         value: e
     }), s;
 }
-Object.freeze({
+(()=>{
+    __webpack_require__.n = (e)=>{
+        var t = e && e.__esModule ? ()=>e.default : ()=>e;
+        return __webpack_require__.d(t, {
+            a: t
+        }), t;
+    };
+})(), (()=>{
+    __webpack_require__.d = (e, t)=>{
+        for(var n in t)__webpack_require__.o(t, n) && !__webpack_require__.o(e, n) && Object.defineProperty(e, n, {
+            enumerable: !0,
+            get: t[n]
+        });
+    };
+})(), (()=>{
+    __webpack_require__.g = (()=>{
+        if ('object' == typeof globalThis) return globalThis;
+        try {
+            return this || Function('return this')();
+        } catch (e) {
+            if ('object' == typeof window) return window;
+        }
+    })();
+})(), (()=>{
+    __webpack_require__.o = (e, t)=>Object.prototype.hasOwnProperty.call(e, t);
+})(), (()=>{
+    __webpack_require__.nmd = (e)=>(e.paths = [], e.children || (e.children = []), e);
+})(), Object.freeze({
     status: "aborted"
 }), Symbol("zod_brand");
 class $ZodAsyncError extends Error {
@@ -2523,6 +2947,8 @@ const $ZodJWT = $constructor("$ZodJWT", (e, t)=>{
             inst: e
         }), n;
     };
+}), $ZodAny = $constructor("$ZodAny", (e, t)=>{
+    $ZodType.init(e, t), e._zod.parse = (e)=>e;
 }), $ZodUnknown = $constructor("$ZodUnknown", (e, t)=>{
     $ZodType.init(e, t), e._zod.parse = (e)=>e;
 }), $ZodNever = $constructor("$ZodNever", (e, t)=>{
@@ -2620,46 +3046,46 @@ const $ZodObject = $constructor("$ZodObject", (e, t)=>{
     }, s = util_isObject, a = !globalConfig.jitless, u = util_allowsEval, l = a && u.value, c = t.catchall;
     e._zod.parse = (u, d)=>{
         r ?? (r = i.value);
-        let p = u.value;
-        if (!s(p)) return u.issues.push({
+        let f = u.value;
+        if (!s(f)) return u.issues.push({
             expected: "object",
             code: "invalid_type",
-            input: p,
+            input: f,
             inst: e
         }), u;
-        let f = [];
+        let p = [];
         if (a && l && d?.async === !1 && !0 !== d.jitless) n || (n = o(t.shape)), u = n(u, d);
         else {
             u.value = {};
             let e = r.shape;
             for (let t of r.keys){
                 let n = e[t]._zod.run({
-                    value: p[t],
+                    value: f[t],
                     issues: []
                 }, d);
-                n instanceof Promise ? f.push(n.then((e)=>handlePropertyResult(e, u, t, p))) : handlePropertyResult(n, u, t, p);
+                n instanceof Promise ? p.push(n.then((e)=>handlePropertyResult(e, u, t, f))) : handlePropertyResult(n, u, t, f);
             }
         }
-        if (!c) return f.length ? Promise.all(f).then(()=>u) : u;
+        if (!c) return p.length ? Promise.all(p).then(()=>u) : u;
         let h = [], m = r.keySet, g = c._zod, v = g.def.type;
-        for (let e of Object.keys(p)){
+        for (let e of Object.keys(f)){
             if (m.has(e)) continue;
             if ("never" === v) {
                 h.push(e);
                 continue;
             }
             let t = g.run({
-                value: p[e],
+                value: f[e],
                 issues: []
             }, d);
-            t instanceof Promise ? f.push(t.then((t)=>handlePropertyResult(t, u, e, p))) : handlePropertyResult(t, u, e, p);
+            t instanceof Promise ? p.push(t.then((t)=>handlePropertyResult(t, u, e, f))) : handlePropertyResult(t, u, e, f);
         }
         return (h.length && u.issues.push({
             code: "unrecognized_keys",
             keys: h,
-            input: p,
+            input: f,
             inst: e
-        }), f.length) ? Promise.all(f).then(()=>u) : u;
+        }), p.length) ? Promise.all(p).then(()=>u) : u;
     };
 });
 function handleUnionResults(e, t, n, r) {
@@ -3028,6 +3454,13 @@ function _string(e, t) {
         ...normalizeParams(t)
     });
 }
+function _coercedString(e, t) {
+    return new e({
+        type: "string",
+        coerce: !0,
+        ...normalizeParams(t)
+    });
+}
 function _email(e, t) {
     return new e({
         type: "string",
@@ -3293,6 +3726,11 @@ function _boolean(e, t) {
     return new e({
         type: "boolean",
         ...normalizeParams(t)
+    });
+}
+function _any(e) {
+    return new e({
+        type: "any"
     });
 }
 function _unknown(e) {
@@ -3617,6 +4055,12 @@ const ZodBoolean = $constructor("ZodBoolean", (e, t)=>{
 function schemas_boolean(e) {
     return _boolean(ZodBoolean, e);
 }
+const ZodAny = $constructor("ZodAny", (e, t)=>{
+    $ZodAny.init(e, t), ZodType.init(e, t);
+});
+function any() {
+    return _any(ZodAny);
+}
 const ZodUnknown = $constructor("ZodUnknown", (e, t)=>{
     $ZodUnknown.init(e, t), ZodType.init(e, t);
 });
@@ -3866,35 +4310,41 @@ function refine(e, t = {}) {
 function superRefine(e) {
     return _superRefine(e);
 }
-function omit_omit(e, t) {
-    let n = {
-        ...e
-    };
-    for(let e = 0; e < t.length; e++){
-        let r = t[e];
-        delete n[r];
-    }
-    return n;
+function preprocess(e, t) {
+    return pipe(transform(e), t);
 }
-function isUnsafeProperty(e) {
-    return '__proto__' === e;
+function coerce_string(e) {
+    return _coercedString(ZodString, e);
 }
-function isPlainObject_isPlainObject(e) {
-    if (!e || 'object' != typeof e) return !1;
-    let t = Object.getPrototypeOf(e);
-    return (null === t || t === Object.prototype || null === Object.getPrototypeOf(t)) && '[object Object]' === Object.prototype.toString.call(e);
+function coerce_number(e) {
+    return _coercedNumber(ZodNumber, e);
 }
-function merge_merge(e, t) {
-    let n = Object.keys(t);
-    for(let r = 0; r < n.length; r++){
-        let i = n[r];
-        if (isUnsafeProperty(i)) continue;
-        let o = t[i], s = e[i];
-        Array.isArray(o) ? Array.isArray(s) ? e[i] = merge_merge(s, o) : e[i] = merge_merge([], o) : isPlainObject_isPlainObject(o) ? isPlainObject_isPlainObject(s) ? e[i] = merge_merge(s, o) : e[i] = merge_merge({}, o) : (void 0 === s || void 0 !== o) && (e[i] = o);
-    }
-    return e;
-}
-var url_parse = __webpack_require__(337), url_parse_default = __webpack_require__.n(url_parse), enc_base64 = __webpack_require__(716), enc_base64_default = __webpack_require__.n(enc_base64);
+var constants_MediaType = function(e) {
+    return e.Movie = "movie", e.TV = "tv", e;
+}({});
+const PROVIDER_NAMES = {
+    tencent: "\u817E\u8BAF\u89C6\u9891",
+    iqiyi: "\u7231\u5947\u827A",
+    youku: "\u4F18\u9177\u89C6\u9891",
+    bilibili: "\u54D4\u54E9\u54D4\u54E9",
+    renren: "\u4EBA\u4EBA\u89C6\u9891"
+}, searchDanmuParamsSchema = schemas_object({
+    tmdbId: coerce_string().optional(),
+    type: schemas_enum([
+        "movie",
+        "tv"
+    ]).transform((e)=>e).catch("movie"),
+    title: coerce_string().optional(),
+    seriesName: coerce_string().optional(),
+    season: coerce_number().optional(),
+    episode: coerce_number().optional(),
+    fuzzyMatch: schemas_enum([
+        "always",
+        "never",
+        "auto"
+    ]).catch("auto").optional().default("auto")
+});
+var enc_base64 = __webpack_require__(716), enc_base64_default = __webpack_require__.n(enc_base64);
 function safeJsonParse(e) {
     try {
         if (!e) return null;
@@ -3916,6 +4366,12 @@ function base64ToUint8Array(e) {
         n[e] = t.words[r] >>> 24 - 8 * i & 0xff;
     }
     return n;
+}
+function generateUUID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (e)=>{
+        let t = 16 * Math.random() | 0;
+        return ("x" === e ? t : 0x3 & t | 0x8).toString(16);
+    });
 }
 function _define_property(e, t, n) {
     return t in e ? Object.defineProperty(e, t, {
@@ -3957,10 +4413,10 @@ class Storage {
     setJson(e, t, n) {
         return this.set(e, JSON.stringify(t), n);
     }
-    cleanup() {
+    async cleanup() {
         try {
             let e = "__storage_last_cleanup__";
-            this.get(e) || Widget.storage.keys().forEach((e)=>{
+            this.get(e) || (await Widget.storage.keys()).forEach((e)=>{
                 this.get(e);
             }), this.set(e, "1", {
                 ttl: TTL_1_DAY
@@ -3973,7 +4429,41 @@ class Storage {
         _define_property(this, "defaultTTL", TTL_5_MINUTES);
     }
 }
-const storage = new Storage();
+const storage = new Storage(), getExternalIdsByTmdbId = async (e, t)=>{
+    let n = null, r = `tmdb:${e}:${t}:external_ids`, i = storage.getJson(r);
+    return i ? n = i : (n = await Widget.tmdb.get(`/${e}/${t}/external_ids`), storage.setJson(r, n, {
+        ttl: TTL_7_DAYS
+    })), n;
+};
+function omit_omit(e, t) {
+    let n = {
+        ...e
+    };
+    for(let e = 0; e < t.length; e++){
+        let r = t[e];
+        delete n[r];
+    }
+    return n;
+}
+function isUnsafeProperty(e) {
+    return '__proto__' === e;
+}
+function isPlainObject_isPlainObject(e) {
+    if (!e || 'object' != typeof e) return !1;
+    let t = Object.getPrototypeOf(e);
+    return (null === t || t === Object.prototype || null === Object.getPrototypeOf(t)) && '[object Object]' === Object.prototype.toString.call(e);
+}
+function merge_merge(e, t) {
+    let n = Object.keys(t);
+    for(let r = 0; r < n.length; r++){
+        let i = n[r];
+        if (isUnsafeProperty(i)) continue;
+        let o = t[i], s = e[i];
+        Array.isArray(o) ? Array.isArray(s) ? e[i] = merge_merge(s, o) : e[i] = merge_merge([], o) : isPlainObject_isPlainObject(o) ? isPlainObject_isPlainObject(s) ? e[i] = merge_merge(s, o) : e[i] = merge_merge({}, o) : (void 0 === s || void 0 !== o) && (e[i] = o);
+    }
+    return e;
+}
+var url_parse = __webpack_require__(337), url_parse_default = __webpack_require__.n(url_parse);
 function fetch_define_property(e, t, n) {
     return t in e ? Object.defineProperty(e, t, {
         value: n,
@@ -4062,13 +4552,13 @@ class Fetch {
             }, s), r = storage.getJson(n);
             if (r) return console.debug("fetch cache hit", n), Promise.resolve(r);
         }
-        let a = o ? void 0 : n, { timeout: u, schema: l, params: c, ...d } = s, p = t;
-        c && (p = `${t}?${url_parse.qs.stringify(c)}`), console.debug("\u2B06\uFE0F fetch", p, null != a ? a : "", d);
-        let f = o ? Widget.http.get(p, d) : Widget.http.post(p, a, d);
+        let a = o ? void 0 : n, { timeout: u, schema: l, params: c, ...d } = s, f = t;
+        c && (f = `${t}?${url_parse.qs.stringify(c)}`), console.debug("\u2B06\uFE0F fetch", f, null != a ? a : "", d);
+        let p = o ? Widget.http.get(f, d) : Widget.http.post(f, a, d);
         return u && u > 0 ? Promise.race([
-            f,
+            p,
             this.createTimeoutPromise(u)
-        ]) : f;
+        ]) : p;
     }
     getCacheKey(e, t) {
         var n;
@@ -4106,11 +4596,7 @@ class Fetch {
         };
     }
 }
-const fetch_fetch = new Fetch();
-function coerce_number(e) {
-    return _coercedNumber(ZodNumber, e);
-}
-const BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRequestSchema = schemas_object({
+const fetch = new Fetch(), BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRequestSchema = schemas_object({
     season: coerce_number().optional().default(1),
     pageSize: coerce_number().optional().default(20),
     pageToken: schemas_string().optional()
@@ -4187,7 +4673,7 @@ const BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRe
         u = null != (s = null == r || null == (o = r.episodes.find((e)=>1 === e.episodeNumber)) ? void 0 : o.id) ? s : "";
     }
     u || (u = e), console.log("Get douban info by imdb id", u);
-    let l = await fetch_fetch.post(`https://api.douban.com/v2/movie/imdb/${u}`, {
+    let l = await fetch.post(`https://api.douban.com/v2/movie/imdb/${u}`, {
         apikey: DOUBAN_API_KEY
     }, {
         headers: {
@@ -4206,12 +4692,69 @@ const BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRe
         doubanId: c,
         originResponse: l.data
     } : null;
-}, getExternalIdsByTmdbId = async (e, t)=>{
-    let n = null, r = `tmdb:${e}:${t}:external_ids`, i = storage.getJson(r);
-    return i ? n = i : (n = await Widget.tmdb.get(`/${e}/${t}/external_ids`), storage.setJson(r, n, {
-        ttl: TTL_7_DAYS
-    })), n;
+};
+function compact(e) {
+    let t = [];
+    for(let n = 0; n < e.length; n++){
+        let r = e[n];
+        r && t.push(r);
+    }
+    return t;
+}
+const doubanSubjectItemSchema = schemas_object({
+    type_name: schemas_string(),
+    target_type: schemas_string(),
+    target_id: schemas_string(),
+    target: schemas_object({
+        title: schemas_string(),
+        has_linewatch: schemas_boolean().refine((e)=>e)
+    })
+}), doubanSearchResponseSchema = schemas_object({
+    subjects: schemas_object({
+        items: schemas_array(unknown().transform((e)=>{
+            var t;
+            return null != (t = doubanSubjectItemSchema.safeParse(e).data) ? t : null;
+        })).transform((e)=>compact(e))
+    })
+}), searchDoubanInfoByName = async (e)=>{
+    var t, n;
+    return e && null != (n = null == (t = (await fetch.get("https://m.douban.com/rexxar/api/v2/search", {
+        params: {
+            q: e,
+            start: 0,
+            count: 20,
+            type: "movie"
+        },
+        headers: {
+            Referer: "https://m.douban.com/movie/",
+            "Content-Type": "application/json"
+        },
+        schema: doubanSearchResponseSchema,
+        cache: {
+            cacheKey: [
+                "douban",
+                "search",
+                e
+            ].filter(Boolean).join(":")
+        }
+    })).data) ? void 0 : t.subjects.items) ? n : [];
+}, getDoubanIds = async (e)=>{
+    let t = new Set(), { tmdbId: n, type: r, seriesName: i, season: o, fuzzyMatch: s } = searchDanmuParamsSchema.parse(e);
+    try {
+        let e = await getDoubanInfoByTmdbId(r, n, o);
+        (null == e ? void 0 : e.doubanId) && t.add(e.doubanId);
+    } catch (e) {
+        console.error("Error getting douban info by tmdb id", e);
+    }
+    if ("always" === s || "auto" === s && !t.size) try {
+        let e = i;
+        for (let n of (o && parseInt(o.toString()) > 1 && (e += o.toString()), await searchDoubanInfoByName(e)))t.add(n.target_id);
+    } catch (e) {
+        console.error("Error searching douban info by name", e);
+    }
+    return Array.from(t);
 }, getDoubanInfoByTmdbId = async (e, t, n)=>{
+    if (!t) return null;
     let r = await getExternalIdsByTmdbId(e, t);
     return (console.log("Get external ids by tmdb id", r), r.imdb_id) ? getDoubanInfoByImdbId(r.imdb_id, n) : null;
 }, doubanInfoResponseSchema = schemas_object({
@@ -4223,7 +4766,7 @@ const BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRe
     }))
 }), getVideoPlatformInfoByDoubanId = async (e)=>{
     var t, n, r;
-    let i = await fetch_fetch.get(`https://m.douban.com/rexxar/api/v2/movie/${e}?for_mobile=1`, {
+    let i = await fetch.get(`https://m.douban.com/rexxar/api/v2/movie/${e}?for_mobile=1`, {
         headers: {
             Referer: `https://m.douban.com/movie/subject/${e}/?dt_dapp=1`,
             "Content-Type": "application/json"
@@ -4236,7 +4779,7 @@ const BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRe
     });
     if (200 !== i.statusCode) throw Error(`Failed to get video platform info: ${i.statusCode}, ${JSON.stringify(i.data)}`);
     let o = {
-        mediaType: (null == (t = i.data) ? void 0 : t.is_tv) ? "tv" : "movie",
+        mediaType: (null == (t = i.data) ? void 0 : t.is_tv) ? constants_MediaType.TV : constants_MediaType.Movie,
         providers: {}
     };
     for (let e of null != (r = null == (n = i.data) ? void 0 : n.vendors) ? r : []){
@@ -4280,23 +4823,6 @@ const BASE_URL = "https://api.imdbapi.dev", imdb_fetch = new Fetch(), episodesRe
     }
     return o;
 };
-function compact(e) {
-    let t = [];
-    for(let n = 0; n < e.length; n++){
-        let r = e[n];
-        r && t.push(r);
-    }
-    return t;
-}
-const doubanSubjectItemSchema = schemas_object({
-    type_name: schemas_string(),
-    target_type: schemas_string(),
-    target_id: coerce_number(),
-    target: schemas_object({
-        title: schemas_string(),
-        has_linewatch: schemas_boolean().refine((e)=>e)
-    })
-});
 function keyBy(e, t) {
     let n = {};
     for(let r = 0; r < e.length; r++){
@@ -4323,6 +4849,134 @@ function sortBy(e, t) {
         'asc'
     ]);
 }
+function uniqWith(e, t) {
+    let n = [];
+    for(let r = 0; r < e.length; r++){
+        let i = e[r];
+        n.every((e)=>!t(e, i)) && n.push(i);
+    }
+    return n;
+}
+function getSymbols(e) {
+    return Object.getOwnPropertySymbols(e).filter((t)=>Object.prototype.propertyIsEnumerable.call(e, t));
+}
+function getTag(e) {
+    return null == e ? void 0 === e ? '[object Undefined]' : '[object Null]' : Object.prototype.toString.call(e);
+}
+const regexpTag = '[object RegExp]', stringTag = '[object String]', numberTag = '[object Number]', booleanTag = '[object Boolean]', argumentsTag = '[object Arguments]', symbolTag = '[object Symbol]', dateTag = '[object Date]', mapTag = '[object Map]', setTag = '[object Set]', arrayTag = '[object Array]', functionTag = '[object Function]', arrayBufferTag = '[object ArrayBuffer]', objectTag = '[object Object]', errorTag = '[object Error]', dataViewTag = '[object DataView]', uint8ArrayTag = '[object Uint8Array]', uint8ClampedArrayTag = '[object Uint8ClampedArray]', uint16ArrayTag = '[object Uint16Array]', uint32ArrayTag = '[object Uint32Array]', bigUint64ArrayTag = '[object BigUint64Array]', int8ArrayTag = '[object Int8Array]', int16ArrayTag = '[object Int16Array]', int32ArrayTag = '[object Int32Array]', bigInt64ArrayTag = '[object BigInt64Array]', float32ArrayTag = '[object Float32Array]', float64ArrayTag = '[object Float64Array]';
+function eq(e, t) {
+    return e === t || Number.isNaN(e) && Number.isNaN(t);
+}
+function isEqualWith(e, t, n) {
+    return isEqualWithImpl(e, t, void 0, void 0, void 0, void 0, n);
+}
+function isEqualWithImpl(e, t, n, r, i, o, s) {
+    let a = s(e, t, n, r, i, o);
+    if (void 0 !== a) return a;
+    if (typeof e == typeof t) switch(typeof e){
+        case 'bigint':
+        case 'string':
+        case 'boolean':
+        case 'symbol':
+        case 'undefined':
+        case 'function':
+            return e === t;
+        case 'number':
+            return e === t || Object.is(e, t);
+    }
+    return areObjectsEqual(e, t, o, s);
+}
+function areObjectsEqual(e, t, n, r) {
+    if (Object.is(e, t)) return !0;
+    let i = getTag(e), o = getTag(t);
+    if (i === argumentsTag && (i = objectTag), o === argumentsTag && (o = objectTag), i !== o) return !1;
+    switch(i){
+        case stringTag:
+            return e.toString() === t.toString();
+        case numberTag:
+            return eq(e.valueOf(), t.valueOf());
+        case booleanTag:
+        case dateTag:
+        case symbolTag:
+            return Object.is(e.valueOf(), t.valueOf());
+        case regexpTag:
+            return e.source === t.source && e.flags === t.flags;
+        case functionTag:
+            return e === t;
+    }
+    let s = (n = n ?? new Map()).get(e), a = n.get(t);
+    if (null != s && null != a) return s === t;
+    n.set(e, t), n.set(t, e);
+    try {
+        switch(i){
+            case mapTag:
+                if (e.size !== t.size) return !1;
+                for (let [i, o] of e.entries())if (!t.has(i) || !isEqualWithImpl(o, t.get(i), i, e, t, n, r)) return !1;
+                return !0;
+            case setTag:
+                {
+                    if (e.size !== t.size) return !1;
+                    let i = Array.from(e.values()), o = Array.from(t.values());
+                    for(let s = 0; s < i.length; s++){
+                        let a = i[s], u = o.findIndex((i)=>isEqualWithImpl(a, i, void 0, e, t, n, r));
+                        if (-1 === u) return !1;
+                        o.splice(u, 1);
+                    }
+                    return !0;
+                }
+            case arrayTag:
+            case uint8ArrayTag:
+            case uint8ClampedArrayTag:
+            case uint16ArrayTag:
+            case uint32ArrayTag:
+            case bigUint64ArrayTag:
+            case int8ArrayTag:
+            case int16ArrayTag:
+            case int32ArrayTag:
+            case bigInt64ArrayTag:
+            case float32ArrayTag:
+            case float64ArrayTag:
+                if ('undefined' != typeof Buffer && Buffer.isBuffer(e) !== Buffer.isBuffer(t) || e.length !== t.length) return !1;
+                for(let i = 0; i < e.length; i++)if (!isEqualWithImpl(e[i], t[i], i, e, t, n, r)) return !1;
+                return !0;
+            case arrayBufferTag:
+                if (e.byteLength !== t.byteLength) return !1;
+                return areObjectsEqual(new Uint8Array(e), new Uint8Array(t), n, r);
+            case dataViewTag:
+                if (e.byteLength !== t.byteLength || e.byteOffset !== t.byteOffset) return !1;
+                return areObjectsEqual(new Uint8Array(e), new Uint8Array(t), n, r);
+            case errorTag:
+                return e.name === t.name && e.message === t.message;
+            case objectTag:
+                {
+                    if (!(areObjectsEqual(e.constructor, t.constructor, n, r) || isPlainObject_isPlainObject(e) && isPlainObject_isPlainObject(t))) return !1;
+                    let i = [
+                        ...Object.keys(e),
+                        ...getSymbols(e)
+                    ], o = [
+                        ...Object.keys(t),
+                        ...getSymbols(t)
+                    ];
+                    if (i.length !== o.length) return !1;
+                    for(let o = 0; o < i.length; o++){
+                        let s = i[o], a = e[s];
+                        if (!Object.hasOwn(t, s)) return !1;
+                        let u = t[s];
+                        if (!isEqualWithImpl(a, u, s, e, t, n, r)) return !1;
+                    }
+                    return !0;
+                }
+            default:
+                return !1;
+        }
+    } finally{
+        n.delete(e), n.delete(t);
+    }
+}
+function noop() {}
+function isEqual(e, t) {
+    return isEqualWith(e, t, noop);
+}
 function base_define_property(e, t, n) {
     return t in e ? Object.defineProperty(e, t, {
         value: n,
@@ -4331,14 +4985,6 @@ function base_define_property(e, t, n) {
         writable: !0
     }) : e[t] = n, e;
 }
-schemas_object({
-    subjects: schemas_object({
-        items: schemas_array(unknown().transform((e)=>{
-            var t;
-            return null != (t = doubanSubjectItemSchema.safeParse(e).data) ? t : null;
-        })).transform((e)=>compact(e))
-    })
-});
 class BaseScraper {
     parseIdString(e) {
         var t, n;
@@ -4891,9 +5537,9 @@ const parseXml = function(e) {
     } else {
         let s = readTagExp(e, o, this.options.removeNSPrefix), a = s.tagName, u = s.rawTagName, l = s.tagExp, c = s.attrExpPresent, d = s.closeIndex;
         this.options.transformTagName && (a = this.options.transformTagName(a)), n && r && '!xml' !== n.tagname && (r = this.saveTextToParentTag(r, n, i, !1));
-        let p = n;
-        p && -1 !== this.options.unpairedTags.indexOf(p.tagname) && (n = this.tagsNodeStack.pop(), i = i.substring(0, i.lastIndexOf("."))), a !== t.tagname && (i += i ? "." + a : a);
-        let f = o;
+        let f = n;
+        f && -1 !== this.options.unpairedTags.indexOf(f.tagname) && (n = this.tagsNodeStack.pop(), i = i.substring(0, i.lastIndexOf("."))), a !== t.tagname && (i += i ? "." + a : a);
+        let p = o;
         if (this.isItStopNode(this.options.stopNodes, i, a)) {
             let t = "";
             if (l.length > 0 && l.lastIndexOf("/") === l.length - 1) "/" === a[a.length - 1] ? (a = a.substr(0, a.length - 1), i = i.substr(0, i.length - 1), l = a) : l = l.substr(0, l.length - 1), o = s.closeIndex;
@@ -4904,15 +5550,15 @@ const parseXml = function(e) {
                 o = n.i, t = n.tagContent;
             }
             let r = new XmlNode(a);
-            a !== l && c && (r[":@"] = this.buildAttributesMap(l, i, a)), t && (t = this.parseTextData(t, a, i, !0, c, !0, !0)), i = i.substr(0, i.lastIndexOf(".")), r.add(this.options.textNodeName, t), this.addChild(n, r, i, f);
+            a !== l && c && (r[":@"] = this.buildAttributesMap(l, i, a)), t && (t = this.parseTextData(t, a, i, !0, c, !0, !0)), i = i.substr(0, i.lastIndexOf(".")), r.add(this.options.textNodeName, t), this.addChild(n, r, i, p);
         } else {
             if (l.length > 0 && l.lastIndexOf("/") === l.length - 1) {
                 "/" === a[a.length - 1] ? (a = a.substr(0, a.length - 1), i = i.substr(0, i.length - 1), l = a) : l = l.substr(0, l.length - 1), this.options.transformTagName && (a = this.options.transformTagName(a));
                 let e = new XmlNode(a);
-                a !== l && c && (e[":@"] = this.buildAttributesMap(l, i, a)), this.addChild(n, e, i, f), i = i.substr(0, i.lastIndexOf("."));
+                a !== l && c && (e[":@"] = this.buildAttributesMap(l, i, a)), this.addChild(n, e, i, p), i = i.substr(0, i.lastIndexOf("."));
             } else {
                 let e = new XmlNode(a);
-                this.tagsNodeStack.push(n), a !== l && c && (e[":@"] = this.buildAttributesMap(l, i, a)), this.addChild(n, e, i, f), n = e;
+                this.tagsNodeStack.push(n), a !== l && c && (e[":@"] = this.buildAttributesMap(l, i, a)), this.addChild(n, e, i, p), n = e;
             }
             r = "", o = d;
         }
@@ -5296,24 +5942,32 @@ const iqiyiIdSchema = schemas_object({
         }
     })), safeParseVideo = (e)=>{
     let t = iqiyiEpisodeTabDataVideoSchema.safeParse(e);
-    return t.success ? t.data : (console.warn("\u7231\u5947\u827A: \u89E3\u6790\u5206\u96C6\u6570\u636E\u65F6\u53D1\u751F\u9519\u8BEF:", t.error.format(), e), null);
-}, iqiyiTvTabDataSchema = schemas_object({
-    data: schemas_array(schemas_object({
-        videos: schemas_object({
-            feature_paged: record(schemas_string(), schemas_array(unknown().transform((e)=>safeParseVideo(e)))).optional().transform((e)=>compact(Object.values(null != e ? e : {}).flat()))
-        }).optional()
-    }).transform((e)=>{
-        var t;
-        return null == (t = e.videos) ? void 0 : t.feature_paged;
-    })).transform((e)=>compact(e.flat()))
-}), iqiyiMovieTabDataSchema = schemas_object({
+    return t.success ? t.data : (console.warn("\u7231\u5947\u827A: \u89E3\u6790\u5206\u96C6\u6570\u636E\u65F6\u53D1\u751F\u9519\u8BEF:", prettifyError(t.error), e), null);
+}, iqiyiTvTabSchema = schemas_object({
+    bk_id: literal("selector_bk"),
+    bk_type: literal("album_episodes"),
     data: schemas_object({
-        videos: schemas_array(unknown().transform((e)=>safeParseVideo(e)))
-    }).transform((e)=>compact(e.videos))
-}), iqiyiEpisodeTabDataSchema = union([
-    iqiyiTvTabDataSchema,
-    iqiyiMovieTabDataSchema
-]), iqiyiV3ApiResponseSchema = schemas_object({
+        data: schemas_array(unknown().transform((e)=>schemas_object({
+                videos: schemas_object({
+                    feature_paged: record(any(), schemas_array(unknown().transform((e)=>safeParseVideo(e)))).optional().transform((e)=>compact(Object.values(null != e ? e : {}).flat()))
+                }).optional()
+            }).transform((e)=>{
+                var t;
+                return null == (t = e.videos) ? void 0 : t.feature_paged;
+            }).safeParse(e).data)).transform((e)=>compact(e.flat()))
+    })
+}), iqiyiMovieTabSchema = schemas_object({
+    bk_id: literal("film_feature_bk"),
+    bk_type: literal("video_list"),
+    data: schemas_object({
+        data: schemas_object({
+            videos: schemas_array(unknown().transform((e)=>safeParseVideo(e)))
+        }).transform((e)=>compact(e.videos))
+    })
+}), iqiyiEpisodeTabSchema = union([
+    iqiyiTvTabSchema,
+    iqiyiMovieTabSchema
+]).transform((e)=>e.data.data), iqiyiV3ApiResponseSchema = schemas_object({
     status_code: schemas_number(),
     data: schemas_object({
         base_data: schemas_object({
@@ -5445,10 +6099,10 @@ class IqiyiScraper extends BaseScraper {
                     url: e.play_url
                 }))) ? o : [];
             if (!c.length) {
-                let t = null == e || null == (u = e.data) || null == (a = u.template) || null == (s = a.tabs) ? void 0 : s.flatMap((e)=>e.blocks || []).find((e)=>"selector_bk" === e.bk_id && "album_episodes" === e.bk_type || "film_feature_bk" === e.bk_id && "video_list" === e.bk_type), { success: n, data: r, error: i } = iqiyiEpisodeTabDataSchema.safeParse(null == t ? void 0 : t.data);
-                if (!n) return console.warn(`\u{7231}\u{5947}\u{827A}: \u{89E3}\u{6790}\u{5206}\u{96C6}\u{6570}\u{636E}\u{65F6}\u{53D1}\u{751F}\u{9519}\u{8BEF}:`, prettifyError(i), t), [];
+                let t = null == e || null == (u = e.data) || null == (a = u.template) || null == (s = a.tabs) ? void 0 : s.flatMap((e)=>e.blocks || []).find((e)=>iqiyiEpisodeTabSchema.safeParse(e).success), { success: n, data: r, error: i } = iqiyiEpisodeTabSchema.safeParse(t);
+                if (!n) return console.warn(`\u{7231}\u{5947}\u{827A}: \u{89E3}\u{6790}\u{5206}\u{96C6}\u{5217}\u{8868}\u{6570}\u{636E}\u{65F6}\u{53D1}\u{751F}\u{9519}\u{8BEF}:`, prettifyError(i), t), [];
                 let o = this.getEpisodeBlacklistPattern(), d = 1;
-                for (let e of r.data){
+                for (let e of r){
                     if (17 === e.mark_type_show) continue;
                     let t = this.videoIdToEntityId(e.videoId);
                     t && (null != o && o.test(e.title) || (c.push({
@@ -5507,6 +6161,261 @@ class IqiyiScraper extends BaseScraper {
             video_omgid: "0a1ff6bc9407c0b1cff86ee5d359614d"
         }), this.fetch.setHeaders({
             "User-Agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36 Edg/136.0.0.0"
+        });
+    }
+}
+var aes = __webpack_require__(129), aes_default = __webpack_require__.n(aes), enc_utf8 = __webpack_require__(60), enc_utf8_default = __webpack_require__.n(enc_utf8), hmac_sha256 = __webpack_require__(939), hmac_sha256_default = __webpack_require__.n(hmac_sha256), mode_ecb = __webpack_require__(760), mode_ecb_default = __webpack_require__.n(mode_ecb), pad_pkcs7 = __webpack_require__(186), pad_pkcs7_default = __webpack_require__.n(pad_pkcs7);
+function isNil(e) {
+    return null == e;
+}
+function renren_define_property(e, t, n) {
+    return t in e ? Object.defineProperty(e, t, {
+        value: n,
+        enumerable: !0,
+        configurable: !0,
+        writable: !0
+    }) : e[t] = n, e;
+}
+const AES_KEY = "3b744389882a4067", SIGN_SECRET = "ES513W0B1CsdUrR13Qk5EgDAKPeeKZY", BASE_API = "https://api.rrmj.plus", CLIENT_TYPE = "web_pc", CLIENT_VERSION = "1.0.0", renrenIdSchema = schemas_object({
+    dramaId: coerce_number(),
+    episodeId: coerce_number().optional()
+}), aesEcbPkcs7DecryptBase64 = (e)=>{
+    let t = enc_base64_default().parse(e);
+    return aes_default().decrypt({
+        ciphertext: t
+    }, enc_utf8_default().parse(AES_KEY), {
+        mode: mode_ecb_default(),
+        padding: pad_pkcs7_default()
+    }).toString(enc_utf8_default());
+}, aesResponeSchema = schemas_string().transform((e)=>safeJsonParseWithZod(aesEcbPkcs7DecryptBase64(e), schemas_object({
+        data: unknown()
+    }))), renrenSearchResponseSchema = schemas_object({
+    searchDramaList: schemas_array(unknown().transform((e)=>{
+        var t;
+        return null != (t = schemas_object({
+            id: schemas_string(),
+            title: schemas_string(),
+            subtitle: schemas_string().optional(),
+            classify: preprocess((e)=>{
+                var t;
+                return null != (t = ({
+                    电影: constants_MediaType.Movie,
+                    电视剧: constants_MediaType.TV
+                })[e]) ? t : null;
+            }, schemas_enum(constants_MediaType).nullish().catch(null)),
+            name: schemas_string().optional(),
+            year: coerce_number().optional()
+        }).safeParse(e).data) ? t : null;
+    })).transform((e)=>compact(e))
+}), renrenDramaInfoResponseSchema = schemas_object({
+    dramaInfo: schemas_object({
+        dramaId: coerce_number(),
+        title: schemas_string(),
+        enName: schemas_string().optional(),
+        seasonNo: coerce_number().optional()
+    }).optional(),
+    episodeList: schemas_array(unknown().transform((e)=>{
+        var t;
+        return null != (t = schemas_object({
+            id: coerce_number(),
+            episodeNo: coerce_number(),
+            text: schemas_string().optional(),
+            title: schemas_string().optional()
+        }).safeParse(e).data) ? t : null;
+    })).transform((e)=>compact(e))
+}), renrenCommentItemSchema = schemas_object({
+    d: schemas_string(),
+    p: schemas_string().transform((e)=>{
+        let t = e.split(","), n = coerce_number().catch(0.0).parse(t[0]), r = coerce_number().int().catch(1).parse(t[1]), i = coerce_number().int().catch(25).parse(t[2]), o = coerce_number().int().catch(16777215).parse(t[3]), s = t[6] || "", a = t[7] || `${n.toFixed(3)}:${s}`;
+        return {
+            timestamp: n,
+            mode: r,
+            size: i,
+            color: o,
+            userId: s,
+            contentId: a
+        };
+    })
+}).transform((e)=>({
+        id: e.p.contentId,
+        timestamp: e.p.timestamp,
+        mode: e.p.mode,
+        color: e.p.color,
+        content: e.d
+    }));
+class RenRenScraper extends BaseScraper {
+    get deviceId() {
+        return generateUUID().toUpperCase();
+    }
+    async search(e) {
+        let { success: t, data: n, error: r } = searchDanmuParamsSchema.safeParse(e);
+        if (!t) return console.error("RenRen: Invalid search params", prettifyError(r)), [];
+        let { seriesName: i, season: o } = n;
+        if (!i) return [];
+        let s = await this.request("/m-station/search/drama", {
+            params: {
+                keywords: i,
+                size: Math.max(10, null != o ? o : 1),
+                order: "match",
+                search_after: "",
+                isExecuteVipActivity: !0
+            },
+            cache: {
+                cacheKey: `renren:search:${i}`,
+                ttl: TTL_1_DAY
+            },
+            schema: aesResponeSchema.transform((e)=>{
+                var t;
+                let n = renrenSearchResponseSchema.safeParse(null == e ? void 0 : e.data);
+                return n.success ? null == (t = n.data) ? void 0 : t.searchDramaList : (console.warn("RenRen: Search parse error", prettifyError(n.error), null == e ? void 0 : e.data), []);
+            })
+        });
+        if (!s.data) return [];
+        let a = [];
+        for await (let e of s.data){
+            var u, l, c, d, f, p, h;
+            let t = e.title.replace(/<[^>]+>/g, "").replace(":", "\uFF1A"), n = await this.getDramaInfo(e.id);
+            if (!n) {
+                console.log("RenRen: Search", t, "not found");
+                continue;
+            }
+            if (!((null == (l = n.dramaInfo) || null == (u = l.enName) ? void 0 : u.includes(i)) || (null == (d = n.dramaInfo) || null == (c = d.title) ? void 0 : c.includes(i)) || t.includes(i) || (null == (f = e.name) ? void 0 : f.includes(i)))) {
+                console.log("RenRen: Search", t, "not match");
+                continue;
+            }
+            let r = !1, s = null != (h = null == (p = n.dramaInfo) ? void 0 : p.seasonNo) ? h : 1;
+            isNil(o) || s !== o || (r = !0);
+            let m = {
+                provider: this.providerName,
+                dramaId: e.id,
+                dramaTitle: t,
+                season: s
+            };
+            if (a.push(m), r) {
+                a = [
+                    m
+                ];
+                break;
+            }
+        }
+        return a;
+    }
+    async getEpisodes(e, t) {
+        let n = this.parseIdString(e);
+        if (!n) return [];
+        let r = await this.getDramaInfo(n.dramaId.toString());
+        if (!r) return [];
+        let i = r.episodeList.map((e)=>{
+            var t;
+            return {
+                provider: this.providerName,
+                episodeId: this.generateIdString({
+                    dramaId: n.dramaId,
+                    episodeId: e.id
+                }),
+                episodeTitle: e.title || `${null == (t = r.dramaInfo) ? void 0 : t.title} E${e.episodeNo}`,
+                episodeNumber: e.episodeNo
+            };
+        });
+        return isNil(t) ? i : i.filter((e)=>e.episodeNumber === t);
+    }
+    async getSegments() {
+        return [
+            {
+                provider: this.providerName,
+                segmentId: "1",
+                startTime: 0
+            }
+        ];
+    }
+    async getComments(e) {
+        let t = this.parseIdString(e);
+        return (null == t ? void 0 : t.episodeId) ? this.fetchEpisodeDanmu(t.episodeId.toString()) : [];
+    }
+    async getDramaInfo(e) {
+        return (await this.request("/m-station/drama/page", {
+            params: {
+                hsdrOpen: 0,
+                isAgeLimit: 0,
+                dramaId: e,
+                hevcOpen: 1
+            },
+            schema: aesResponeSchema.transform((t)=>{
+                let n = renrenDramaInfoResponseSchema.safeParse(null == t ? void 0 : t.data);
+                return n.success ? n.data : (console.warn("RenRen: getDramaInfo", e, "parse error", prettifyError(n.error), null == t ? void 0 : t.data), null);
+            }),
+            cache: {
+                cacheKey: `renren:dramaInfo:${e}`,
+                ttl: TTL_1_DAY
+            }
+        })).data;
+    }
+    async fetchEpisodeDanmu(e) {
+        return (await this.fetch.get(`https://static-dm.rrmj.plus/v1/produce/danmu/EPISODE/${e}`, {
+            headers: {
+                Accept: "application/json"
+            },
+            schema: schemas_array(unknown().transform((e)=>{
+                var t;
+                return null != (t = renrenCommentItemSchema.safeParse(e).data) ? t : null;
+            })).transform((e)=>compact(e))
+        })).data;
+    }
+    generateSignature(e) {
+        let { method: t, aliId: n, timestampMs: r, path: i, sortedQuery: o, secret: s } = e, a = [
+            t.toUpperCase(),
+            `aliId:${n}`,
+            `ct:${CLIENT_TYPE}`,
+            `cv:${CLIENT_VERSION}`,
+            `t:${r}`,
+            `${i}?${o}`
+        ].join("\n"), u = hmac_sha256_default()(a, s);
+        return enc_base64_default().stringify(u);
+    }
+    generateHeaders(e) {
+        let { method: t, path: n, params: r } = e, i = Object.entries(r).sort((e, t)=>e[0].localeCompare(t[0])).map((e)=>{
+            let [t, n] = e;
+            return `${t}=${encodeURIComponent(n)}`;
+        }).join("&"), o = Date.now(), s = this.deviceId, a = this.generateSignature({
+            method: t,
+            aliId: s,
+            timestampMs: o,
+            path: n,
+            sortedQuery: i,
+            secret: SIGN_SECRET
+        });
+        return {
+            clientVersion: CLIENT_VERSION,
+            deviceId: s,
+            clientType: CLIENT_TYPE,
+            t: o.toString(),
+            aliId: s,
+            umid: s,
+            token: "",
+            cv: CLIENT_VERSION,
+            ct: CLIENT_TYPE,
+            uet: "9",
+            "x-ca-sign": a,
+            Accept: "application/json"
+        };
+    }
+    request(e, t) {
+        let { params: n = {}, ...r } = t, i = this.generateHeaders({
+            method: "GET",
+            path: e,
+            params: n
+        });
+        return this.fetch.get(`${BASE_API}${e}`, {
+            ...r,
+            headers: i,
+            params: n
+        });
+    }
+    constructor(){
+        super(), renren_define_property(this, "providerName", "renren"), renren_define_property(this, "idSchema", renrenIdSchema), this.fetch.setHeaders({
+            "User-Agent": "Mozilla/5.0",
+            Origin: "https://rrsp.com.cn",
+            Referer: "https://rrsp.com.cn/"
         });
     }
 }
@@ -5596,13 +6505,7 @@ class TencentScraper extends BaseScraper {
                 episodeNumber: r
             };
         });
-        if (void 0 !== t) {
-            let e = r.find((e)=>e.episodeNumber === t);
-            return e ? [
-                e
-            ] : [];
-        }
-        return r;
+        return void 0 !== t ? r.filter((e)=>e.episodeNumber === t) : r;
     }
     async getSegments(e) {
         let t = this.parseIdString(e);
@@ -5711,7 +6614,6 @@ class TencentScraper extends BaseScraper {
         });
     }
 }
-var enc_utf8 = __webpack_require__(60), enc_utf8_default = __webpack_require__.n(enc_utf8);
 function youku_define_property(e, t, n) {
     return t in e ? Object.defineProperty(e, t, {
         value: n,
@@ -5792,8 +6694,8 @@ class YoukuScraper extends BaseScraper {
             if (d) return [
                 n(d, u)
             ];
-            let p = Number(null != (i = null == o ? void 0 : o.total) ? i : 0), f = Math.max(1, Math.ceil(p / a)), h = Array.from({
-                length: f
+            let f = Number(null != (i = null == o ? void 0 : o.total) ? i : 0), p = Math.max(1, Math.ceil(f / a)), h = Array.from({
+                length: p
             }, (e, t)=>t + 1).filter((e)=>e !== l), m = [];
             for (let e of h){
                 await this.sleep(500);
@@ -6001,7 +6903,8 @@ const scrapers = [
     TencentScraper,
     YoukuScraper,
     IqiyiScraper,
-    BilibiliScraper
+    BilibiliScraper,
+    RenRenScraper
 ];
 class scrapers_Scraper {
     get scraperMap() {
@@ -6090,7 +6993,7 @@ class scrapers_Scraper {
             }));
     }
     getEpisodeNumber(e, t) {
-        if ("tv" === e && t) return parseInt(t);
+        if (e === constants_MediaType.TV && t) return parseInt(t);
     }
     async getDetailWithAnimeId(e, t, n) {
         let [r, i] = e.split(":");
@@ -6100,9 +7003,9 @@ class scrapers_Scraper {
             episodeNumber: this.getEpisodeNumber(t, n)
         });
     }
-    async getDetailWithDoubanId(e, t, n) {
-        let r = await getVideoPlatformInfoByDoubanId(e.toString()), i = this.getEpisodeNumber(t, n), o = [];
-        return Object.entries(r.providers).forEach((e)=>{
+    async getDetailWithDoubanIds(e, t, n) {
+        let r = await Promise.all(e.map((e)=>getVideoPlatformInfoByDoubanId(e).catch(()=>null))), i = this.getEpisodeNumber(t, n), o = [];
+        for (let e of r)e && Object.entries(e.providers).forEach((e)=>{
             var t, n;
             let [r, s] = e;
             o.push({
@@ -6110,7 +7013,28 @@ class scrapers_Scraper {
                 idString: null != (n = null == (t = this.scraperMap[r]) ? void 0 : t.generateIdString(s)) ? n : "",
                 episodeNumber: i
             });
-        }), this.getEpisodes(...o);
+        });
+        return this.getEpisodes(...uniqWith(o, isEqual));
+    }
+    async getDetailWithSearchParams(e) {
+        let t = [];
+        for (let n of this.scrapers)n.search && t.push(n.search(e).catch((e)=>(console.error(e), [])));
+        let n = (await Promise.all(t)).flat();
+        if (!n.length) return [];
+        let r = this.getEpisodeNumber(e.type, e.episode), i = [];
+        for (let e of n){
+            let t = this.scraperMap[e.provider];
+            if (!t) continue;
+            let n = t.generateIdString({
+                dramaId: e.dramaId
+            });
+            i.push({
+                provider: e.provider,
+                idString: n,
+                episodeNumber: r
+            });
+        }
+        return this.getEpisodes(...uniqWith(i, isEqual));
     }
     constructor(){
         scrapers_define_property(this, "scrapers", []), scrapers.forEach((e)=>{
@@ -6118,7 +7042,7 @@ class scrapers_Scraper {
         });
     }
 }
-const widgetVersion = "0.0.16";
+const widgetVersion = "0.2.0";
 WidgetMetadata = {
     id: "baranwang.danmu.universe",
     title: "\u901A\u7528\u5F39\u5E55",
@@ -6127,6 +7051,29 @@ WidgetMetadata = {
     version: widgetVersion,
     site: "https://github.com/baranwang/forward-widgets/tree/main/packages/danmu-universe",
     requiredVersion: "0.0.2",
+    globalParams: [
+        {
+            title: "\u6A21\u7CCA\u5339\u914D",
+            name: "fuzzyMatch",
+            description: "\u662F\u5426\u5F00\u542F\u6A21\u7CCA\u5339\u914D",
+            value: "auto",
+            type: "enumeration",
+            enumOptions: [
+                {
+                    title: "\u81EA\u52A8",
+                    value: "auto"
+                },
+                {
+                    title: "\u59CB\u7EC8\u5F00\u542F",
+                    value: "always"
+                },
+                {
+                    title: "\u59CB\u7EC8\u5173\u95ED",
+                    value: "never"
+                }
+            ]
+        }
+    ],
     modules: [
         {
             type: "danmu",
@@ -6137,17 +7084,17 @@ WidgetMetadata = {
         },
         {
             type: "danmu",
-            id: "getComments",
-            title: "\u83B7\u53D6\u5F39\u5E55",
-            functionName: "getComments",
-            description: "\u83B7\u53D6\u5F39\u5E55"
-        },
-        {
-            type: "danmu",
             id: "getDetail",
             title: "\u83B7\u53D6\u8BE6\u60C5",
             functionName: "getDetail",
             description: "\u83B7\u53D6\u8BE6\u60C5"
+        },
+        {
+            type: "danmu",
+            id: "getComments",
+            title: "\u83B7\u53D6\u5F39\u5E55",
+            functionName: "getComments",
+            description: "\u83B7\u53D6\u5F39\u5E55"
         },
         {
             type: "danmu",
@@ -6160,39 +7107,37 @@ WidgetMetadata = {
 };
 const src_scraper = new scrapers_Scraper();
 searchDanmu = async (e)=>{
-    let { tmdbId: t, type: n, season: r, episode: i } = e;
-    if (!t) return null;
-    let o = await getDoubanInfoByTmdbId(n, t, r);
-    return (null == o ? void 0 : o.doubanId) ? {
-        animes: (await src_scraper.getDetailWithDoubanId(o.doubanId, n, i)).map((e)=>{
+    let { type: t, episode: n, fuzzyMatch: r = "auto" } = e, i = [], o = await getDoubanIds(e);
+    if (o.length && (i = await src_scraper.getDetailWithDoubanIds(o, t, n)), !(null == i ? void 0 : i.length) && "auto" === r || "always" === r) {
+        let t = await src_scraper.getDetailWithSearchParams(e);
+        i = i.concat(t);
+    }
+    return i.length, {
+        animes: i.map((e)=>{
             let t = `[${PROVIDER_NAMES[e.provider]}] `;
             return e.episodeTitle && (t += e.episodeTitle), {
                 animeId: e.episodeId,
                 animeTitle: t
             };
         })
-    } : null;
+    };
 }, getDetail = async (e)=>{
-    var t;
-    let { animeId: n, tmdbId: r, type: i, season: o, episode: s } = e;
-    if (!r && !n) return null;
-    if (n) return src_scraper.getDetailWithAnimeId(n.toString(), i, s);
-    let a = await getDoubanInfoByTmdbId(i, null != r ? r : "", o);
-    return src_scraper.getDetailWithDoubanId(null != (t = null == a ? void 0 : a.doubanId) ? t : "", i, s);
+    let { animeId: t, type: n, episode: r } = e;
+    return t ? src_scraper.getDetailWithAnimeId(t.toString(), n, r) : null;
 }, getComments = async (e)=>{
-    let { animeId: t, commentId: n, segmentTime: r, tmdbId: i, type: o, season: s, episode: a } = e, u = null != n ? n : t;
-    if (!u) {
-        var l;
+    let { animeId: t, commentId: n, segmentTime: r, tmdbId: i, type: o, episode: s } = e, a = null != n ? n : t;
+    if (!a) {
         if (!i) return null;
-        let e = await getDoubanInfoByTmdbId(o, i, s);
-        u = (await src_scraper.getDetailWithDoubanId(null != (l = null == e ? void 0 : e.doubanId) ? l : "", o, a)).map((e)=>[
+        let t = await getDoubanIds(e);
+        if (!t.length) return null;
+        a = (await src_scraper.getDetailWithDoubanIds(t, o, s)).map((e)=>[
                 e.provider,
                 e.episodeId
             ].join(":")).join(",");
     }
-    let c = await src_scraper.getDanmuWithSegmentTimeByVideoId(u.toString(), r);
+    let u = await src_scraper.getDanmuWithSegmentTimeByVideoId(a.toString(), r);
     return {
-        comments: c,
-        count: c.length
+        comments: u,
+        count: u.length
     };
 };
