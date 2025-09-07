@@ -161,7 +161,7 @@
       "title": "Letterboxd电影爱好者平台",
       "description": "解析Letterboxd片单内的影片【30% off code：CHEAP】",
       "requiredVersion": "0.0.1",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": "huangxd",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/letterboxd.js"
     },
@@ -296,7 +296,7 @@
       "title": "通用弹幕",
       "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩等平台",
       "requiredVersion": "0.0.2",
-      "version": "0.1.1",
+      "version": "0.4.0",
       "author": "Baran",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/baranwang.danmu.universe.js"
     },
