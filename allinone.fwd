@@ -278,7 +278,7 @@
       "title": "通用弹幕",
       "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台",
       "requiredVersion": "0.0.2",
-      "version": "0.7.0",
+      "version": "0.9.1",
       "author": "Baran",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/baranwang.danmu.universe.js"
     },
@@ -298,7 +298,7 @@
       "requiredVersion": "0.0.1",
       "version": "0.10.1",
       "author": "匿名",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/91porn.js"
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/nsfw.91porn.js"
     },
     {
       "id": "unknow.baranwang.xvideos",
@@ -307,7 +307,7 @@
       "requiredVersion": "0.0.1",
       "version": "0.9.4",
       "author": "匿名",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/xvideos.js"
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/unknow.baranwang.xvideos.js"
     },
     {
       "id": "91porn",
