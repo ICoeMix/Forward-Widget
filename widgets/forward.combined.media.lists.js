@@ -4,7 +4,7 @@ WidgetMetadata = {
   description: "影视动画榜单",
   author: "阿米诺斯",
   site: "https://widgets-xd.vercel.app",
-  version: "1.3.7",
+  version: "1.3.8",
   requiredVersion: "0.0.2",
   detailCacheDuration: 60,
   modules: [
@@ -407,6 +407,12 @@ WidgetMetadata = {
           type: "input", 
           description: "支持格式:桌面/移动端豆列、官方榜单、App dispatch",
           placeholders: [
+              { title: "豆瓣电影实时热榜", 
+              value: "https://www.douban.com/doubanapp/dispatch?uri=/subject_collection/movie_real_time_hotest/&dt_dapp=1" },
+              { title: "豆瓣剧集实时热榜", 
+              value: "https://www.douban.com/doubanapp/dispatch?uri=/subject_collection/tv_real_time_hotest/&dt_dapp=1" },
+              { title: "豆瓣书影音实时热榜", 
+              value: "https://www.douban.com/doubanapp/dispatch?uri=/subject_collection/subject_real_time_hotest/&dt_dapp=1" },
               { title: "一周电影口碑榜", 
               value: "https://www.douban.com/doubanapp/dispatch?uri=/subject_collection/movie_weekly_best/&dt_dapp=1" },
               { title: "华语口碑剧集榜", 
@@ -425,64 +431,11 @@ WidgetMetadata = {
         },
         { name: "page", title: "页码", type: "page" }
       ]
-    },
-    // --- 实时热点 ---
-    {
-      title: "豆瓣电影实时热榜",
-      description: "来自豆瓣的当前热门电影榜单",
-      requiresWebView: false,
-      functionName: "loadDoubanHotListWithTmdb",
-      cacheDuration: 3600,
-      params: [
-        { name: "url", 
-          title: "🔗 列表地址", 
-          type: "constant", 
-          value: "https://www.douban.com/doubanapp/dispatch?uri=/subject_collection/movie_real_time_hotest/&dt_dapp=1" },
-        { name: "type", 
-          title: "🎭 类型", 
-          type: "constant", 
-          value: "movie" }
-      ]
-    },
-    {
-      title: "豆瓣剧集实时热榜",
-      description: "来自豆瓣的当前热门剧集榜单",
-      requiresWebView: false,
-      functionName: "loadDoubanHotListWithTmdb",
-      cacheDuration: 3600,
-      params: [
-        { name: "url", 
-          title: "🔗 列表地址", 
-          type: "constant", 
-          value: "https://www.douban.com/doubanapp/dispatch?uri=/subject_collection/tv_real_time_hotest/&dt_dapp=1" },
-        { name: "type", 
-          title: "🎭 类型", 
-          type: "constant", 
-          value: "tv" }
-      ]
-    },
-    {
-      title: "豆瓣书影音实时热榜",
-      description: "来自豆瓣的书影音实时热榜",
-      requiresWebView: false,
-      functionName: "loadDoubanHotListWithTmdb",
-      cacheDuration: 3600,
-      params: [
-        { name: "url", 
-          title: "🔗 列表地址", 
-          type: "constant", 
-          value: "https://www.douban.com/doubanapp/dispatch?uri=/subject_collection/subject_real_time_hotest/&dt_dapp=1" },
-        { name: "type", 
-          title: "🎭 类型", 
-          type: "constant", 
-          value: "subject" }
-      ]
     }
   ]
 };
 
 // ===============屏蔽配置===============
-// 使用Widget.storage API的动态屏蔽系统
 const STORAGE_KEY = "forward_blocked_items";
 
 let blockedIdCache = null;
@@ -2033,66 +1986,6 @@ function detectAndAssignTypePreferences(items) {
   return itemsWithPreferences;
 }
 
-async function loadDoubanHotListWithTmdb(params = {}) {
-  const url = params.url;
-  
-  const uriMatch = url.match(/uri=([^&]+)/);
-  if (!uriMatch) {
-    throw new Error("\u65e0\u6cd5\u89e3\u6790\u8c46\u74e3dispatch URL");
-  }
-  
-  const uri = decodeURIComponent(uriMatch[1]);
-  const collectionMatch = uri.match(/\/subject_collection\/([^\/]+)/);
-  if (!collectionMatch) {
-    throw new Error("\u65e0\u6cd5\u4ece URI\u4e2d\u63d0\u53d6collection ID");
-  }
-  
-  const collectionId = collectionMatch[1];
-  
-  const apiUrl = `https://m.douban.com/rexxar/api/v2/subject_collection/${collectionId}/items?updated_at&items_only=1&for_mobile=1`;
-  const referer = `https://m.douban.com/subject_collection/${collectionId}/`;
-  
-  const response = await Widget.http.get(apiUrl, {
-    headers: {
-      Referer: referer,
-      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
-    },
-  });
-  
-  if (!response.data || !response.data.subject_collection_items) {
-    throw new Error("\u83b7\u53d6\u8c46\u74e3\u70ed\u699c\u6570\u636e\u5931\u8d25");
-  }
-  
-  const items = response.data.subject_collection_items;
-  
-  const processedItems = items.map((item) => {
-    let itemType = "multi";
-    
-    if (params.type === "movie") {
-      itemType = "movie";
-    } else if (params.type === "tv") {
-      itemType = "tv";
-    } else if (params.type === "subject") {
-      if (item.subtype === "movie") {
-        itemType = "movie";
-      } else if (item.subtype === "tv") {
-        itemType = "tv";
-      } else {
-        itemType = "multi";
-      }
-    }
-    
-    return {
-      ...item,
-      type: itemType
-    };
-  });
-  
-  const processedItemsWithMultiDetection = detectAndAssignTypePreferences(processedItems);
-  
-  return await fetchImdbItemsForDouban(processedItemsWithMultiDetection);
-}
-
 async function fetchTmdbDataForDouban(key, mediaType) {
     let searchTypes = [];
     
@@ -2349,6 +2242,7 @@ async function fetchImdbItemsForDouban(scItems) {
             { pattern: /^\u4f60\u7684\u7231$/, replacement: '\ub108\uc758\uc5f0\uc560', forceFirstResult: true },
             { pattern: /^\u771f\u7684\u662f\u5f88\u4e0d\u9519\u7684\u4eba/, replacement: '\uc9c4\uc9dc \uad1c\ucc2e\uc740 \uc0ac\ub78c', forceFirstResult: true },
             { pattern: /^\u6700\u540e\u590d\u6d3b\u6218/, replacement: '\u30d5\u30a1\u30a4\u30ca\u30eb\u30c9\u30e9\u30d5\u30c8', forceFirstResult: true },
+            { pattern: /^\u66b4\u98ce\u5708/, replacement: '\ubd81\uadf9\uc131', forceFirstResult: true },
             { pattern: / \u7b2c[^\u5b63]*\u5b63/, replacement: '' },
             { pattern: /^(\u6b4c\u624b|\u5168\u5458\u52a0\u901f\u4e2d)\d{4}$/, replacement: (match, showName) => {
                 const showMap = {
