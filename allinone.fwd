@@ -175,6 +175,15 @@
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/forward.auto.danmu.js"
     },
     {
+      "id": "forward.auto.danmu_api",
+      "title": "danmu_api弹幕",
+      "description": "从danmu_api获取弹幕【五折码：CHEAP.5;七折码：CHEAP】",
+      "requiredVersion": "0.0.2",
+      "version": "1.0.0",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/danmu_api.js"
+    },
+    {
       "id": "dytt_vod",
       "title": "电影天堂",
       "description": "获取在线电影、电视剧、动漫、综艺和短剧",
@@ -278,7 +287,7 @@
       "title": "通用弹幕",
       "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台",
       "requiredVersion": "0.0.2",
-      "version": "0.9.1",
+      "version": "0.10.1",
       "author": "Baran",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/baranwang.danmu.universe.js"
     },
