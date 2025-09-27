@@ -790,7 +790,7 @@ async function loadTodayHotTV(params) {
           language: params.language || 'zh-CN',
           page: page,
           with_origin_country: region,
-          sort_by: 'popularity.desc'
+          sort_by: (region === '' || region === 'CN' || region === 'US') ? 'popularity.desc' : 'vote_count.desc'
         } 
       }),
       fetchTmdbGenres()
@@ -882,7 +882,7 @@ async function loadTodayHotMovies(params) {
           language: params.language || 'zh-CN',
           page: page,
           with_origin_country: region,
-          sort_by: 'popularity.desc'
+          sort_by: (region === '' || region === 'CN' || region === 'US') ? 'popularity.desc' : 'vote_count.desc'
         } 
       }),
       fetchTmdbGenres()
