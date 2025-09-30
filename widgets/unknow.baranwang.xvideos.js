@@ -828,7 +828,7 @@ WidgetMetadata = {
     description: 'XVideos',
     version: "0.9.4",
     requiredVersion: '0.0.1',
-    site: 'https://github.com/baranwang/forward-widget',
+    site: 'https://github.com/baranwang/forward-widgets/tree/main/packages/nsfw',
     detailCacheDuration: 1,
     modules: [
         {
