@@ -42,9 +42,9 @@
     {
       "id": "trakt",
       "title": "Trakt我看&Trakt个性化推荐",
-      "description": "解析Trakt想看、在看、已看、片单、追剧日历以及根据个人数据生成的个性化推荐",
+      "description": "解析Trakt想看、在看、已看、片单、追剧日历以及根据个人数据生成的个性化推荐【30% off code：CHEAP】",
       "requiredVersion": "0.0.1",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "author": "huangxd",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/trakt.js"
     },
@@ -274,15 +274,6 @@
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/cloud_cinema.js"
     },
     {
-      "id": "forward.combined.media.lists.en",
-      "title": "Movie & TV Lists",
-      "description": "Movie & TV Lists",
-      "requiredVersion": "0.0.2",
-      "version": "1.0.0",
-      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/forward.combined.media.lists.en.js"
-    },
-    {
       "id": "baranwang.danmu.universe",
       "title": "通用弹幕",
       "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台",
@@ -290,6 +281,15 @@
       "version": "0.10.1",
       "author": "Baran",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/baranwang.danmu.universe.js"
+    },
+    {
+      "id": "forward.combined.media.lists.en",
+      "title": "Movie & TV Lists",
+      "description": "Movie & TV Lists",
+      "requiredVersion": "0.0.2",
+      "version": "1.0.0",
+      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/forward.combined.media.lists.en.js"
     },
     {
       "id": "missav",
