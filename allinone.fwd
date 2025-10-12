@@ -10,7 +10,7 @@
       "requiredVersion": "0.0.1",
       "version": "2.3.0",
       "author": "🎁 Discount Code：VEUS",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/wallpaper.js"
+      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/yuanqi.wallpaper.js"
     },
     {
       "id": "xtream_api_en",
@@ -71,7 +71,7 @@
       "title": "热门精选",
       "description": "获取最新热播剧和热门影片推荐",
       "requiredVersion": "0.0.1",
-      "version": "1.1.7",
+      "version": "1.1.8",
       "author": "两块",
       "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/hot_picks.js"
     },
