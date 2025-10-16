@@ -217,9 +217,9 @@ if os.path.exists(old_fwd_file):
         print(f"⚠️ 读取旧的 allinone.fwd 失败: {e}")
         
 result = {
-    "title": "OCD's AllInOne Widgets",
-    "description": "合并自 module.json 中定义的多个 FW Widgets 源(30% off code: OCD)",
-    "icon": "https://avatars.githubusercontent.com/u/25606004",
+    "title": "ICoeMix's Widgets",
+    "description": "合并自 module.json 中定义的多个 FW Widgets 源",
+    "icon": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/bb1e749546c2b0bcbaecae3b85f5a21772d300e2/.github/scripts/icon.png",
     "widgets": list(merged.values())
 }
 
