@@ -220,60 +220,6 @@
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ddys_vod.js"
     },
     {
-      "id": "jable",
-      "title": "Jable",
-      "description": "获取 Jable 视频",
-      "requiredVersion": "0.0.2",
-      "version": "1.0.9",
-      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/jable.js"
-    },
-    {
-      "id": "Pornhub",
-      "title": "Pornhub",
-      "description": "在线观看Pornhub",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.5",
-      "author": "海带",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/Pornhub.js"
-    },
-    {
-      "id": "ti.bemarkt.javday",
-      "title": "JAVDay",
-      "description": "获取 JAVDay 推荐",
-      "requiredVersion": "0.0.1",
-      "version": "1.1.0",
-      "author": "Ti",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ti.bemarkt.javday.js"
-    },
-    {
-      "id": "ti.bemarkt.javrate",
-      "title": "JAVRate",
-      "description": "获取 JAVRate 推荐",
-      "requiredVersion": "0.0.1",
-      "version": "2.1.0",
-      "author": "Ti",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ti.bemarkt.javrate.js"
-    },
-    {
-      "id": "Bitch",
-      "title": "Bitch Lives",
-      "description": "🎥 Bitch Lives",
-      "requiredVersion": "0.0.1",
-      "version": "0.0.1",
-      "author": "Discount Code：VEUS",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/Bitch.js"
-    },
-    {
-      "id": "🔞 jable",
-      "title": "Jable",
-      "description": "Jable porn",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.6",
-      "author": "Discount Code：VEUS",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/🔞 jable.js"
-    },
-    {
       "id": "wuming.VOD",
       "title": "Keword VOD",
       "description": "🔍 Qurey Keword for VOD",
@@ -290,42 +236,6 @@
       "version": "1.0.0",
       "author": "Discount Code：VEUS",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/cloud_cinema.js"
-    },
-    {
-      "id": "missav",
-      "title": "MissAV",
-      "description": "获取 MissAV 推荐",
-      "requiredVersion": "0.0.2",
-      "version": "1.0.0",
-      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/missav.js"
-    },
-    {
-      "id": "nsfw.91porn",
-      "title": "91Porn",
-      "description": "🔞 91Porn 视频搜索",
-      "requiredVersion": "0.0.1",
-      "version": "0.10.1",
-      "author": "匿名",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/nsfw.91porn.js"
-    },
-    {
-      "id": "unknow.baranwang.xvideos",
-      "title": "XVideos",
-      "description": "Xvideos",
-      "requiredVersion": "0.0.1",
-      "version": "0.9.4",
-      "author": "匿名",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/unknow.baranwang.xvideos.js"
-    },
-    {
-      "id": "91porn",
-      "title": "91Porn",
-      "description": "获取 91Porn 视频",
-      "requiredVersion": "0.0.1",
-      "version": "0.9.4",
-      "author": "Baran",
-      "url": "https://raw.githubusercontent.com/ocd0711/forward_module/master/widgets/91porn"
     },
     {
       "id": "forward.playurl.danmu",
