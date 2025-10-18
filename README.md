@@ -10,7 +10,6 @@
 
 ## 感谢以下原始仓库作者
 - [huangxd's Widgets](https://github.com/huangxd-/ForwardWidgets)
-- [𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂 '𝓼 𝓦𝓲𝓭𝓰𝓮𝓽𝓼 - 常规模块合集](https://widgets-xd.vercel.app/Normal.fwd)
 - [OCD Other Widgets](https://github.com/ocd0711/forward_module)
 - [pack1r's Widgets](https://github.com/pack1r/ForwardWidgets)
 - [2Kuai Widgets - 影视资源](https://github.com/2kuai/ForwardWidgets)
