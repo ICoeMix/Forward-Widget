@@ -3,7 +3,7 @@ WidgetMetadata = {
   title: "Movie & TV Lists",
   description: "Movie & TV Lists",
   author: "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-  site: "https://widgets-xd.vercel.app",
+  site: "https://for-ward.vercel.app",
   version: "1.0.0",
   requiredVersion: "0.0.2",
   detailCacheDuration: 60,
