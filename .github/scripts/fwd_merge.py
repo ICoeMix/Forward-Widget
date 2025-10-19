@@ -124,7 +124,7 @@ def download_and_replace_url(widget, base_dir):
                 f.write(chunk)
 
         # 替换为仓库 RAW 地址
-        repo_url = f"https://raw.githubusercontent.com/{OWNER_REPO}/{BRANCH}/refs/heads/master/widgets/{filename}"
+        repo_url = f"https://raw.githubusercontent.com/{OWNER_REPO}/{BRANCH}/widgets/{filename}"
         widget["url"] = repo_url
 
         print(f"  💾 已保存 {widget.get('id')} -> {filename}")
