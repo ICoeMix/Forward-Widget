@@ -509,7 +509,7 @@ async function loadCalendarItems(params = {}) {
         // Format date as YYYY-MM-DD
         const formattedStartDate = startDate.toISOString().split('T')[0];
 
-        let url = `https://apiz.trakt.tv/calendars/my/shows-movies/${formattedStartDate}/${days}`;
+        let url = `https://trakt.tv/calendars/my/shows-movies/${formattedStartDate}/${days}`;
         return await fetchTraktData(url, {Cookie: cookie}, "", 1, 100, false, order);
     } catch (error) {
         console.error("处理失败:", error);
