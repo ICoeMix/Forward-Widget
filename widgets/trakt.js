@@ -417,7 +417,7 @@ async function loadInterestItems(params = {}) {
             return [];
         }
 
-        let url = `https://apiz.trakt.tv/users/${userName}/${status}?page=${traktPage}`;
+        let url = `https://trakt.tv/users/${userName}/${status}?page=${traktPage}`;
         return await fetchTraktData(url, {Cookie: cookie}, status, minNum, maxNum, random);
     } catch (error) {
         console.error("处理失败:", error);
@@ -509,7 +509,7 @@ async function loadCalendarItems(params = {}) {
         // Format date as YYYY-MM-DD
         const formattedStartDate = startDate.toISOString().split('T')[0];
 
-        let url = `https://trakt.tv/calendars/my/shows-movies/${formattedStartDate}/${days}`;
+        let url = `https://apiz.trakt.tv/calendars/my/shows-movies/${formattedStartDate}/${days}`;
         return await fetchTraktData(url, {Cookie: cookie}, "", 1, 100, false, order);
     } catch (error) {
         console.error("处理失败:", error);
