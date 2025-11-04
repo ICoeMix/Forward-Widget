@@ -417,7 +417,7 @@ async function loadInterestItems(params = {}) {
             return [];
         }
 
-        let url = `https://trakt.tv/users/${userName}/${status}?page=${traktPage}`;
+        let url = `https://apiz.trakt.tv/users/${userName}/${status}?page=${traktPage}`;
         return await fetchTraktData(url, {Cookie: cookie}, status, minNum, maxNum, random);
     } catch (error) {
         console.error("处理失败:", error);
