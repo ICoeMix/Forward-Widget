@@ -6,7 +6,7 @@ WidgetMetadata = {
     title: "TMDB人物影视作品",
     version: "2.2.5",
     requiredVersion: "0.0.1",
-    description: "获取 TMDB 人物作品数据，支持关键词和正则过滤",
+    description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -32,45 +32,8 @@ const Params = [
             { title: "李安", value: "1614" },
             { title: "周星驰", value: "57607" },
             { title: "成龙", value: "18897" },
-            { title: "吴京", value: "78871" },
-            { title: "王家卫", value: "12453" },
-            { title: "姜文", value: "77301" },
-            { title: "贾樟柯", value: "24011" },
-            { title: "陈凯歌", value: "20640" },
-            { title: "徐峥", value: "118711" },
-            { title: "宁浩", value: "17295" },
-            { title: "黄渤", value: "128026" },
-            { title: "葛优", value: "76913" },
-            { title: "胡歌", value: "1106514" },
-            { title: "张译", value: "146098" },
-            { title: "沈腾", value: "1519026" },
-            { title: "王宝强", value: "71051" },
-            { title: "赵丽颖", value: "1260868" },
-            { title: "孙俪", value: "52898" },
-            { title: "张若昀", value: "1675905" },
-            { title: "秦昊", value: "1016315" },
-            { title: "易烊千玺", value: "2223265" },
-            { title: "王倦", value: "2467977" },
-            { title: "孔笙", value: "1494556" },
-            { title: "张国立", value: "543178" },
-            { title: "陈思诚", value: "1065761" },
-            { title: "徐克", value: "26760" },
-            { title: "林超贤", value: "81220" },
-            { title: "郭帆", value: "1100748" },
-            { title: "史蒂文·斯皮尔伯格", value: "488" },
-            { title: "詹姆斯·卡梅隆", value: "2710" },
-            { title: "克里斯托弗·诺兰", value: "525" },
-            { title: "阿尔弗雷德·希区柯克", value: "2636" },
-            { title: "斯坦利·库布里克", value: "240" },
-            { title: "黑泽明", value: "5026" },
-            { title: "莱昂纳多·迪卡普里奥", value: "6193" },
-            { title: "阿米尔·汗", value: "52763" },
-            { title: "宫崎骏", value: "608" },
-            { title: "蒂姆·伯顿", value: "510" },
-            { title: "杨紫琼", value: "1620" },
-            { title: "凯特·布兰切特", value: "112" },
-            { title: "丹尼尔·戴·刘易斯", value: "11856" },
-            { title: "宋康昊", value: "20738" }
+            { title: "吴京", value: "78871" }
+            // 可按需添加更多
         ]
     },
     {
@@ -94,7 +57,14 @@ const Params = [
         name: "filter",
         title: "关键词过滤",
         type: "input",
-        description: "填写关键词，用逗号分隔，返回中会去掉包含这些关键词的条目。例如：爱情, 喜剧, /202[0-9]/ 表示过滤标题中包含 '爱情' 或 '喜剧' 或 2020-2029 年的正则匹配条目"
+        description: "填写关键词组合，高级逻辑支持 AND/OR/排除/嵌套/通配符",
+        placeholders: [
+            { title: "AND组合（标题同时包含 A 和 B）", value: "A&&B" },
+            { title: "OR组合（标题包含 A 或 B）", value: "A||B" },
+            { title: "排除组合（包含 A，但不包含 X）", value: "!X&&A" },
+            { title: "复杂组合（高级逻辑，可任意组合 AND/OR/排除）", value: "(A&&B)||C&&!X" },
+            { title: "嵌套组合（可任意嵌套括号，支持通配符*和?）", value: "((A||B)&&C)||(!X&&!Y)" }
+        ]
     },
     {
         name: "sort_by",
@@ -166,12 +136,8 @@ function mergeCredits(cast, crew) {
 
 function filterByType(list, type) {
     const today = new Date();
-    if (type === "released") {
-        return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
-    }
-    if (type === "upcoming") {
-        return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
-    }
+    if (type === "released") return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
+    if (type === "upcoming") return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
     return list;
 }
 
@@ -179,33 +145,38 @@ function sortResults(list, sortBy) {
     return list.slice().sort((a, b) => {
         if (sortBy === "popularity.desc") return b.popularity - a.popularity;
         if (sortBy === "vote_average.desc") return b.rating - a.rating;
-        if (sortBy === "release_date.desc")
-            return new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0);
+        if (sortBy === "release_date.desc") return new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0);
         return 0;
     });
 }
 
 // -----------------------------
-// 支持正则的关键词过滤
+// 高级关键词过滤器（支持 AND/OR/排除/嵌套/通配符）
 // -----------------------------
-function filterByKeywords(list, keywordsStr) {
-    if (!keywordsStr) return list;
-    const keywords = keywordsStr.split(",").map(k => k.trim()).filter(Boolean);
-    return list.filter(item => {
-        return !keywords.some(k => {
-            if (k.startsWith("/") && k.endsWith("/")) {
-                const pattern = k.slice(1, -1);
-                try {
-                    return new RegExp(pattern, "i").test(item.title);
-                } catch (err) {
-                    console.warn("无效正则:", k, err);
-                    return false;
-                }
-            } else {
-                return item.title.includes(k);
-            }
+function filterByKeywords(list, filterStr) {
+    if (!filterStr) return list;
+    list.forEach(item => item._title = item.title.toLowerCase());
+
+    const toRegex = str => {
+        const escaped = str.replace(/([.+^=!:${}()|\[\]\/\\])/g, "\\$1");
+        return new RegExp("^" + escaped.replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
+    };
+
+    let expr = filterStr
+        .replace(/\&\&/g, "&&")
+        .replace(/\|\|/g, "||")
+        .replace(/!/g, "!")
+        .replace(/([A-Za-z0-9_\u4e00-\u9fa5\*\?]+)/g, match => {
+            const regex = toRegex(match.toLowerCase());
+            return `(regexTest(item._title, ${regex}))`;
         });
-    });
+
+    function regexTest(title, regex) {
+        return regex.test(title);
+    }
+
+    const matchFunc = new Function("item", "return " + expr + ";");
+    return list.filter(item => matchFunc(item));
 }
 
 function formatOutput(list) {
