@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.2.9",
+    version: "2.3.1",
     requiredVersion: "0.0.1",
-    description: "获取 TMDB 人物作品数据（高级高性能关键词过滤：仅排除内容，AC 自动机 + RegExp + 逻辑表达式）",
+    description: "获取 TMDB 人物作品数据（高性能关键词排除：AC 自动机 + 完全正则 + 忽略大小写）",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -26,7 +26,7 @@ const Params = [
         name: "personId",
         title: "人物搜索",
         type: "input",
-        description: "在 TMDB 网站获取的数字 ID，或输入名字自动搜索",
+        description: "输入名字自动获取 TMDB 网站人物的个人 ID，失效请手动输入个人 ID",
         placeholders: [
             { title: "张艺谋", value: "607" },
             { title: "李安", value: "1614" },
@@ -39,7 +39,11 @@ const Params = [
         name: "language",
         title: "语言",
         type: "language",
-        value: "zh-CN"
+        value: "zh-CN",
+        placeholders: [
+            { title: "中文", value: "zh-CN" },
+            { title: "英文", value: "en-US" }
+        ]
     },
     {
         name: "type",
@@ -54,17 +58,18 @@ const Params = [
     },
     {
         name: "filter",
-        title: "关键词排除",
+        title: "关键词过滤",
         type: "input",
-        description: "排除标题中包含指定关键词，支持 AND/OR/NOT/通配符/嵌套",
+        description: "过滤标题中包含指定关键词的作品",
         placeholders: [
-            { title: "关键词（排除标题中包含指定关键词）", value: "" },
-            { title: "AND组合（排除同时包含 A 和 B）", value: "A&&B" },
-            { title: "OR组合（排除包含 A 或 B）", value: "A||B" },
-            { title: "复杂组合（排除 A 和 B 或 C 出现）", value: "(A&&B)||C" },
-            { title: "嵌套组合（可任意嵌套括号，支持通配符*和?）", value: "((A||B)&&C)" },
-            { title: "通配符匹配（A开头，任意字符，B结尾）", value: "^A*B$" },
-            { title: "通配符任意位置（标题包含 A，中间任意字符，后面包含 B）", value: "*A*B*" }
+            { title: "关键词过滤", value: " " },
+            { title: "完全匹配 A", value: "^A$" },
+            { title: "以 A 开头", value: "^A.*" },
+            { title: "以 B 结尾", value: ".*B$" },
+            { title: "包含 A 或 B", value: "A|B" },
+            { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
+            { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
+            { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" },
         ]
     },
     {
@@ -149,15 +154,15 @@ function sortResults(list, sortBy) {
 }
 
 // -----------------------------
-// 高级关键词排除过滤器（AC 自动机 + 正则 + 逻辑表达式）
+// 高性能 AC + 完全正则过滤器（忽略大小写）
 // -----------------------------
-const filterCache = new Map();
-const termRegexCache = new Map();
 const acCache = new Map();
+const regexCache = new Map();
+const filterUnitCache = new Map();
 
 function normalizeTitleForMatch(s) {
     if (!s) return "";
-    return s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC');
+    return s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase();
 }
 
 class ACAutomaton {
@@ -182,7 +187,7 @@ class ACAutomaton {
                 const child = node.next[ch];
                 let f = node.fail;
                 while (f !== this.root && !f.next[ch]) f = f.fail;
-                if (f.next[ch]) child.fail = f.next[ch]; else child.fail = this.root;
+                child.fail = f.next[ch] || this.root;
                 child.output = child.output.concat(child.fail.output);
                 q.push(child);
             }
@@ -195,122 +200,68 @@ class ACAutomaton {
         for (const ch of text) {
             while (node !== this.root && !node.next[ch]) node = node.fail;
             node = node.next[ch] || this.root;
-            if (node.output.length) for (const w of node.output) found.add(w);
+            node.output.forEach(w => found.add(w));
         }
         return found;
     }
 }
 
-function termNeedsRegex(term) { return /[\*\?\^\$\\\/\.\+\|\(\)\[\]\{\}]/.test(term); }
+function isPlainText(term) { return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
 
-function getOrCreateRegexForTerm(term) {
-    if (termRegexCache.has(term)) return termRegexCache.get(term);
-    let s = term.replace(/[-\/\\^$+?.()|[\]{}]/g, "\\$&").replace(/\\\*/g, ".*").replace(/\\\?/g, ".");
-    s = s.replace(/\\\^/g, "^").replace(/\\\$/g, "$");
-    const re = new RegExp(s, "i");
-    termRegexCache.set(term, re);
+function getRegex(term) {
+    if (regexCache.has(term)) return regexCache.get(term);
+    let re = null;
+    try { re = new RegExp(term, 'i'); } catch(e) { re = null; }
+    regexCache.set(term, re);
     return re;
-}
-
-function parseExprToTree(expr) {
-    expr = (expr || "").trim();
-    if (!expr) return null;
-    while (expr.startsWith('(') && expr.endsWith(')')) {
-        let depth = 0, ok = true;
-        for (let i = 0; i < expr.length; i++) {
-            const ch = expr[i];
-            if (ch === '(') depth++;
-            else if (ch === ')') { depth--; if (depth === 0 && i < expr.length - 1) { ok = false; break; } }
-        }
-        if (!ok) break;
-        expr = expr.slice(1, -1).trim();
-    }
-    let depth = 0;
-    for (let i = 0; i < expr.length; i++) {
-        const a = expr[i], b = expr[i+1];
-        if (a === '(') depth++; else if (a === ')') depth--;
-        else if (a === '|' && b === '|' && depth === 0) return { type: 'OR', left: parseExprToTree(expr.slice(0,i)), right: parseExprToTree(expr.slice(i+2)) };
-    }
-    depth = 0;
-    for (let i = 0; i < expr.length; i++) {
-        const a = expr[i], b = expr[i+1];
-        if (a === '(') depth++; else if (a === ')') depth--;
-        else if (a === '&' && b === '&' && depth === 0) return { type: 'AND', left: parseExprToTree(expr.slice(0,i)), right: parseExprToTree(expr.slice(i+2)) };
-    }
-    if (expr.startsWith('!')) return { type: 'NOT', child: parseExprToTree(expr.slice(1)) };
-    return { type: 'TERM', value: expr };
-}
-
-function collectTermsFromTree(node, out = new Set()) {
-    if (!node) return out;
-    if (node.type === 'TERM') { const v = (node.value||"").trim(); if(v) out.add(v); return out; }
-    if (node.type === 'NOT') collectTermsFromTree(node.child, out);
-    if (node.type === 'AND' || node.type === 'OR') { collectTermsFromTree(node.left, out); collectTermsFromTree(node.right, out); }
-    return out;
 }
 
 function buildFilterUnit(filterStr) {
     if (!filterStr || !filterStr.trim()) return null;
-    if (filterCache.has(filterStr)) return filterCache.get(filterStr);
+    if (filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr);
 
-    const tree = parseExprToTree(filterStr);
-    const termSet = collectTermsFromTree(tree);
-    const literals = [];
-    const regexList = [];
-    for (const t of termSet) termNeedsRegex(t)?regexList.push({term:t,regex:getOrCreateRegexForTerm(t)}):literals.push(t);
+    const terms = filterStr.split(/\s*\|\|\s*/).map(t => t.trim()).filter(Boolean);
+    const plainTerms = [];
+    const regexTerms = [];
+
+    for (const t of terms) (isPlainText(t) ? plainTerms : regexTerms).push(t);
 
     let ac = null;
-    if (literals.length) {
-        const key = literals.slice().sort().join("\u0001");
+    if (plainTerms.length) {
+        const key = plainTerms.slice().sort().join("\u0001");
         if (acCache.has(key)) ac = acCache.get(key);
         else {
             ac = new ACAutomaton();
-            for (const lit of literals) ac.insert(lit);
+            plainTerms.forEach(p => ac.insert(p.toLowerCase()));
             ac.build();
             acCache.set(key, ac);
         }
     }
-    const unit = { tree, ac, literalSet: new Set(literals), regexList };
-    filterCache.set(filterStr, unit);
+
+    const unit = { ac, regexTerms };
+    filterUnitCache.set(filterStr, unit);
     return unit;
 }
 
-function evalTreeWithMatches(node, foundLiteralsSet, regexMatchCache) {
-    if (!node) return true;
-    switch(node.type) {
-        case 'TERM': {
-            const v = (node.value||"").trim();
-            if(!v) return true;
-            if(foundLiteralsSet && foundLiteralsSet.has(v)) return true;
-            if(regexMatchCache.hasOwnProperty(v)) return regexMatchCache[v];
-            const re = getOrCreateRegexForTerm(v);
-            const res = re.test(regexMatchCache.__title);
-            regexMatchCache[v] = res;
-            return res;
-        }
-        case 'NOT': return !evalTreeWithMatches(node.child, foundLiteralsSet, regexMatchCache);
-        case 'AND': if(!evalTreeWithMatches(node.left, foundLiteralsSet, regexMatchCache)) return false; return evalTreeWithMatches(node.right, foundLiteralsSet, regexMatchCache);
-        case 'OR': if(evalTreeWithMatches(node.left, foundLiteralsSet, regexMatchCache)) return true; return evalTreeWithMatches(node.right, foundLiteralsSet, regexMatchCache);
-    }
-    return false;
-}
-
-// 主过滤函数：匹配到的直接排除
 function filterByKeywords(list, filterStr) {
     if (!filterStr || !filterStr.trim()) return list;
-    if (!Array.isArray(list) || list.length===0) return list;
+    if (!Array.isArray(list) || list.length === 0) return list;
+
     const unit = buildFilterUnit(filterStr);
     if (!unit) return list;
-    const { tree, ac } = unit;
-    const hasAC = !!ac;
 
-    return list.filter(item=>{
-        if(!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title||"");
+    const { ac, regexTerms } = unit;
+
+    return list.filter(item => {
+        if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
         const title = item._normalizedTitle;
-        let foundLiterals = hasAC?ac.match(title):new Set();
-        const regexMatchCache = {__title:title};
-        // 匹配到关键词的直接排除
-        return !evalTreeWithMatches(tree, foundLiterals, regexMatchCache);
+
+        if (ac && ac.match(title).size) return false;
+        for (const r of regexTerms) {
+            const re = getRegex(r);
+            if (re && re.test(title)) return false;
+        }
+        return true;
     });
 }
 
