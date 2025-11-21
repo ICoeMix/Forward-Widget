@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.2.5",
+    version: "2.2.6",
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -33,7 +33,6 @@ const Params = [
             { title: "周星驰", value: "57607" },
             { title: "成龙", value: "18897" },
             { title: "吴京", value: "78871" }
-            // 可按需添加更多
         ]
     },
     {
@@ -63,8 +62,11 @@ const Params = [
             { title: "AND组合（标题同时包含 A 和 B）", value: "A&&B" },
             { title: "OR组合（标题包含 A 或 B）", value: "A||B" },
             { title: "排除组合（包含 A，但不包含 X）", value: "!X&&A" },
-            { title: "复杂组合（高级逻辑，可任意组合 AND/OR/排除）", value: "(A&&B)||C&&!X" },
-            { title: "嵌套组合（可任意嵌套括号，支持通配符*和?）", value: "((A||B)&&C)||(!X&&!Y)" }
+            { title: "复杂组合（“A和B同时出现 或 C出现”且不包含 X）", value: "(A&&B)||C&&!X" },
+            { title: "嵌套组合（可任意嵌套括号，支持通配符*和?）", value: "((A||B)&&C)||(!X&&!Y)" },
+            { title: "通配符匹配（A开头，任意字符，B结尾）", value: "^A*B$" },
+            { title: "通配符任意位置（标题包含 A，中间任意字符，后面包含 B）", value: "*A*B*" },
+            { title: "嵌套通配符组合（高级逻辑，支持 AND/OR/排除）", value: "((^A*B$||C)&&!X)||(!Y&&*Z*)" }
         ]
     },
     {
@@ -152,32 +154,44 @@ function sortResults(list, sortBy) {
 }
 
 // -----------------------------
-// 高级关键词过滤器（支持 AND/OR/排除/嵌套/通配符）
+// 高级关键词过滤器（支持 AND/OR/排除/嵌套/通配符 * ?）
 // -----------------------------
 function filterByKeywords(list, filterStr) {
-    if (!filterStr) return list;
-    list.forEach(item => item._title = item.title.toLowerCase());
+    if (!filterStr || !list.length) return list;
 
-    const toRegex = str => {
-        const escaped = str.replace(/([.+^=!:${}()|\[\]\/\\])/g, "\\$1");
-        return new RegExp("^" + escaped.replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
+    list.forEach(item => {
+        if (!item._title) item._title = item.title.toLowerCase();
+    });
+
+    const wildcardToRegex = str => {
+        const escaped = str.replace(/([.+^=!:${}()|[\]\/\\])/g, "\\$1");
+        const regexStr = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
+        return new RegExp(regexStr, "i");
     };
 
     let expr = filterStr
+        .replace(/([A-Za-z0-9_\*\?\u4e00-\u9fa5]+)/g, match => {
+            const regex = wildcardToRegex(match.toLowerCase());
+            return `(regexTest(item._title, ${regex}))`;
+        })
         .replace(/\&\&/g, "&&")
         .replace(/\|\|/g, "||")
-        .replace(/!/g, "!")
-        .replace(/([A-Za-z0-9_\u4e00-\u9fa5\*\?]+)/g, match => {
-            const regex = toRegex(match.toLowerCase());
-            return `(regexTest(item._title, ${regex}))`;
-        });
+        .replace(/!/g, "!");
 
     function regexTest(title, regex) {
         return regex.test(title);
     }
 
     const matchFunc = new Function("item", "return " + expr + ";");
-    return list.filter(item => matchFunc(item));
+
+    return list.filter(item => {
+        try {
+            return matchFunc(item);
+        } catch (e) {
+            console.error("关键词过滤表达式错误:", e, filterStr);
+            return true;
+        }
+    });
 }
 
 function formatOutput(list) {
