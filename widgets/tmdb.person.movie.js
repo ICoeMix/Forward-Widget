@@ -56,9 +56,9 @@ const Params = [
         name: "filter",
         title: "关键词过滤",
         type: "input",
-        description: "过滤标题中包含指定关键字的作品",
+        description: "过滤标题中包含指定关键词的作品",
         placeholders: [
-            { title: "默认（不过滤）", value: "" },
+            { title: "关键词（标题包含 A ）", value: "" },
             { title: "AND组合（标题同时包含 A 和 B）", value: "A&&B" },
             { title: "OR组合（标题包含 A 或 B）", value: "A||B" },
             { title: "排除组合（包含 A，但不包含 X）", value: "!X&&A" },
@@ -154,43 +154,62 @@ function sortResults(list, sortBy) {
 }
 
 // -----------------------------
-// 高级关键词过滤器（支持 AND/OR/排除/嵌套/通配符 * ?）
+// 高级关键词过滤器（支持 AND/OR/NOT/嵌套/通配符）
 // -----------------------------
-function filterByKeywords(list, filterStr) {
-    if (!filterStr || !list.length) return list;
+const regexCache = new Map();
 
-    list.forEach(item => {
-        if (!item._title) item._title = item.title.toLowerCase();
-    });
+function getRegex(term) {
+    if (!regexCache.has(term)) {
+        const escaped = term.replace(/([.+^=!:${}()|\[\]\/\\])/g, "\\$1")
+                            .replace(/\*/g, ".*")
+                            .replace(/\?/g, ".");
+        regexCache.set(term, new RegExp(`^${escaped}$`, "i"));
+    }
+    return regexCache.get(term);
+}
 
-    const wildcardToRegex = str => {
-        const escaped = str.replace(/([.+^=!:${}()|[\]\/\\])/g, "\\$1");
-        const regexStr = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
-        return new RegExp(regexStr, "i");
-    };
+function parseExpression(expr) {
+    expr = expr.trim();
+    while (expr.startsWith('(') && expr.endsWith(')')) expr = expr.slice(1, -1).trim();
 
-    let expr = filterStr
-        .replace(/([A-Za-z0-9_\*\?\u4e00-\u9fa5]+)/g, match => {
-            const regex = wildcardToRegex(match.toLowerCase());
-            return `(regexTest(item._title, ${regex}))`;
-        })
-        .replace(/\&\&/g, "&&")
-        .replace(/\|\|/g, "||")
-        .replace(/!/g, "!");
-
-    function regexTest(title, regex) {
-        return regex.test(title);
+    let depth = 0;
+    for (let i = 0; i < expr.length; i++) {
+        if (expr[i] === '(') depth++;
+        else if (expr[i] === ')') depth--;
+        else if (expr[i] === '|' && expr[i + 1] === '|' && depth === 0) {
+            return { type: 'OR', children: [parseExpression(expr.slice(0,i)), parseExpression(expr.slice(i+2))] };
+        }
     }
 
-    const matchFunc = new Function("item", "return " + expr + ";");
-
-    return list.filter(item => {
-        try {
-            return matchFunc(item);
-        } catch (e) {
-            console.error("关键词过滤表达式错误:", e, filterStr);
-            return true;
+    depth = 0;
+    for (let i = 0; i < expr.length; i++) {
+        if (expr[i] === '(') depth++;
+        else if (expr[i] === ')') depth--;
+        else if (expr[i] === '&' && expr[i + 1] === '&' && depth === 0) {
+            return { type: 'AND', children: [parseExpression(expr.slice(0,i)), parseExpression(expr.slice(i+2))] };
         }
+    }
+
+    if (expr.startsWith('!')) return { type: 'NOT', child: parseExpression(expr.slice(1)) };
+    return { type: 'TERM', value: expr };
+}
+
+function matchNode(itemTitle, node) {
+    switch(node.type) {
+        case 'TERM': return getRegex(node.value).test(itemTitle);
+        case 'NOT': return !matchNode(itemTitle, node.child);
+        case 'AND': return node.children.every(c => matchNode(itemTitle, c));
+        case 'OR': return node.children.some(c => matchNode(itemTitle, c));
+    }
+}
+
+function filterByKeywords(list, filterStr) {
+    if (!filterStr || !filterStr.trim()) return list;
+
+    const tree = parseExpression(filterStr);
+    return list.filter(item => {
+        if (!item._title) item._title = item.title.toLowerCase();
+        return matchNode(item._title, tree);
     });
 }
 
