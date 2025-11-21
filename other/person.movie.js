@@ -76,8 +76,16 @@ const Params = [
     {
         name: "language",
         title: "语言",
-        type: "language",
-        value: "zh-CN"
+        description: "选择 TMDB 数据返回的语言",
+        type: "enumeration",   // 用枚举类型显示下拉选择
+        enumOptions: [
+            { title: "中文", value: "zh-CN" },
+            { title: "英文", value: "en-US" },
+            { title: "日文", value: "ja-JP" },
+            { title: "韩文", value: "ko-KR" },
+            { title: "法文", value: "fr-FR" }
+        ],
+        value: "zh-CN",        // 默认值为中文
     },
     {
         name: "type",
