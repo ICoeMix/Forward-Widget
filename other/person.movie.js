@@ -103,6 +103,7 @@ const Params = [
         title: "关键词过滤",
         type: "input",
         description: "过滤标题中包含指定关键词的作品",
+        value: " ",
         placeholders: [
             { title: "关键词过滤", value: "A" },
             { title: "完全匹配 A", value: "^A$" },
@@ -113,7 +114,6 @@ const Params = [
             { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
             { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" },
         ],
-        value: " ",
     },
     {
         name: "sort_by",
