@@ -1,7 +1,7 @@
 {
-    "title": "OCD's Other Widgets",
-    "description": "其余本地 Widgets",
-    "icon": "https://avatars.githubusercontent.com/u/25606004",
+    "title": "ICoeMix's Other Widgets",
+    "description": "本地 Widgets",
+    "icon": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/bb1e749546c2b0bcbaecae3b85f5a21772d300e2/.github/scripts/icon.png",
     "widgets": [
         {
             "id": "yuanqi.wallpaper",
@@ -11,6 +11,16 @@
             "version": "1.1.0",
             "author": "Discount Code：VEUS",
             "url": "https://raw.githubusercontent.com/ocd0711/forward_module/refs/heads/master/other/wallpaper.js"
+        },
+    {
+
+            id: "person.movie.tmdb",
+            title: "TMDB人物影视作品",
+            version: "2.2.4",
+            description: "获取 TMDB 人物作品数据",
+            requiredVersion: "0.0.1",
+            author: "ICoeMix (Optimized by ChatGPT)",
+            "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/refs/heads/master/other/person.movie.js"
         },
         {
             "id": "xtream_api_en",
