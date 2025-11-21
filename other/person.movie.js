@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "person.movie.tmdb",
     title: "TMDB人物影视作品",
-    version: "2.2.3",
+    version: "2.2.4",
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -24,7 +24,7 @@ WidgetMetadata = {
 const Params = [
     {
         name: "personId",
-        title: "个人ID",
+        title: "人物搜索",
         type: "input",
         description: "在 TMDB 网站获取的数字 ID，或输入名字自动搜索",
         placeholders: [
@@ -33,8 +33,53 @@ const Params = [
             { title: "周星驰", value: "57607" },
             { title: "成龙", value: "18897" },
             { title: "吴京", value: "78871" },
-            { title: "王家卫", value: "12453" }
+            { title: "王家卫", value: "12453" },
+            { title: "姜文", value: "77301" },
+            { title: "贾樟柯", value: "24011" },
+            { title: "陈凯歌", value: "20640" },
+            { title: "徐峥", value: "118711" },
+            { title: "宁浩", value: "17295" },
+            { title: "黄渤", value: "128026" },
+            { title: "葛优", value: "76913" },
+            { title: "胡歌", value: "1106514" },
+            { title: "张译", value: "146098" },
+            { title: "沈腾", value: "1519026" },
+            { title: "王宝强", value: "71051" },
+            { title: "赵丽颖", value: "1260868" },
+            { title: "孙俪", value: "52898" },
+            { title: "张若昀", value: "1675905" },
+            { title: "秦昊", value: "1016315" },
+            { title: "易烊千玺", value: "2223265" },
+            { title: "王倦", value: "2467977" },
+            { title: "孔笙", value: "1494556" },
+            { title: "张国立", value: "543178" },
+            { title: "陈思诚", value: "1065761" },
+            { title: "徐克", value: "26760" },
+            { title: "林超贤", value: "81220" },
+            { title: "郭帆", value: "1100748" },
+            { title: "史蒂文·斯皮尔伯格", value: "488" },
+            { title: "詹姆斯·卡梅隆", value: "2710" },
+            { title: "克里斯托弗·诺兰", value: "525" },
+            { title: "阿尔弗雷德·希区柯克", value: "2636" },
+            { title: "斯坦利·库布里克", value: "240" },
+            { title: "黑泽明", value: "5026" },
+            { title: "莱昂纳多·迪卡普里奥", value: "6193" },
+            { title: "阿米尔·汗", value: "52763" },
+            { title: "宫崎骏", value: "608" },
+            { title: "蒂姆·伯顿", value: "510" },
+            { title: "杨紫琼", value: "1620" },
+            { title: "凯特·布兰切特", value: "112" },
+            { title: "丹尼尔·戴·刘易斯", value: "11856" },
+            { title: "宋康昊", value: "20738" }
         ]
+    },
+    {
+        name: "popularPersons",
+        title: "热门人物推荐",
+        type: "enumeration",
+        description: "国内 10 + 外籍 10 热门人物，选择后返回 personId",
+        enumOptions: [], // 动态填充
+        value: ""
     },
     {
         name: "language",
@@ -76,7 +121,7 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 1. 获取作品数据
+// TMDB 数据获取及处理函数
 // -----------------------------
 async function fetchCredits(personId, language) {
     try {
@@ -93,9 +138,6 @@ async function fetchCredits(personId, language) {
     }
 }
 
-// -----------------------------
-// 2. 数据归一化
-// -----------------------------
 function normalizeItem(item) {
     return {
         id: item.id,
@@ -118,9 +160,6 @@ function guessMediaType(item) {
     return "movie";
 }
 
-// -----------------------------
-// 3. 合并 cast + crew
-// -----------------------------
 function mergeCredits(cast, crew) {
     const dict = {};
     function add(item) {
@@ -133,9 +172,6 @@ function mergeCredits(cast, crew) {
     return Object.values(dict);
 }
 
-// -----------------------------
-// 4. 筛选 & 排序
-// -----------------------------
 function filterByType(list, type) {
     if (type === "released") {
         const today = new Date();
@@ -145,7 +181,7 @@ function filterByType(list, type) {
         const today = new Date();
         return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
     }
-    return list; // all
+    return list;
 }
 
 function sortResults(list, sortBy) {
@@ -164,9 +200,6 @@ function filterByKeywords(list, keywordsStr) {
     return list.filter(item => !keywords.some(k => item.title.includes(k)));
 }
 
-// -----------------------------
-// 5. 输出格式
-// -----------------------------
 function formatOutput(list) {
     return list.map(i => ({
         id: i.id,
@@ -185,7 +218,7 @@ function formatOutput(list) {
 }
 
 // -----------------------------
-// 6. 名字搜索 → 返回数字 ID
+// 名字搜索 → 返回 ID
 // -----------------------------
 async function getPersonIdByName(name, language = "zh-CN") {
     if (!name) return null;
@@ -200,16 +233,45 @@ async function getPersonIdByName(name, language = "zh-CN") {
 
 async function resolvePersonId(input, language) {
     if (!input) return null;
-    if (!isNaN(Number(input))) return Number(input); // 已经是 ID
-    return await getPersonIdByName(input, language); // 名字搜索
+    if (!isNaN(Number(input))) return Number(input);
+    return await getPersonIdByName(input, language);
 }
 
 // -----------------------------
-// 7. 模块方法
+// 热门人物推荐（国内 10 + 外籍 10）
+// -----------------------------
+async function fetchPopularPersons(country) {
+    try {
+        const response = await Widget.tmdb.get('person/popular', { params: { language: "zh-CN", page: 1 } });
+        let list = response.results || [];
+        if (country === "CN") {
+            list = list.filter(p => p.known_for && p.known_for.some(m => m.origin_country === "CN"));
+        } else {
+            list = list.filter(p => p.known_for && p.known_for.some(m => m.origin_country !== "CN"));
+        }
+        return list.slice(0, 10).map(p => ({ title: p.name, value: String(p.id) }));
+    } catch (err) {
+        console.error("获取热门人物失败:", err);
+        return [];
+    }
+}
+
+async function initPopularPersons() {
+    const cnList = await fetchPopularPersons("CN");
+    const foreignList = await fetchPopularPersons("foreign");
+    const popularField = Params.find(p => p.name === "popularPersons");
+    popularField.enumOptions = [...cnList, ...foreignList];
+}
+
+// 初始化热门人物
+initPopularPersons();
+
+// -----------------------------
+// 模块方法
 // -----------------------------
 async function loadWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
+    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
     if (!personId) return [];
 
     let credits = await fetchCredits(personId, p.language);
@@ -221,10 +283,9 @@ async function loadWorks(params) {
 }
 
 async function getAllWorks(params) { return loadWorks(params); }
-
 async function getActorWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
+    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
     if (!personId) return [];
     let list = (await fetchCredits(personId, p.language)).cast;
     list = filterByType(list, p.type);
@@ -232,10 +293,9 @@ async function getActorWorks(params) {
     list = filterByKeywords(list, p.filter);
     return formatOutput(list);
 }
-
 async function getDirectorWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
+    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
     if (!personId) return [];
     let list = (await fetchCredits(personId, p.language)).crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
     list = filterByType(list, p.type);
@@ -243,10 +303,9 @@ async function getDirectorWorks(params) {
     list = filterByKeywords(list, p.filter);
     return formatOutput(list);
 }
-
 async function getOtherWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
+    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
     if (!personId) return [];
     let list = (await fetchCredits(personId, p.language)).crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
     list = filterByType(list, p.type);
