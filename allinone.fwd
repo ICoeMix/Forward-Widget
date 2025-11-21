@@ -130,6 +130,33 @@
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/person.movie.tmdb.js"
     },
     {
+      "id": "yuanqi.wallpaper",
+      "title": "🖼️ ✨wallpaper",
+      "description": "✨ Dynamic wallpaper For Topshelf",
+      "requiredVersion": "0.0.1",
+      "version": "1.1.0",
+      "author": "Discount Code：VEUS",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/yuanqi.wallpaper.js"
+    },
+    {
+      "id": "tmdb.person.movie",
+      "title": "TMDB人物影视作品",
+      "version": "2.2.4",
+      "description": "获取 TMDB 人物作品数据",
+      "requiredVersion": "0.0.1",
+      "author": "ICoeMix (Optimized by ChatGPT)",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/person.movie.js"
+    },
+    {
+      "id": "xtream_api_en",
+      "title": "Xtream API Live",
+      "description": "Fetch live channels via official Xtream-Codes REST API with keyword search",
+      "requiredVersion": "0.0.1",
+      "version": "2.1.2",
+      "author": "Discount Code：VEUS",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/xtream_api_en.js"
+    },
+    {
       "id": "imdb_discovery_final_v2",
       "title": "IMDb 分类资源 v2",
       "description": "聚合 IMDb 热门影视资源",
@@ -200,24 +227,6 @@
       "version": "1.0.0",
       "author": "两块",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ddys_vod.js"
-    },
-    {
-      "id": "yuanqi.wallpaper",
-      "title": "🖼️ ✨wallpaper",
-      "description": "✨ Dynamic wallpaper For Topshelf",
-      "requiredVersion": "0.0.1",
-      "version": "1.1.0",
-      "author": "Discount Code：VEUS",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/yuanqi.wallpaper.js"
-    },
-    {
-      "id": "xtream_api_en",
-      "title": "Xtream API Live",
-      "description": "Fetch live channels via official Xtream-Codes REST API with keyword search",
-      "requiredVersion": "0.0.1",
-      "version": "2.1.2",
-      "author": "Discount Code：VEUS",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/xtream_api_en.js"
     },
     {
       "id": "forward.combined.media.lists.ar",

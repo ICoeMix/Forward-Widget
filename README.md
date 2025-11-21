@@ -11,5 +11,6 @@
 ## 感谢以下原始仓库作者
 - [huangxd's Widgets](https://github.com/huangxd-/ForwardWidgets)
 - [𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂 '𝓼 𝓦𝓲𝓭𝓰𝓮𝓽𝓼 - 常规模块合集](https://for-ward.vercel.app/Normal.fwd)
+- [ICoeMix's Other Widgets](https://github.com/ICoeMix/Forward-Widget)
 - [pack1r's Widgets](https://github.com/pack1r/ForwardWidgets)
 - [2Kuai Widgets - 影视资源](https://github.com/2kuai/ForwardWidgets)
