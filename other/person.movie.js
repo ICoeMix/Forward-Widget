@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "person.movie.tmdb",
     title: "TMDB人物影视作品",
-    version: "2.2.5",
+    version: "2.2.3",
     requiredVersion: "0.0.1",
-    description: "精准获取 TMDB 人物影视作品，支持名字搜索、上映状态、关键词过滤",
+    description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -19,9 +19,9 @@ WidgetMetadata = {
 };
 
 // -----------------------------
-// 参数模板
+// 参数模板 Params
 // -----------------------------
-const defaultParams = [
+const Params = [
     {
         name: "personId",
         title: "个人ID",
@@ -31,11 +31,17 @@ const defaultParams = [
             { title: "张艺谋", value: "607" },
             { title: "李安", value: "1614" },
             { title: "周星驰", value: "57607" },
-            { title: "成龙", value: "18897" }
-            // 可继续扩充完整推荐列表
+            { title: "成龙", value: "18897" },
+            { title: "吴京", value: "78871" },
+            { title: "王家卫", value: "12453" }
         ]
     },
-    { name: "language", title: "语言", type: "language", value: "zh-CN" },
+    {
+        name: "language",
+        title: "语言",
+        type: "language",
+        value: "zh-CN"
+    },
     {
         name: "type",
         title: "上映状态",
@@ -66,13 +72,11 @@ const defaultParams = [
     }
 ];
 
-// -----------------------------
-// 复制 params 给各模块
-// -----------------------------
-WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(defaultParams)));
+// 给所有模块使用同一个 Params
+WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 数据处理函数
+// 1. 获取作品数据
 // -----------------------------
 async function fetchCredits(personId, language) {
     try {
@@ -89,6 +93,9 @@ async function fetchCredits(personId, language) {
     }
 }
 
+// -----------------------------
+// 2. 数据归一化
+// -----------------------------
 function normalizeItem(item) {
     return {
         id: item.id,
@@ -111,88 +118,9 @@ function guessMediaType(item) {
     return "movie";
 }
 
-function filterByType(list, type) {
-    const today = new Date();
-    if (type === "released") return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
-    if (type === "upcoming") return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
-    return list;
-}
-
-function filterByKeyword(list, keywords) {
-    if (!keywords) return list;
-    const kwArr = keywords.split(",").map(k => k.trim()).filter(k => k);
-    if (kwArr.length === 0) return list;
-    return list.filter(item => !kwArr.some(k => item.title.includes(k)));
-}
-
-function sortResults(list, sortBy) {
-    return list.slice().sort((a, b) => {
-        if (sortBy === "popularity.desc") return b.popularity - a.popularity;
-        if (sortBy === "vote_average.desc") return b.rating - a.rating;
-        if (sortBy === "release_date.desc") return new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0);
-        return 0;
-    });
-}
-
-function formatOutput(list) {
-    return list.map(i => ({
-        id: i.id,
-        type: "tmdb",
-        title: i.title,
-        description: i.overview,
-        releaseDate: i.releaseDate,
-        rating: i.rating,
-        popularity: i.popularity,
-        posterPath: i.posterPath,
-        backdropPath: i.backdropPath,
-        mediaType: i.mediaType,
-        jobs: i.jobs || [],
-        characters: i.characters || []
-    }));
-}
-
 // -----------------------------
-// 动态获取 ID
+// 3. 合并 cast + crew
 // -----------------------------
-async function getPersonIdByName(name, language = "zh-CN") {
-    if (!name) return null;
-    try {
-        const response = await Widget.tmdb.get("search/person", {
-            params: { query: name, language }
-        });
-        return response.results && response.results.length > 0 ? response.results[0].id : null;
-    } catch (err) {
-        console.error("TMDB 搜索人物失败:", err);
-        return null;
-    }
-}
-
-// -----------------------------
-// 模块通用加载函数
-// -----------------------------
-async function loadWorks(params, filterFn) {
-    const p = params || {};
-    let personId = p.personId;
-
-    if (isNaN(Number(personId))) {
-        const id = await getPersonIdByName(personId, p.language);
-        if (!id) return [];
-        personId = id;
-    }
-
-    const credits = await fetchCredits(personId, p.language);
-    let cast = credits.cast;
-    let crew = credits.crew;
-
-    if (filterFn) crew = crew.filter(filterFn);
-
-    let merged = mergeCredits(cast, crew);
-    merged = filterByType(merged, p.type);
-    merged = filterByKeyword(merged, p.filter);
-    merged = sortResults(merged, p.sort_by);
-    return formatOutput(merged);
-}
-
 function mergeCredits(cast, crew) {
     const dict = {};
     function add(item) {
@@ -206,20 +134,123 @@ function mergeCredits(cast, crew) {
 }
 
 // -----------------------------
-// 各模块方法
+// 4. 筛选 & 排序
 // -----------------------------
-async function getAllWorks(params) {
-    return loadWorks(params); // 全部作品
+function filterByType(list, type) {
+    if (type === "released") {
+        const today = new Date();
+        return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
+    }
+    if (type === "upcoming") {
+        const today = new Date();
+        return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
+    }
+    return list; // all
 }
 
+function sortResults(list, sortBy) {
+    return list.slice().sort((a, b) => {
+        if (sortBy === "popularity.desc") return b.popularity - a.popularity;
+        if (sortBy === "vote_average.desc") return b.rating - a.rating;
+        if (sortBy === "release_date.desc")
+            return new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0);
+        return 0;
+    });
+}
+
+function filterByKeywords(list, keywordsStr) {
+    if (!keywordsStr) return list;
+    const keywords = keywordsStr.split(",").map(k => k.trim()).filter(Boolean);
+    return list.filter(item => !keywords.some(k => item.title.includes(k)));
+}
+
+// -----------------------------
+// 5. 输出格式
+// -----------------------------
+function formatOutput(list) {
+    return list.map(i => ({
+        id: i.id,
+        type: "tmdb",
+        title: i.title,
+        description: i.overview,
+        releaseDate: i.releaseDate,
+        rating: i.rating,
+        popularity: i.popularity,
+        posterPath: i.posterPath,
+        backdropPath: i.backdropPath,
+        mediaType: i.mediaType,
+        jobs: i.jobs,
+        characters: i.characters
+    }));
+}
+
+// -----------------------------
+// 6. 名字搜索 → 返回数字 ID
+// -----------------------------
+async function getPersonIdByName(name, language = "zh-CN") {
+    if (!name) return null;
+    try {
+        const response = await Widget.tmdb.get("search/person", { params: { query: name, language } });
+        return response.results && response.results.length > 0 ? response.results[0].id : null;
+    } catch (err) {
+        console.error("TMDB 搜索人物失败:", err);
+        return null;
+    }
+}
+
+async function resolvePersonId(input, language) {
+    if (!input) return null;
+    if (!isNaN(Number(input))) return Number(input); // 已经是 ID
+    return await getPersonIdByName(input, language); // 名字搜索
+}
+
+// -----------------------------
+// 7. 模块方法
+// -----------------------------
+async function loadWorks(params) {
+    const p = params || {};
+    const personId = await resolvePersonId(p.personId, p.language);
+    if (!personId) return [];
+
+    let credits = await fetchCredits(personId, p.language);
+    let merged = mergeCredits(credits.cast, credits.crew);
+    merged = filterByType(merged, p.type);
+    merged = sortResults(merged, p.sort_by);
+    merged = filterByKeywords(merged, p.filter);
+    return formatOutput(merged);
+}
+
+async function getAllWorks(params) { return loadWorks(params); }
+
 async function getActorWorks(params) {
-    return loadWorks(params, () => false); // 过滤掉 crew，只显示 cast
+    const p = params || {};
+    const personId = await resolvePersonId(p.personId, p.language);
+    if (!personId) return [];
+    let list = (await fetchCredits(personId, p.language)).cast;
+    list = filterByType(list, p.type);
+    list = sortResults(list, p.sort_by);
+    list = filterByKeywords(list, p.filter);
+    return formatOutput(list);
 }
 
 async function getDirectorWorks(params) {
-    return loadWorks(params, i => i.job && i.job.toLowerCase().includes("director")); // 只显示导演
+    const p = params || {};
+    const personId = await resolvePersonId(p.personId, p.language);
+    if (!personId) return [];
+    let list = (await fetchCredits(personId, p.language)).crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
+    list = filterByType(list, p.type);
+    list = sortResults(list, p.sort_by);
+    list = filterByKeywords(list, p.filter);
+    return formatOutput(list);
 }
 
 async function getOtherWorks(params) {
-    return loadWorks(params, i => !(i.job && i.job.toLowerCase().includes("director"))); // 非导演 crew
+    const p = params || {};
+    const personId = await resolvePersonId(p.personId, p.language);
+    if (!personId) return [];
+    let list = (await fetchCredits(personId, p.language)).crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
+    list = filterByType(list, p.type);
+    list = sortResults(list, p.sort_by);
+    list = filterByKeywords(list, p.filter);
+    return formatOutput(list);
 }
