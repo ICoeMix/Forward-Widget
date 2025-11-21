@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "person.movie.tmdb",
     title: "TMDB人物影视作品",
-    version: "2.2.4",
+    version: "2.2.3",
     requiredVersion: "0.0.1",
-    description: "精准获取 TMDB 人物作品数据（支持全部/已上映/即将上映筛选）",
+    description: "精准获取 TMDB 人物作品数据（可筛选已上映/即将上映，并支持关键词过滤）",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -79,6 +79,12 @@ WidgetMetadata = {
                         { title: "即将上映", value: "upcoming" }
                     ],
                     value: "all"
+                },
+                {
+                    name: "filter",
+                    title: "关键词过滤",
+                    type: "input",
+                    description: "填写关键词，用逗号分隔，返回中会去掉包含这些关键词的条目。例如：熊猫,动作"
                 },
                 {
                     name: "sort_by",
@@ -168,14 +174,11 @@ function mergeCredits(cast, crew) {
 // -----------------------------
 // 4. 筛选 & 排序
 // -----------------------------
-function filterByStatus(list, status) {
-    if (status === "all") return list;
+function filterByType(list, type) {
+    if (type === "all") return list;
     const today = new Date();
-    if (status === "released") {
-        return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
-    } else if (status === "upcoming") {
-        return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
-    }
+    if (type === "released") return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
+    if (type === "upcoming") return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
     return list;
 }
 
@@ -190,7 +193,7 @@ function sortResults(list, sortBy) {
 }
 
 // -----------------------------
-// 5. 输出格式
+// 5. 输出格式（保证数组）
 // -----------------------------
 function formatOutput(list) {
     return list.map(i => ({
@@ -210,13 +213,27 @@ function formatOutput(list) {
 }
 
 // -----------------------------
-// 6. 模块方法
+// 6. 关键词过滤函数
+// -----------------------------
+function filterByKeyword(list, keywords) {
+    if (!keywords) return list;
+    const words = keywords.split(',').map(w => w.trim()).filter(w => w);
+    if (words.length === 0) return list;
+    return list.filter(item => {
+        if (!item.title) return true;
+        return !words.some(word => item.title.includes(word)); // 去掉包含关键词的条目
+    });
+}
+
+// -----------------------------
+// 7. 模块方法
 // -----------------------------
 async function loadWorks(params) {
     const p = params || {};
     const credits = await fetchCredits(p.personId, p.language);
     let merged = mergeCredits(credits.cast, credits.crew);
-    merged = filterByStatus(merged, p.type);
+    merged = filterByType(merged, p.type);
+    merged = filterByKeyword(merged, p.filter); // ✅ 添加关键词过滤
     merged = sortResults(merged, p.sort_by);
     return formatOutput(merged);
 }
@@ -228,25 +245,26 @@ async function getAllWorks(params) {
 async function getActorWorks(params) {
     const p = params || {};
     let list = (await fetchCredits(p.personId, p.language)).cast;
-    list = filterByStatus(list, p.type);
+    list = filterByType(list, p.type);
+    list = filterByKeyword(list, p.filter);
     list = sortResults(list, p.sort_by);
     return formatOutput(list);
 }
 
 async function getDirectorWorks(params) {
     const p = params || {};
-    let list = (await fetchCredits(p.personId, p.language)).crew
-        .filter(i => i.job && i.job.toLowerCase().includes("director"));
-    list = filterByStatus(list, p.type);
+    let list = (await fetchCredits(p.personId, p.language)).crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
+    list = filterByType(list, p.type);
+    list = filterByKeyword(list, p.filter);
     list = sortResults(list, p.sort_by);
     return formatOutput(list);
 }
 
 async function getOtherWorks(params) {
     const p = params || {};
-    let list = (await fetchCredits(p.personId, p.language)).crew
-        .filter(i => !(i.job && i.job.toLowerCase().includes("director")));
-    list = filterByStatus(list, p.type);
+    let list = (await fetchCredits(p.personId, p.language)).crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
+    list = filterByType(list, p.type);
+    list = filterByKeyword(list, p.filter);
     list = sortResults(list, p.sort_by);
     return formatOutput(list);
 }
