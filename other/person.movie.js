@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.2.4",
+    version: "2.2.5",
     requiredVersion: "0.0.1",
-    description: "获取 TMDB 人物作品数据",
+    description: "获取 TMDB 人物作品数据，支持关键词和正则过滤",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -94,7 +94,7 @@ const Params = [
         name: "filter",
         title: "关键词过滤",
         type: "input",
-        description: "填写关键词，用逗号分隔，返回中会去掉包含这些关键词的条目"
+        description: "填写关键词，用逗号分隔，返回中会去掉包含这些关键词的条目。例如：爱情, 喜剧, /202[0-9]/ 表示过滤标题中包含 '爱情' 或 '喜剧' 或 2020-2029 年的正则匹配条目"
     },
     {
         name: "sort_by",
@@ -185,10 +185,27 @@ function sortResults(list, sortBy) {
     });
 }
 
+// -----------------------------
+// 支持正则的关键词过滤
+// -----------------------------
 function filterByKeywords(list, keywordsStr) {
     if (!keywordsStr) return list;
     const keywords = keywordsStr.split(",").map(k => k.trim()).filter(Boolean);
-    return list.filter(item => !keywords.some(k => item.title.includes(k)));
+    return list.filter(item => {
+        return !keywords.some(k => {
+            if (k.startsWith("/") && k.endsWith("/")) {
+                const pattern = k.slice(1, -1);
+                try {
+                    return new RegExp(pattern, "i").test(item.title);
+                } catch (err) {
+                    console.warn("无效正则:", k, err);
+                    return false;
+                }
+            } else {
+                return item.title.includes(k);
+            }
+        });
+    });
 }
 
 function formatOutput(list) {
