@@ -2,7 +2,7 @@
 // Widget Metadata
 // -----------------------------
 WidgetMetadata = {
-    id: "person.movie.tmdb",
+    id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
     version: "2.2.4",
     requiredVersion: "0.0.1",
