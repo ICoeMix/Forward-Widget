@@ -76,12 +76,8 @@ const Params = [
     {
         name: "language",
         title: "语言",
-        type: "enumeration",
-        value: "zh-CN",
-        enumOptions: [
-            { title: "中文", value: "zh-CN" },
-            { title: "英文", value: "en-US" }
-        ]
+        type: "language",
+        value: "zh-CN"
     },
     {
         name: "type",
