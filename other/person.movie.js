@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "person.movie.tmdb",
     title: "TMDB人物影视作品",
-    version: "2.2.2",
+    version: "2.2.3",
     requiredVersion: "0.0.1",
-    description: "精准获取 TMDB 人物作品数据（只返回已上映作品数组）",
+    description: "精准获取 TMDB 人物作品数据（支持已上映和即将上映筛选）",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -71,14 +71,13 @@ WidgetMetadata = {
                 { name: "language", title: "语言", type: "language", value: "zh-CN" },
                 {
                     name: "type",
-                    title: "类型",
+                    title: "上映状态",
                     type: "enumeration",
                     enumOptions: [
-                        { title: "全部", value: "all" },
-                        { title: "电影", value: "movie" },
-                        { title: "电视剧", value: "tv" }
+                        { title: "已上映", value: "released" },
+                        { title: "即将上映", value: "upcoming" }
                     ],
-                    value: "all"
+                    value: "released"
                 },
                 {
                     name: "sort_by",
@@ -169,12 +168,18 @@ function mergeCredits(cast, crew) {
 // 4. 筛选 & 排序
 // -----------------------------
 function filterByType(list, type) {
-    return type === "all" ? list : list.filter(i => i.mediaType === type);
+    // 可保留按类型筛选，如果不需要可以直接返回 list
+    return list;
 }
 
-function filterReleased(list) {
+function filterByStatus(list, status) {
     const today = new Date();
-    return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
+    if (status === "released") {
+        return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
+    } else if (status === "upcoming") {
+        return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
+    }
+    return list;
 }
 
 function sortResults(list, sortBy) {
@@ -188,7 +193,7 @@ function sortResults(list, sortBy) {
 }
 
 // -----------------------------
-// 5. 输出格式（保证数组）
+// 5. 输出格式
 // -----------------------------
 function formatOutput(list) {
     return list.map(i => ({
@@ -214,8 +219,8 @@ async function loadWorks(params) {
     const p = params || {};
     const credits = await fetchCredits(p.personId, p.language);
     let merged = mergeCredits(credits.cast, credits.crew);
-    merged = filterByType(merged, p.type);
-    merged = filterReleased(merged); // ✅ 只保留已上映
+    merged = filterByType(merged, p.type);         // 可按类型筛选
+    merged = filterByStatus(merged, p.type);       // ✅ 已上映/即将上映
     merged = sortResults(merged, p.sort_by);
     return formatOutput(merged);
 }
@@ -227,26 +232,25 @@ async function getAllWorks(params) {
 async function getActorWorks(params) {
     const p = params || {};
     let list = (await fetchCredits(p.personId, p.language)).cast;
-    list = filterByType(list, p.type);
-    list = filterReleased(list);
+    list = filterByStatus(list, p.type);
     list = sortResults(list, p.sort_by);
     return formatOutput(list);
 }
 
 async function getDirectorWorks(params) {
     const p = params || {};
-    let list = (await fetchCredits(p.personId, p.language)).crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
-    list = filterByType(list, p.type);
-    list = filterReleased(list);
+    let list = (await fetchCredits(p.personId, p.language)).crew
+        .filter(i => i.job && i.job.toLowerCase().includes("director"));
+    list = filterByStatus(list, p.type);
     list = sortResults(list, p.sort_by);
     return formatOutput(list);
 }
 
 async function getOtherWorks(params) {
     const p = params || {};
-    let list = (await fetchCredits(p.personId, p.language)).crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
-    list = filterByType(list, p.type);
-    list = filterReleased(list);
+    let list = (await fetchCredits(p.personId, p.language)).crew
+        .filter(i => !(i.job && i.job.toLowerCase().includes("director")));
+    list = filterByStatus(list, p.type);
     list = sortResults(list, p.sort_by);
     return formatOutput(list);
 }
