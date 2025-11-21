@@ -13,12 +13,12 @@
             "url": "https://raw.githubusercontent.com/ocd0711/forward_module/refs/heads/master/other/wallpaper.js"
         },
         {
-            id: "tmdb.person.movie",
-            title: "TMDB人物影视作品",
-            version: "2.2.4",
-            description: "获取 TMDB 人物作品数据",
-            requiredVersion: "0.0.1",
-            author: "ICoeMix (Optimized by ChatGPT)",
+            "id": "tmdb.person.movie",
+            "title": "TMDB人物影视作品",
+            "version": "2.2.4",
+            "description": "获取 TMDB 人物作品数据",
+            "requiredVersion": "0.0.1",
+            "author": "ICoeMix (Optimized by ChatGPT)",
             "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/refs/heads/master/other/person.movie.js"
         },
         {
