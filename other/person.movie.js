@@ -61,8 +61,9 @@ const Params = [
         title: "关键词过滤",
         type: "input",
         description: "过滤标题中包含指定关键词的作品",
+        value: " ",
         placeholders: [
-            { title: "关键词过滤", value: " " },
+            { title: "关键词过滤", value: "A" },
             { title: "完全匹配 A", value: "^A$" },
             { title: "以 A 开头", value: "^A.*" },
             { title: "以 B 结尾", value: ".*B$" },
