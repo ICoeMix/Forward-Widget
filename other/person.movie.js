@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "person.movie.tmdb",
     title: "TMDB人物影视作品",
-    version: "2.2.0",
+    version: "2.2.1",
     requiredVersion: "0.0.1",
     description: "精准获取 TMDB 人物作品数据（只返回作品数组）",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -113,32 +113,35 @@ WidgetMetadata = {
 });
 
 // -----------------------------
-// 1. 获取作品
+// 1. 获取作品数据
 // -----------------------------
 async function fetchCredits(personId, language) {
-    var api = `person/${personId}/combined_credits`;
-    var response = await Widget.tmdb.get(api, { params: { language: language || "zh-CN" } });
-
-    if (!response) throw new Error("获取作品失败");
-
-    return {
-        cast: (response.cast || []).map(normalizeItem),
-        crew: (response.crew || []).map(normalizeItem)
-    };
+    try {
+        var response = await Widget.tmdb.get(`person/${personId}/combined_credits`, {
+            params: { language: language || "zh-CN" }
+        });
+        return {
+            cast: Array.isArray(response.cast) ? response.cast.map(normalizeItem) : [],
+            crew: Array.isArray(response.crew) ? response.crew.map(normalizeItem) : []
+        };
+    } catch (err) {
+        console.error("TMDB 获取作品失败", err);
+        return { cast: [], crew: [] };
+    }
 }
 
 // -----------------------------
-// 数据归一化
+// 2. 数据归一化
 // -----------------------------
 function normalizeItem(item) {
     return {
         id: item.id,
-        title: item.title || item.name,
-        overview: item.overview,
-        posterPath: item.poster_path,
-        backdropPath: item.backdrop_path,
+        title: item.title || item.name || "未知",
+        overview: item.overview || "",
+        posterPath: item.poster_path || "",
+        backdropPath: item.backdrop_path || "",
         mediaType: item.media_type || guessMediaType(item),
-        releaseDate: item.release_date || item.first_air_date || null,
+        releaseDate: item.release_date || item.first_air_date || "",
         popularity: item.popularity || 0,
         rating: item.vote_average || 0,
         job: item.job || null,
@@ -153,81 +156,67 @@ function guessMediaType(item) {
 }
 
 // -----------------------------
-// 合并 cast + crew
+// 3. 合并 cast + crew
 // -----------------------------
 function mergeCredits(cast, crew) {
-    var dict = {};
-
+    const dict = {};
     function add(item) {
-        if (!dict[item.id]) {
-            dict[item.id] = { ...item, jobs: [], characters: [] };
-        }
+        if (!dict[item.id]) dict[item.id] = { ...item, jobs: [], characters: [] };
         if (item.job) dict[item.id].jobs.push(item.job);
         if (item.character) dict[item.id].characters.push(item.character);
     }
-
     cast.forEach(add);
     crew.forEach(add);
-
     return Object.values(dict);
 }
 
 // -----------------------------
-// 筛选
+// 4. 筛选 & 排序
 // -----------------------------
 function filterByType(list, type) {
     return type === "all" ? list : list.filter(i => i.mediaType === type);
 }
 
-// -----------------------------
-// 排序
-// -----------------------------
 function sortResults(list, sortBy) {
-    var sorted = list.slice();
-
-    if (sortBy === "popularity.desc") {
-        sorted.sort((a, b) => b.popularity - a.popularity);
-    } else if (sortBy === "vote_average.desc") {
-        sorted.sort((a, b) => b.rating - a.rating);
-    } else if (sortBy === "release_date.desc") {
-        sorted.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
-    }
-
-    return sorted;
+    return list.slice().sort((a, b) => {
+        if (sortBy === "popularity.desc") return b.popularity - a.popularity;
+        if (sortBy === "vote_average.desc") return b.rating - a.rating;
+        if (sortBy === "release_date.desc")
+            return new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0);
+        return 0;
+    });
 }
 
 // -----------------------------
-// 输出格式
+// 5. 输出格式（保证数组）
 // -----------------------------
 function formatOutput(list) {
-    return list.map(item => ({
-        id: item.id,
+    return list.map(i => ({
+        id: i.id,
         type: "tmdb",
-        title: item.title,
-        description: item.overview,
-        releaseDate: item.releaseDate,
-        rating: item.rating,
-        popularity: item.popularity,
-        posterPath: item.posterPath,
-        backdropPath: item.backdropPath,
-        mediaType: item.mediaType,
-        jobs: item.jobs,
-        characters: item.characters
+        title: i.title,
+        description: i.overview,
+        releaseDate: i.releaseDate,
+        rating: i.rating,
+        popularity: i.popularity,
+        posterPath: i.posterPath,
+        backdropPath: i.backdropPath,
+        mediaType: i.mediaType,
+        jobs: i.jobs,
+        characters: i.characters
     }));
 }
 
 // -----------------------------
-// 模块方法
+// 6. 模块方法
 // -----------------------------
 async function loadWorks(params) {
-    var p = params || {};
-    var credits = await fetchCredits(p.personId, p.language);
-
-    var merged = mergeCredits(credits.cast, credits.crew);
-    merged = filterByType(merged, p.type);
-    merged = sortResults(merged, p.sort_by);
-
-    return formatOutput(merged); // ✅ 返回数组，兼容 Swift
+    const p = params || {};
+    const credits = await fetchCredits(p.personId, p.language);
+    const merged = mergeCredits(credits.cast, credits.crew);
+    const filtered = filterByType(merged, p.type);
+    const sorted = sortResults(filtered, p.sort_by);
+    return formatOutput(sorted); // 返回数组，兼容 Swift
 }
 
 async function getAllWorks(params) {
@@ -235,34 +224,28 @@ async function getAllWorks(params) {
 }
 
 async function getActorWorks(params) {
-    var p = params || {};
-    var credits = await fetchCredits(p.personId, p.language);
-
-    var list = credits.cast;
+    const p = params || {};
+    const credits = await fetchCredits(p.personId, p.language);
+    let list = credits.cast;
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
-
     return formatOutput(list);
 }
 
 async function getDirectorWorks(params) {
-    var p = params || {};
-    var credits = await fetchCredits(p.personId, p.language);
-
-    var list = credits.crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
+    const p = params || {};
+    const credits = await fetchCredits(p.personId, p.language);
+    let list = credits.crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
-
     return formatOutput(list);
 }
 
 async function getOtherWorks(params) {
-    var p = params || {};
-    var credits = await fetchCredits(p.personId, p.language);
-
-    var list = credits.crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
+    const p = params || {};
+    const credits = await fetchCredits(p.personId, p.language);
+    let list = credits.crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
-
     return formatOutput(list);
 }
