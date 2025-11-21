@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "person.movie.tmdb",
     title: "TMDB人物影视作品",
-    version: "2.2.3",
+    version: "2.2.4",
     requiredVersion: "0.0.1",
-    description: "精准获取 TMDB 人物作品数据（支持已上映和即将上映筛选）",
+    description: "精准获取 TMDB 人物作品数据（支持全部/已上映/即将上映筛选）",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -74,10 +74,11 @@ WidgetMetadata = {
                     title: "上映状态",
                     type: "enumeration",
                     enumOptions: [
+                        { title: "全部作品", value: "all" },
                         { title: "已上映", value: "released" },
                         { title: "即将上映", value: "upcoming" }
                     ],
-                    value: "released"
+                    value: "all"
                 },
                 {
                     name: "sort_by",
@@ -167,12 +168,8 @@ function mergeCredits(cast, crew) {
 // -----------------------------
 // 4. 筛选 & 排序
 // -----------------------------
-function filterByType(list, type) {
-    // 可保留按类型筛选，如果不需要可以直接返回 list
-    return list;
-}
-
 function filterByStatus(list, status) {
+    if (status === "all") return list;
     const today = new Date();
     if (status === "released") {
         return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
@@ -219,8 +216,7 @@ async function loadWorks(params) {
     const p = params || {};
     const credits = await fetchCredits(p.personId, p.language);
     let merged = mergeCredits(credits.cast, credits.crew);
-    merged = filterByType(merged, p.type);         // 可按类型筛选
-    merged = filterByStatus(merged, p.type);       // ✅ 已上映/即将上映
+    merged = filterByStatus(merged, p.type);
     merged = sortResults(merged, p.sort_by);
     return formatOutput(merged);
 }
