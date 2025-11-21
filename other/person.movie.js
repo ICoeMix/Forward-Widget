@@ -19,7 +19,7 @@ WidgetMetadata = {
 };
 
 // -----------------------------
-// 参数模板 Params
+// 参数模板 Params 
 // -----------------------------
 const Params = [
     {
@@ -74,14 +74,6 @@ const Params = [
         ]
     },
     {
-        name: "popularPersons",
-        title: "热门人物推荐",
-        type: "enumeration",
-        description: "国内 10 + 外籍 10 热门人物，选择后返回 personId",
-        enumOptions: [], // 动态填充
-        value: ""
-    },
-    {
         name: "language",
         title: "语言",
         type: "language",
@@ -117,7 +109,7 @@ const Params = [
     }
 ];
 
-// 给所有模块使用同一个 Params
+// 所有模块共享 Params
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
@@ -126,7 +118,7 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 async function fetchCredits(personId, language) {
     try {
         const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, {
-            params: { language: language || "zh-CN" }
+            params: { language }
         });
         return {
             cast: Array.isArray(response.cast) ? response.cast.map(normalizeItem) : [],
@@ -173,12 +165,11 @@ function mergeCredits(cast, crew) {
 }
 
 function filterByType(list, type) {
+    const today = new Date();
     if (type === "released") {
-        const today = new Date();
         return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
     }
     if (type === "upcoming") {
-        const today = new Date();
         return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
     }
     return list;
@@ -238,40 +229,11 @@ async function resolvePersonId(input, language) {
 }
 
 // -----------------------------
-// 热门人物推荐（国内 10 + 外籍 10）
-// -----------------------------
-async function fetchPopularPersons(country) {
-    try {
-        const response = await Widget.tmdb.get('person/popular', { params: { language: "zh-CN", page: 1 } });
-        let list = response.results || [];
-        if (country === "CN") {
-            list = list.filter(p => p.known_for && p.known_for.some(m => m.origin_country === "CN"));
-        } else {
-            list = list.filter(p => p.known_for && p.known_for.some(m => m.origin_country !== "CN"));
-        }
-        return list.slice(0, 10).map(p => ({ title: p.name, value: String(p.id) }));
-    } catch (err) {
-        console.error("获取热门人物失败:", err);
-        return [];
-    }
-}
-
-async function initPopularPersons() {
-    const cnList = await fetchPopularPersons("CN");
-    const foreignList = await fetchPopularPersons("foreign");
-    const popularField = Params.find(p => p.name === "popularPersons");
-    popularField.enumOptions = [...cnList, ...foreignList];
-}
-
-// 初始化热门人物
-initPopularPersons();
-
-// -----------------------------
-// 模块方法
+// 核心模块方法
 // -----------------------------
 async function loadWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
+    const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
 
     let credits = await fetchCredits(personId, p.language);
@@ -283,9 +245,10 @@ async function loadWorks(params) {
 }
 
 async function getAllWorks(params) { return loadWorks(params); }
+
 async function getActorWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
+    const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     let list = (await fetchCredits(personId, p.language)).cast;
     list = filterByType(list, p.type);
@@ -293,9 +256,10 @@ async function getActorWorks(params) {
     list = filterByKeywords(list, p.filter);
     return formatOutput(list);
 }
+
 async function getDirectorWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
+    const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     let list = (await fetchCredits(personId, p.language)).crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
     list = filterByType(list, p.type);
@@ -303,9 +267,10 @@ async function getDirectorWorks(params) {
     list = filterByKeywords(list, p.filter);
     return formatOutput(list);
 }
+
 async function getOtherWorks(params) {
     const p = params || {};
-    const personId = await resolvePersonId(p.personId || p.popularPersons, p.language);
+    const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     let list = (await fetchCredits(personId, p.language)).crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
     list = filterByType(list, p.type);
