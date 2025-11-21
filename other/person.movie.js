@@ -83,19 +83,18 @@ const Params = [
         name: "type",
         title: "上映状态",
         type: "enumeration",
-        value: "all",
         enumOptions: [
             { title: "全部作品", value: "all" },
             { title: "已上映", value: "released" },
             { title: "即将上映", value: "upcoming" }
-        ]
+        ],
+        value: "all",
     },
     {
         name: "filter",
         title: "关键词过滤",
         type: "input",
         description: "过滤标题中包含指定关键词的作品",
-        value: " ",
         placeholders: [
             { title: "关键词过滤", value: "A" },
             { title: "完全匹配 A", value: "^A$" },
@@ -105,7 +104,8 @@ const Params = [
             { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
             { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
             { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" },
-        ]
+        ],
+        value: " ",
     },
     {
         name: "sort_by",
