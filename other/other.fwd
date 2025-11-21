@@ -12,8 +12,7 @@
             "author": "Discount Code：VEUS",
             "url": "https://raw.githubusercontent.com/ocd0711/forward_module/refs/heads/master/other/wallpaper.js"
         },
-    {
-
+        {
             id: "tmdb.person.movie",
             title: "TMDB人物影视作品",
             version: "2.2.4",
