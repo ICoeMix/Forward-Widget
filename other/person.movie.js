@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "person.movie.tmdb",
     title: "TMDB人物影视作品",
-    version: "2.1.0",
+    version: "2.2.0",
     requiredVersion: "0.0.1",
-    description: "精准获取 TMDB 人物作品数据，含相似人物推荐",
+    description: "精准获取 TMDB 人物作品数据（只返回作品数组）",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -113,7 +113,7 @@ WidgetMetadata = {
 });
 
 // -----------------------------
-// 1. 获取作品 (combined_credits)
+// 1. 获取作品
 // -----------------------------
 async function fetchCredits(personId, language) {
     var api = `person/${personId}/combined_credits`;
@@ -125,26 +125,6 @@ async function fetchCredits(personId, language) {
         cast: (response.cast || []).map(normalizeItem),
         crew: (response.crew || []).map(normalizeItem)
     };
-}
-
-// -----------------------------
-// 2. 获取推荐演员（补丁新增）
-// -----------------------------
-async function fetchRecommendations(personId) {
-    try {
-        var api = `person/${personId}/recommendations`;
-        var response = await Widget.tmdb.get(api, { params: {} });
-
-        if (!response || !response.results) return [];
-
-        return response.results.map(item => ({
-            id: item.id,
-            name: item.name,
-            profilePath: item.profile_path || null
-        }));
-    } catch {
-        return [];
-    }
 }
 
 // -----------------------------
@@ -242,16 +222,12 @@ function formatOutput(list) {
 async function loadWorks(params) {
     var p = params || {};
     var credits = await fetchCredits(p.personId, p.language);
-    var recommended = await fetchRecommendations(p.personId);
 
     var merged = mergeCredits(credits.cast, credits.crew);
     merged = filterByType(merged, p.type);
     merged = sortResults(merged, p.sort_by);
 
-    return {
-        results: formatOutput(merged),
-        recommendedActors: recommended
-    };
+    return formatOutput(merged); // ✅ 返回数组，兼容 Swift
 }
 
 async function getAllWorks(params) {
@@ -261,44 +237,32 @@ async function getAllWorks(params) {
 async function getActorWorks(params) {
     var p = params || {};
     var credits = await fetchCredits(p.personId, p.language);
-    var recommended = await fetchRecommendations(p.personId);
 
     var list = credits.cast;
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
 
-    return {
-        results: formatOutput(list),
-        recommendedActors: recommended
-    };
+    return formatOutput(list);
 }
 
 async function getDirectorWorks(params) {
     var p = params || {};
     var credits = await fetchCredits(p.personId, p.language);
-    var recommended = await fetchRecommendations(p.personId);
 
     var list = credits.crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
 
-    return {
-        results: formatOutput(list),
-        recommendedActors: recommended
-    };
+    return formatOutput(list);
 }
 
 async function getOtherWorks(params) {
     var p = params || {};
     var credits = await fetchCredits(p.personId, p.language);
-    var recommended = await fetchRecommendations(p.personId);
 
     var list = credits.crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
 
-    return {
-        results: formatOutput(list),
-        recommendedActors: recommended
-    };
+    return formatOutput(list);
 }
