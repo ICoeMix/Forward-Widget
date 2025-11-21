@@ -127,7 +127,7 @@
       "requiredVersion": "0.0.1",
       "version": "1.0.4",
       "author": "Evan",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/person.movie.tmdb.js"
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/person_movie.js"
     },
     {
       "id": "yuanqi.wallpaper",
