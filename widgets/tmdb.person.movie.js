@@ -57,8 +57,9 @@ const Params = [
         name: "filter",
         title: "关键词过滤",
         type: "input",
-        description: "填写关键词组合，高级逻辑支持 AND/OR/排除/嵌套/通配符",
+        description: "过滤标题中包含指定关键字的作品",
         placeholders: [
+            { title: "默认（不过滤）", value: "" },
             { title: "AND组合（标题同时包含 A 和 B）", value: "A&&B" },
             { title: "OR组合（标题包含 A 或 B）", value: "A||B" },
             { title: "排除组合（包含 A，但不包含 X）", value: "!X&&A" },
