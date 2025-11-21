@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.2.6",
+    version: "2.3.1",
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -26,21 +26,66 @@ const Params = [
         name: "personId",
         title: "人物搜索",
         type: "input",
-        description: "在 TMDB 网站获取的数字 ID，或输入名字自动搜索",
+        description: "输入名字自动获取 TMDB 网站人物的个人 ID，失效请手动输入个人 ID",
         placeholders: [
             { title: "张艺谋", value: "607" },
             { title: "李安", value: "1614" },
             { title: "周星驰", value: "57607" },
             { title: "成龙", value: "18897" },
-            { title: "吴京", value: "78871" }
-            // 可按需添加更多
+            { title: "吴京", value: "78871" },
+            { title: "王家卫", value: "12453" },
+            { title: "姜文", value: "77301" },
+            { title: "贾樟柯", value: "24011" },
+            { title: "陈凯歌", value: "20640" },
+            { title: "徐峥", value: "118711" },
+            { title: "宁浩", value: "17295" },
+            { title: "黄渤", value: "128026" },
+            { title: "葛优", value: "76913" },
+            { title: "胡歌", value: "1106514" },
+            { title: "张译", value: "146098" },
+            { title: "沈腾", value: "1519026" },
+            { title: "王宝强", value: "71051" },
+            { title: "赵丽颖", value: "1260868" },
+            { title: "孙俪", value: "52898" },
+            { title: "张若昀", value: "1675905" },
+            { title: "秦昊", value: "1016315" },
+            { title: "易烊千玺", value: "2223265" },
+            { title: "王倦", value: "2467977" },
+            { title: "孔笙", value: "1494556" },
+            { title: "张国立", value: "543178" },
+            { title: "陈思诚", value: "1065761" },
+            { title: "徐克", value: "26760" },
+            { title: "林超贤", value: "81220" },
+            { title: "郭帆", value: "1100748" },
+            { title: "史蒂文·斯皮尔伯格", value: "488" },
+            { title: "詹姆斯·卡梅隆", value: "2710" },
+            { title: "克里斯托弗·诺兰", value: "525" },
+            { title: "阿尔弗雷德·希区柯克", value: "2636" },
+            { title: "斯坦利·库布里克", value: "240" },
+            { title: "黑泽明", value: "5026" },
+            { title: "莱昂纳多·迪卡普里奥", value: "6193" },
+            { title: "阿米尔·汗", value: "52763" },
+            { title: "宫崎骏", value: "608" },
+            { title: "蒂姆·伯顿", value: "510" },
+            { title: "杨紫琼", value: "1620" },
+            { title: "凯特·布兰切特", value: "112" },
+            { title: "丹尼尔·戴·刘易斯", value: "11856" },
+            { title: "宋康昊", value: "20738" }
         ]
     },
     {
         name: "language",
         title: "语言",
-        type: "language",
-        value: "zh-CN"
+        description: "选择 TMDB 数据返回的语言",
+        type: "enumeration",   // 用枚举类型显示下拉选择
+        enumOptions: [
+            { title: "中文", value: "zh-CN" },
+            { title: "英文", value: "en-US" },
+            { title: "日文", value: "ja-JP" },
+            { title: "韩文", value: "ko-KR" },
+            { title: "法文", value: "fr-FR" }
+        ],
+        value: "zh-CN",        // 默认值为中文
     },
     {
         name: "type",
@@ -51,39 +96,38 @@ const Params = [
             { title: "已上映", value: "released" },
             { title: "即将上映", value: "upcoming" }
         ],
-        value: "all"
+        value: "all",
     },
     {
         name: "filter",
         title: "关键词过滤",
         type: "input",
-        description: "过滤标题中包含指定关键词，支持 AND/OR/NOT/通配符/嵌套",
+        description: "过滤标题中包含指定关键词的作品",
         placeholders: [
-            { title: "关键词（标题包含 A ）", value: "" },
-            { title: "AND组合（标题同时包含 A 和 B）", value: "A&&B" },
-            { title: "OR组合（标题包含 A 或 B）", value: "A||B" },
-            { title: "排除组合（包含 A，但不包含 X）", value: "!X&&A" },
-            { title: "复杂组合（“A和B同时出现 或 C出现”且不包含 X）", value: "(A&&B)||C&&!X" },
-            { title: "嵌套组合（可任意嵌套括号，支持通配符*和?）", value: "((A||B)&&C)||(!X&&!Y)" },
-            { title: "通配符匹配（A开头，任意字符，B结尾）", value: "^A*B$" },
-            { title: "通配符任意位置（标题包含 A，中间任意字符，后面包含 B）", value: "*A*B*" },
-            { title: "嵌套通配符组合（高级逻辑，支持 AND/OR/排除）", value: "((^A*B$||C)&&!X)||(!Y&&*Z*)" }
-        ]
+            { title: "关键词过滤", value: "A" },
+            { title: "完全匹配 A", value: "^A$" },
+            { title: "以 A 开头", value: "^A.*" },
+            { title: "以 B 结尾", value: ".*B$" },
+            { title: "包含 A 或 B", value: "A|B" },
+            { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
+            { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
+            { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" },
+        ],
+        value: " ",
     },
     {
         name: "sort_by",
         title: "排序方式",
         type: "enumeration",
+        value: "release_date.desc",
         enumOptions: [
             { title: "发行日期降序", value: "release_date.desc" },
             { title: "评分降序", value: "vote_average.desc" },
             { title: "热门降序", value: "popularity.desc" }
-        ],
-        value: "popularity.desc"
+        ]
     }
 ];
 
-// 所有模块共享 Params
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
@@ -91,9 +135,7 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 // -----------------------------
 async function fetchCredits(personId, language) {
     try {
-        const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, {
-            params: { language }
-        });
+        const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
         return {
             cast: Array.isArray(response.cast) ? response.cast.map(normalizeItem) : [],
             crew: Array.isArray(response.crew) ? response.crew.map(normalizeItem) : []
@@ -155,61 +197,114 @@ function sortResults(list, sortBy) {
 }
 
 // -----------------------------
-// 高级关键词过滤器（优化整合版）
+// 高性能 AC + 完全正则过滤器（忽略大小写）
 // -----------------------------
+const acCache = new Map();
 const regexCache = new Map();
+const filterUnitCache = new Map();
+
+function normalizeTitleForMatch(s) {
+    if (!s) return "";
+    return s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase();
+}
+
+class ACAutomaton {
+    constructor() { this.root = { next: Object.create(null), fail: null, output: [] }; }
+    insert(word) {
+        let node = this.root;
+        for (const ch of word) {
+            if (!node.next[ch]) node.next[ch] = { next: Object.create(null), fail: null, output: [] };
+            node = node.next[ch];
+        }
+        node.output.push(word);
+    }
+    build() {
+        const q = [];
+        this.root.fail = this.root;
+        for (const k of Object.keys(this.root.next)) {
+            const n = this.root.next[k]; n.fail = this.root; q.push(n);
+        }
+        while (q.length) {
+            const node = q.shift();
+            for (const ch of Object.keys(node.next)) {
+                const child = node.next[ch];
+                let f = node.fail;
+                while (f !== this.root && !f.next[ch]) f = f.fail;
+                child.fail = f.next[ch] || this.root;
+                child.output = child.output.concat(child.fail.output);
+                q.push(child);
+            }
+        }
+    }
+    match(text) {
+        const found = new Set();
+        if (!text) return found;
+        let node = this.root;
+        for (const ch of text) {
+            while (node !== this.root && !node.next[ch]) node = node.fail;
+            node = node.next[ch] || this.root;
+            node.output.forEach(w => found.add(w));
+        }
+        return found;
+    }
+}
+
+function isPlainText(term) { return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
 
 function getRegex(term) {
-    if (!regexCache.has(term)) {
-        const escaped = term.replace(/([.+^=!:${}()|\[\]\/\\])/g, "\\$1")
-                            .replace(/\*/g, ".*")
-                            .replace(/\?/g, ".");
-        regexCache.set(term, new RegExp(`^${escaped}$`, "i"));
-    }
-    return regexCache.get(term);
+    if (regexCache.has(term)) return regexCache.get(term);
+    let re = null;
+    try { re = new RegExp(term, 'i'); } catch(e) { re = null; }
+    regexCache.set(term, re);
+    return re;
 }
 
-function parseExpression(expr) {
-    expr = expr.trim();
-    while (expr.startsWith('(') && expr.endsWith(')')) expr = expr.slice(1, -1).trim();
+function buildFilterUnit(filterStr) {
+    if (!filterStr || !filterStr.trim()) return null;
+    if (filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr);
 
-    let depth = 0;
-    for (let i = 0; i < expr.length; i++) {
-        if (expr[i] === '(') depth++;
-        else if (expr[i] === ')') depth--;
-        else if (expr[i] === '|' && expr[i + 1] === '|' && depth === 0) {
-            return { type: 'OR', children: [parseExpression(expr.slice(0,i)), parseExpression(expr.slice(i+2))] };
+    const terms = filterStr.split(/\s*\|\|\s*/).map(t => t.trim()).filter(Boolean);
+    const plainTerms = [];
+    const regexTerms = [];
+
+    for (const t of terms) (isPlainText(t) ? plainTerms : regexTerms).push(t);
+
+    let ac = null;
+    if (plainTerms.length) {
+        const key = plainTerms.slice().sort().join("\u0001");
+        if (acCache.has(key)) ac = acCache.get(key);
+        else {
+            ac = new ACAutomaton();
+            plainTerms.forEach(p => ac.insert(p.toLowerCase()));
+            ac.build();
+            acCache.set(key, ac);
         }
     }
 
-    depth = 0;
-    for (let i = 0; i < expr.length; i++) {
-        if (expr[i] === '(') depth++;
-        else if (expr[i] === ')') depth--;
-        else if (expr[i] === '&' && expr[i + 1] === '&' && depth === 0) {
-            return { type: 'AND', children: [parseExpression(expr.slice(0,i)), parseExpression(expr.slice(i+2))] };
-        }
-    }
-
-    if (expr.startsWith('!')) return { type: 'NOT', child: parseExpression(expr.slice(1)) };
-    return { type: 'TERM', value: expr };
-}
-
-function matchNode(title, node) {
-    switch(node.type) {
-        case 'TERM': return getRegex(node.value).test(title);
-        case 'NOT': return !matchNode(title, node.child);
-        case 'AND': return node.children.every(c => matchNode(title, c));
-        case 'OR': return node.children.some(c => matchNode(title, c));
-    }
+    const unit = { ac, regexTerms };
+    filterUnitCache.set(filterStr, unit);
+    return unit;
 }
 
 function filterByKeywords(list, filterStr) {
     if (!filterStr || !filterStr.trim()) return list;
-    const tree = parseExpression(filterStr);
+    if (!Array.isArray(list) || list.length === 0) return list;
+
+    const unit = buildFilterUnit(filterStr);
+    if (!unit) return list;
+
+    const { ac, regexTerms } = unit;
+
     return list.filter(item => {
-        if (!item._title) item._title = item.title;
-        return matchNode(item._title, tree);
+        if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
+        const title = item._normalizedTitle;
+
+        if (ac && ac.match(title).size) return false;
+        for (const r of regexTerms) {
+            const re = getRegex(r);
+            if (re && re.test(title)) return false;
+        }
+        return true;
     });
 }
 
@@ -217,89 +312,89 @@ function filterByKeywords(list, filterStr) {
 // 输出格式化
 // -----------------------------
 function formatOutput(list) {
-    return list.map(i => ({
-        id: i.id,
-        type: "tmdb",
-        title: i.title,
-        description: i.overview,
-        releaseDate: i.releaseDate,
-        rating: i.rating,
-        popularity: i.popularity,
-        posterPath: i.posterPath,
-        backdropPath: i.backdropPath,
-        mediaType: i.mediaType,
-        jobs: i.jobs,
-        characters: i.characters
+    return list.map(i=>({
+        id:i.id,
+        type:"tmdb",
+        title:i.title,
+        description:i.overview,
+        releaseDate:i.releaseDate,
+        rating:i.rating,
+        popularity:i.popularity,
+        posterPath:i.posterPath,
+        backdropPath:i.backdropPath,
+        mediaType:i.mediaType,
+        jobs:i.jobs,
+        characters:i.characters
     }));
 }
 
 // -----------------------------
 // 名字搜索 → 返回 ID
 // -----------------------------
-async function getPersonIdByName(name, language = "zh-CN") {
-    if (!name) return null;
+async function getPersonIdByName(name, language="zh-CN") {
+    if(!name) return null;
     try {
-        const response = await Widget.tmdb.get("search/person", { params: { query: name, language } });
-        return response.results && response.results.length > 0 ? response.results[0].id : null;
-    } catch (err) {
-        console.error("TMDB 搜索人物失败:", err);
+        const response = await Widget.tmdb.get("search/person",{params:{query:name,language}});
+        return response.results && response.results.length>0?response.results[0].id:null;
+    } catch(err) {
+        console.error("TMDB 搜索人物失败:",err);
         return null;
     }
 }
 
-async function resolvePersonId(input, language) {
-    if (!input) return null;
-    if (!isNaN(Number(input))) return Number(input);
+async function resolvePersonId(input, language){
+    if(!input) return null;
+    if(!isNaN(Number(input))) return Number(input);
     return await getPersonIdByName(input, language);
 }
 
 // -----------------------------
 // 核心模块方法
 // -----------------------------
-async function loadWorks(params) {
-    const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
-    if (!personId) return [];
-
-    let credits = await fetchCredits(personId, p.language);
-    let merged = mergeCredits(credits.cast, credits.crew);
-    merged = filterByType(merged, p.type);
-    merged = sortResults(merged, p.sort_by);
-    merged = filterByKeywords(merged, p.filter);
+async function loadWorks(params){
+    const p = params||{};
+    const personId = await resolvePersonId(p.personId,p.language);
+    if(!personId) return [];
+    let credits = await fetchCredits(personId,p.language);
+    let merged = mergeCredits(credits.cast,credits.crew);
+    merged.forEach(item=>{ if(!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title||""); });
+    merged = filterByType(merged,p.type);
+    merged = sortResults(merged,p.sort_by);
+    merged = filterByKeywords(merged,p.filter);
     return formatOutput(merged);
 }
 
-async function getAllWorks(params) { return loadWorks(params); }
-
-async function getActorWorks(params) {
-    const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
-    if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language)).cast;
-    list = filterByType(list, p.type);
-    list = sortResults(list, p.sort_by);
-    list = filterByKeywords(list, p.filter);
+async function getAllWorks(params){ return loadWorks(params); }
+async function getActorWorks(params){
+    const p = params||{};
+    const personId = await resolvePersonId(p.personId,p.language);
+    if(!personId) return [];
+    let list = (await fetchCredits(personId,p.language)).cast;
+    list.forEach(item=>{ if(!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title||""); });
+    list = filterByType(list,p.type);
+    list = sortResults(list,p.sort_by);
+    list = filterByKeywords(list,p.filter);
     return formatOutput(list);
 }
-
-async function getDirectorWorks(params) {
-    const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
-    if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language)).crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
-    list = filterByType(list, p.type);
-    list = sortResults(list, p.sort_by);
-    list = filterByKeywords(list, p.filter);
+async function getDirectorWorks(params){
+    const p = params||{};
+    const personId = await resolvePersonId(p.personId,p.language);
+    if(!personId) return [];
+    let list = (await fetchCredits(personId,p.language)).crew.filter(i=>i.job && i.job.toLowerCase().includes("director"));
+    list.forEach(item=>{ if(!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title||""); });
+    list = filterByType(list,p.type);
+    list = sortResults(list,p.sort_by);
+    list = filterByKeywords(list,p.filter);
     return formatOutput(list);
 }
-
-async function getOtherWorks(params) {
-    const p = params || {};
-    const personId = await resolvePersonId(p.personId, p.language);
-    if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language)).crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
-    list = filterByType(list, p.type);
-    list = sortResults(list, p.sort_by);
-    list = filterByKeywords(list, p.filter);
+async function getOtherWorks(params){
+    const p = params||{};
+    const personId = await resolvePersonId(p.personId,p.language);
+    if(!personId) return [];
+    let list = (await fetchCredits(personId,p.language)).crew.filter(i=>!(i.job && i.job.toLowerCase().includes("director")));
+    list.forEach(item=>{ if(!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title||""); });
+    list = filterByType(list,p.type);
+    list = sortResults(list,p.sort_by);
+    list = filterByKeywords(list,p.filter);
     return formatOutput(list);
 }
