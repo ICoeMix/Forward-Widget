@@ -127,25 +127,7 @@
       "requiredVersion": "0.0.1",
       "version": "1.0.4",
       "author": "Evan",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/person_movie.js"
-    },
-    {
-      "id": "yuanqi.wallpaper",
-      "title": "🖼️ ✨wallpaper",
-      "description": "✨ Dynamic wallpaper For Topshelf",
-      "requiredVersion": "0.0.1",
-      "version": "1.1.0",
-      "author": "Discount Code：VEUS",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/yuanqi.wallpaper.js"
-    },
-    {
-      "id": "xtream_api_en",
-      "title": "Xtream API Live",
-      "description": "Fetch live channels via official Xtream-Codes REST API with keyword search",
-      "requiredVersion": "0.0.1",
-      "version": "2.1.2",
-      "author": "Discount Code：VEUS",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/xtream_api_en.js"
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/person.movie.tmdb.js"
     },
     {
       "id": "imdb_discovery_final_v2",
@@ -218,6 +200,24 @@
       "version": "1.0.0",
       "author": "两块",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ddys_vod.js"
+    },
+    {
+      "id": "yuanqi.wallpaper",
+      "title": "🖼️ ✨wallpaper",
+      "description": "✨ Dynamic wallpaper For Topshelf",
+      "requiredVersion": "0.0.1",
+      "version": "1.1.0",
+      "author": "Discount Code：VEUS",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/yuanqi.wallpaper.js"
+    },
+    {
+      "id": "xtream_api_en",
+      "title": "Xtream API Live",
+      "description": "Fetch live channels via official Xtream-Codes REST API with keyword search",
+      "requiredVersion": "0.0.1",
+      "version": "2.1.2",
+      "author": "Discount Code：VEUS",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/xtream_api_en.js"
     },
     {
       "id": "forward.combined.media.lists.ar",
