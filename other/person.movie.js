@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.3.5",
+    version: "2.3.7",
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -27,56 +27,11 @@ const Params = [
         title: "人物搜索",
         type: "input",
         description: "输入名字自动获取 TMDB 网站人物的个人 ID，失效请手动输入个人 ID",
-        placeholders: [
-            { title: "张艺谋", value: "607" },
-            { title: "李安", value: "1614" },
-            { title: "周星驰", value: "57607" },
-            { title: "成龙", value: "18897" },
-            { title: "吴京", value: "78871" },
-            { title: "王家卫", value: "12453" },
-            { title: "姜文", value: "77301" },
-            { title: "贾樟柯", value: "24011" },
-            { title: "陈凯歌", value: "20640" },
-            { title: "徐峥", value: "118711" },
-            { title: "宁浩", value: "17295" },
-            { title: "黄渤", value: "128026" },
-            { title: "葛优", value: "76913" },
-            { title: "胡歌", value: "1106514" },
-            { title: "张译", value: "146098" },
-            { title: "沈腾", value: "1519026" },
-            { title: "王宝强", value: "71051" },
-            { title: "赵丽颖", value: "1260868" },
-            { title: "孙俪", value: "52898" },
-            { title: "张若昀", value: "1675905" },
-            { title: "秦昊", value: "1016315" },
-            { title: "易烊千玺", value: "2223265" },
-            { title: "王倦", value: "2467977" },
-            { title: "孔笙", value: "1494556" },
-            { title: "张国立", value: "543178" },
-            { title: "陈思诚", value: "1065761" },
-            { title: "徐克", value: "26760" },
-            { title: "林超贤", value: "81220" },
-            { title: "郭帆", value: "1100748" },
-            { title: "史蒂文·斯皮尔伯格", value: "488" },
-            { title: "詹姆斯·卡梅隆", value: "2710" },
-            { title: "克里斯托弗·诺兰", value: "525" },
-            { title: "阿尔弗雷德·希区柯克", value: "2636" },
-            { title: "斯坦利·库布里克", value: "240" },
-            { title: "黑泽明", value: "5026" },
-            { title: "莱昂纳多·迪卡普里奥", value: "6193" },
-            { title: "阿米尔·汗", value: "52763" },
-            { title: "宫崎骏", value: "608" },
-            { title: "蒂姆·伯顿", value: "510" },
-            { title: "杨紫琼", value: "1620" },
-            { title: "凯特·布兰切特", value: "112" },
-            { title: "丹尼尔·戴·刘易斯", value: "11856" },
-            { title: "宋康昊", value: "20738" }
-        ]
+        value: ""
     },
     {
         name: "language",
         title: "语言",
-        description: "选择 TMDB 数据返回的语言",
         type: "enumeration",
         enumOptions: [
             { title: "中文", value: "zh-CN" },
@@ -85,7 +40,7 @@ const Params = [
             { title: "韩文", value: "ko-KR" },
             { title: "法文", value: "fr-FR" }
         ],
-        value: "zh-CN",
+        value: "zh-CN"
     },
     {
         name: "type",
@@ -96,14 +51,13 @@ const Params = [
             { title: "已上映", value: "released" },
             { title: "即将上映", value: "upcoming" }
         ],
-        value: "all",
+        value: "all"
     },
     {
         name: "filter",
         title: "关键词过滤",
         type: "input",
-        description: "过滤标题中包含指定关键词的作品",
-        value: "",
+        value: ""
     },
     {
         name: "sort_by",
@@ -127,8 +81,7 @@ const Params = [
             { title: "信息", value: "info" },
             { title: "警告", value: "warning" },
             { title: "通知", value: "notify" }
-        ],
-        description: "选择日志输出模式，可实时切换"
+        ]
     }
 ];
 
@@ -148,10 +101,11 @@ function createLogger(mode) {
 }
 
 // -----------------------------
-// resolvePersonId 函数（必须在顶部）
+// resolvePersonId 函数
+// -----------------------------
 async function resolvePersonId(personInput, language = "zh-CN") {
     if (!personInput) return null;
-    if (!isNaN(personInput)) return personInput; // 如果输入就是 ID
+    if (!isNaN(personInput)) return personInput; // 输入即 ID
     try {
         const res = await Widget.tmdb.get("search/person", { params: { query: personInput, language } });
         if (res?.results?.length) return res.results[0].id;
@@ -163,7 +117,7 @@ async function resolvePersonId(personInput, language = "zh-CN") {
 }
 
 // -----------------------------
-// TMDB 数据处理
+// TMDB 数据获取和处理
 // -----------------------------
 async function fetchCredits(personId, language) {
     try {
@@ -179,7 +133,6 @@ async function fetchCredits(personId, language) {
 }
 
 function normalizeItem(item) {
-    const normalizedTitle = (item.title || item.name || "未知").toLowerCase();
     return {
         id: item.id,
         title: item.title || item.name || "未知",
@@ -193,13 +146,28 @@ function normalizeItem(item) {
         jobs: item.job ? [item.job] : [],
         characters: item.character ? [item.character] : [],
         genre_ids: item.genre_ids || [],
-        _normalizedTitle: normalizedTitle
+        _normalizedTitle: (item.title || item.name || "未知").toLowerCase()
     };
 }
 
+function getTmdbGenreTitles(genreIds, mediaType) {
+    const genres = tmdbGenresCache?.[mediaType] || {};
+    return genreIds
+        .map(id => genres[id]?.trim() || `未知类型(${id})`)
+        .filter(Boolean)
+        .join('•');
+}
+
+// -----------------------------
+// 格式化输出
+// -----------------------------
 function formatOutput(list, logMode="info") {
     const logger = createLogger(logMode);
     logger.debug("开始格式化输出, 条目数:", list.length);
+
+    // 默认按发行日期降序
+    list.sort((a, b) => new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0));
+
     return list.map(i => ({
         id: i.id,
         type: "tmdb",
@@ -213,7 +181,11 @@ function formatOutput(list, logMode="info") {
         mediaType: i.mediaType,
         jobs: i.jobs,
         characters: i.characters,
-        genreTitle: (i.genre_ids?.length ? `EU1*•${i.genre_ids.join("•")}` : "")
+        genreTitle: (i.genre_ids.length ? (() => {
+            const full = getTmdbGenreTitles(i.genre_ids, i.mediaType);
+            const match = full.match(/•(.+)$/); // 只取最后一个 • 后面的内容
+            return match ? match[1] : full;
+        })() : "")
     }));
 }
 
@@ -239,12 +211,6 @@ async function loadWorks(params) {
         });
     }
 
-    // 排序
-    if (p.sort_by) {
-        const [key, order] = p.sort_by.split(".");
-        merged.sort((a, b) => order === "desc" ? b[key] - a[key] : a[key] - b[key]);
-    }
-
     // 关键词过滤
     if (p.filter?.trim()) {
         const regex = new RegExp(p.filter.toLowerCase());
@@ -256,14 +222,12 @@ async function loadWorks(params) {
 }
 
 async function getAllWorks(params) { return loadWorks(params); }
-
 async function getActorWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     return formatOutput((await fetchCredits(personId, p.language)).cast.map(normalizeItem), p.logMode);
 }
-
 async function getDirectorWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
@@ -273,7 +237,6 @@ async function getDirectorWorks(params) {
         p.logMode
     );
 }
-
 async function getOtherWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
