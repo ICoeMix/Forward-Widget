@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.3.7",
+    version: "2.3.8",
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -72,7 +72,7 @@ const Params = [
             { title: "丹尼尔·戴·刘易斯", value: "11856" },
             { title: "宋康昊", value: "20738" }
         ],
-        value: ""
+        value: " "
     },
     {
         name: "language",
@@ -157,11 +157,30 @@ function createLogger(mode) {
 }
 
 // -----------------------------
+// TMDB 类型缓存
+// -----------------------------
+let tmdbGenresCache = {};
+
+async function initTmdbGenres(language = "zh-CN") {
+    try {
+        const movieGenres = await Widget.tmdb.get("genre/movie/list", { params: { language } });
+        const tvGenres = await Widget.tmdb.get("genre/tv/list", { params: { language } });
+        tmdbGenresCache = {
+            movie: movieGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {},
+            tv: tvGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {}
+        };
+    } catch (err) {
+        console.error("初始化 TMDB 类型失败", err);
+        tmdbGenresCache = { movie: {}, tv: {} };
+    }
+}
+
+// -----------------------------
 // resolvePersonId 函数
 // -----------------------------
 async function resolvePersonId(personInput, language = "zh-CN") {
     if (!personInput) return null;
-    if (!isNaN(personInput)) return personInput; // 输入即 ID
+    if (!isNaN(personInput)) return personInput;
     try {
         const res = await Widget.tmdb.get("search/person", { params: { query: personInput, language } });
         if (res?.results?.length) return res.results[0].id;
@@ -246,11 +265,13 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// 核心模块方法
+// 核心模块方法（自动初始化 genre 缓存）
 // -----------------------------
 async function loadWorks(params) {
     const p = params || {};
+    await initTmdbGenres(p.language || "zh-CN"); // ✅ 自动初始化 genre 缓存
     const logger = createLogger(p.logMode || "info");
+
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) { logger.warning("未获取到人物ID"); return []; }
 
@@ -280,12 +301,14 @@ async function loadWorks(params) {
 async function getAllWorks(params) { return loadWorks(params); }
 async function getActorWorks(params) {
     const p = params || {};
+    await initTmdbGenres(p.language || "zh-CN");
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     return formatOutput((await fetchCredits(personId, p.language)).cast.map(normalizeItem), p.logMode);
 }
 async function getDirectorWorks(params) {
     const p = params || {};
+    await initTmdbGenres(p.language || "zh-CN");
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     return formatOutput(
@@ -295,6 +318,7 @@ async function getDirectorWorks(params) {
 }
 async function getOtherWorks(params) {
     const p = params || {};
+    await initTmdbGenres(p.language || "zh-CN");
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     return formatOutput(
