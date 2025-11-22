@@ -397,6 +397,27 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 // -----------------------------
 // 获取人物作品（loadSharedWorks）
 // -----------------------------
+// -----------------------------
+// 调试最终返回次数
+// -----------------------------
+const finalReturnLog = {
+    count: 0,
+    records: [] // 每条记录存放触发条件和时间
+};
+
+function logFinalReturn(trigger, personKey) {
+    finalReturnLog.count += 1;
+    finalReturnLog.records.push({
+        trigger,
+        personKey,
+        time: new Date().toISOString()
+    });
+    console.info(`[DEBUG] 最终作品返回 #${finalReturnLog.count} | trigger: ${trigger} | personKey: ${personKey}`);
+}
+
+// -----------------------------
+// 修改 loadSharedWorks
+// -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
@@ -404,7 +425,10 @@ async function loadSharedWorks(params) {
 
     // 1. 获取人物ID
     const personId = await getCachedPersonId(p.personId, p.language, p.logMode);
-    if (!personId) return []; // 人物ID未获取到，直接返回空数组
+    if (!personId) {
+        logFinalReturn("no_personId", personKey);
+        return [];
+    }
 
     // 2. 并发初始化类型缓存 + 获取作品
     const [_, credits] = await Promise.all([
@@ -426,17 +450,16 @@ async function loadSharedWorks(params) {
     // 4. 处理最终作品数据（过滤+格式化）
     let works = [...sharedPersonCache.get(personKey)];
 
-    // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
     }
 
-    // AC + 正则过滤
     if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
-    // 5. 最终返回
-    return formatOutput(works, p.logMode); // 这里才返回最终数据
+    // 5. 最终返回，记录触发
+    logFinalReturn("formatOutput", personKey);
+    return formatOutput(works, p.logMode);
 }
 
 // -----------------------------
