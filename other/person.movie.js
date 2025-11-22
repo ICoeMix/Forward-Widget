@@ -110,7 +110,7 @@ const MAX_PERSON_CACHE = 200;
 let sharedPersonCache = new Map();
 let tmdbGenresCache = {};
 const personIdCache = new Map();
-const worksPromiseCache = new Map();
+const worksPromiseCache = new Map(); // 用于保证同一 person 请求只发一次
 
 // -----------------------------
 // 日志函数
@@ -214,7 +214,7 @@ function normalizeItem(item) {
         characters: Array.isArray(item.characters) ? item.characters : (item.character ? [item.character] : []),
         genre_ids: Array.isArray(item.genre_ids) ? item.genre_ids : [],
         _normalizedTitle: title.toLowerCase(),
-        _genreTitleCache: item._genreTitleCache ? {...item._genreTitleCache} : {}
+        _genreTitleCache: item._genreTitleCache || {}
     };
 }
 
@@ -235,14 +235,14 @@ function getTmdbGenreTitles(item) {
 // -----------------------------
 // 格式化输出
 // -----------------------------
-function formatOutput(list, logMode="info") {
-    const logger = createLogger(logMode);
+function formatOutput(list) {
     const sortedList = [...(Array.isArray(list) ? list : [])].sort((a, b) => {
         const ta = isNaN(new Date(a?.releaseDate)) ? 0 : new Date(a.releaseDate).getTime();
         const tb = isNaN(new Date(b?.releaseDate)) ? 0 : new Date(b.releaseDate).getTime();
         return tb - ta;
     });
 
+    // 返回全新数组，防止引用被修改
     return sortedList.map(i => ({
         id: i.id,
         type: "tmdb",
@@ -334,29 +334,23 @@ function buildFilterUnit(filterStr) {
     return unit;
 }
 
-function filterByKeywords(list, filterStr, logMode="info") {
+function filterByKeywords(list, filterStr) {
     if (!filterStr || !filterStr.trim() || !Array.isArray(list) || !list.length) return list;
-    const logger = createLogger(logMode);
     const unit = buildFilterUnit(filterStr); if (!unit) return list;
     const { ac, regexTerms } = unit;
-    const filteredOut = [];
 
-    const filteredList = list.filter(item => {
+    return list.filter(item => {
         if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
         const title = item._normalizedTitle || "";
 
         let excluded = ac && ac.match(title).size ? true : false;
         if (!excluded) for (const r of regexTerms) { const re = getRegex(r); if (re && re.test(title)) { excluded = true; break; } }
-        if (excluded && logMode === "debug") filteredOut.push(item);
         return !excluded;
     });
-
-    if (logMode === "debug" && filteredOut.length) logger.debug("过滤掉的作品:", filteredOut.map(i => i.title));
-    return filteredList;
 }
 
 // -----------------------------
-// 获取人物作品（优化版）
+// 获取人物作品（稳定版）
 // -----------------------------
 function setCacheWithLimit(cache, key, value, maxSize) {
     cache.set(key, value);
@@ -366,49 +360,62 @@ function setCacheWithLimit(cache, key, value, maxSize) {
     }
 }
 
-// -----------------------------
-// 获取人物作品（稳定版，去除动态变化）
-// -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
-    const finalLogger = createLogger(p.logMode || "info");
-    const personId = await getCachedPersonId(p.personId, p.language || "zh-CN", p.logMode);
+    const personKey = `${p.personId}_${p.language}`;
 
-    if (!personId) return formatOutput([], p.logMode);
+    // 如果已有 Promise，直接 await
+    if (worksPromiseCache.has(personKey)) return await worksPromiseCache.get(personKey);
 
-    const cacheKey = `${personId}_${p.language || "zh-CN"}`;
+    const promise = (async () => {
+        const logger = createLogger(p.logMode || "info");
 
-    // 如果已有正在进行的 Promise，直接等待
-    if (!worksPromiseCache.has(cacheKey)) {
-        worksPromiseCache.set(cacheKey, (async () => {
-            await initTmdbGenres(p.language || "zh-CN", p.logMode);
-            const credits = await fetchCredits(personId, p.language || "zh-CN", p.logMode);
+        const [personId] = await Promise.all([
+            getCachedPersonId(p.personId, p.language, "info"),
+            initTmdbGenres(p.language || "zh-CN", "info")
+        ]);
+
+        if (!personId) {
+            sharedPersonCache.set(personKey, []);
+            return formatOutput([]);
+        }
+
+        // 先从缓存拿数据
+        if (!sharedPersonCache.has(personKey)) {
+            const credits = await fetchCredits(personId, p.language, "info");
             const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
-            sharedPersonCache.set(cacheKey, worksArray);
-            setCacheWithLimit(sharedPersonCache, cacheKey, worksArray, MAX_PERSON_CACHE);
-            return worksArray;
-        })());
+            // 写缓存前 deep copy 保证稳定
+            sharedPersonCache.set(personKey, worksArray.map(i => ({ ...i })));
+            if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
+        }
+
+        let works = [...(sharedPersonCache.get(personKey) || [])];
+
+        // 按上映状态过滤
+        if (p.type && p.type !== "all") {
+            const now = new Date();
+            works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
+        }
+
+        // 按关键词过滤
+        if (p.filter?.trim()) works = filterByKeywords(works, p.filter);
+
+        return formatOutput(works);
+    })();
+
+    worksPromiseCache.set(personKey, promise);
+
+    try {
+        const result = await promise;
+        return result;
+    } finally {
+        // 永久保留 Promise，保证多次调用稳定
     }
-
-    let works = [...(await worksPromiseCache.get(cacheKey))];
-
-    // 按上映状态过滤
-    if (p.type && p.type !== "all") {
-        const now = new Date();
-        works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
-    }
-
-    // 按关键词过滤
-    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
-
-    if (p.logMode === "debug") finalLogger.debug("最终输出作品数量:", works.length);
-
-    return formatOutput(works, p.logMode);
 }
 
 async function loadSharedWorksSafe(params) {
     try { return await loadSharedWorks(params); }
-    catch (err) { const logger = createLogger(params?.logMode || "info"); logger.warning("loadSharedWorksSafe 捕获异常:", err); return formatOutput([], params?.logMode || "info"); }
+    catch (err) { const logger = createLogger(params?.logMode || "info"); logger.warning("loadSharedWorksSafe 捕获异常:", err); return formatOutput([]); }
 }
 
 // -----------------------------
