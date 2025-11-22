@@ -409,17 +409,23 @@ async function loadSharedWorks(params) {
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
+    // 先检查缓存
     if (!sharedPersonCache[personKey]) {
-        const [_, personId] = await Promise.all([
-            initTmdbGenres(p.language || "zh-CN", p.logMode),
-            resolvePersonId(p.personId, p.language, p.logMode)
-        ]);
+        // 先获取人物 ID
+        const personId = await resolvePersonId(p.personId, p.language, p.logMode);
 
+        // ID 未获取到，直接返回空数组
         if (!personId) {
-            logger.warning("未获取到人物ID");
+            logger.warning("未获取到人物ID，作品列表为空");
             sharedPersonCache[personKey] = [];
         } else {
+            // 获取 ID 成功后再初始化类型
+            await initTmdbGenres(p.language || "zh-CN", p.logMode);
+
+            // 抓取作品
             const credits = await fetchCredits(personId, p.language, p.logMode);
+
+            // 标准化作品并缓存
             sharedPersonCache[personKey] = [...credits.cast, ...credits.crew].map(normalizeItem);
             logger.debug("共享缓存加载完成，作品数量:", sharedPersonCache[personKey].length);
         }
@@ -427,16 +433,22 @@ async function loadSharedWorks(params) {
         logger.debug("使用共享缓存，作品数量:", sharedPersonCache[personKey].length);
     }
 
+    // 从缓存获取作品
     let works = [...sharedPersonCache[personKey]];
 
+    // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
-        works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
+        works = works.filter(i => i.releaseDate && (
+            (p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now
+        ));
         logger.debug("按上映状态过滤后作品数量:", works.length);
     }
 
+    // 按关键词过滤
     if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
+    // 格式化输出
     const formatted = formatOutput(works, p.logMode);
     if (p.logMode === "debug") logger.debug("格式化输出完成，数量:", formatted.length);
 
@@ -446,15 +458,20 @@ async function loadSharedWorks(params) {
 // -----------------------------
 // 模块函数
 // -----------------------------
-async function getAllWorks(params) { return await loadSharedWorks(params); }
+async function getAllWorks(params) { 
+    return await loadSharedWorks(params); 
+}
+
 async function getActorWorks(params) {
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.characters.length);
 }
+
 async function getDirectorWorks(params) {
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.jobs.some(j => /director/i.test(j)));
 }
+
 async function getOtherWorks(params) {
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
