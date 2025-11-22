@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.3.4",
+    version: "2.3.5",
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -19,7 +19,7 @@ WidgetMetadata = {
 };
 
 // -----------------------------
-// 参数模板 Params 
+// 参数模板 Params
 // -----------------------------
 const Params = [
     {
@@ -103,16 +103,6 @@ const Params = [
         title: "关键词过滤",
         type: "input",
         description: "过滤标题中包含指定关键词的作品",
-        placeholders: [
-            { title: "关键词过滤", value: "A" },
-            { title: "完全匹配 A", value: "^A$" },
-            { title: "以 A 开头", value: "^A.*" },
-            { title: "以 B 结尾", value: ".*B$" },
-            { title: "包含 A 或 B", value: "A|B" },
-            { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
-            { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
-            { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" },
-        ],
         value: "",
     },
     {
@@ -145,7 +135,7 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 日志函数（全局复用）
+// 日志函数
 // -----------------------------
 function createLogger(mode) {
     const m = mode || "info";
@@ -158,11 +148,10 @@ function createLogger(mode) {
 }
 
 // -----------------------------
-// resolvePersonId：名字转ID
-// -----------------------------
+// resolvePersonId 函数（必须在顶部）
 async function resolvePersonId(personInput, language = "zh-CN") {
     if (!personInput) return null;
-    if (!isNaN(personInput)) return personInput; // 输入就是数字ID
+    if (!isNaN(personInput)) return personInput; // 如果输入就是 ID
     try {
         const res = await Widget.tmdb.get("search/person", { params: { query: personInput, language } });
         if (res?.results?.length) return res.results[0].id;
@@ -229,7 +218,7 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// 核心模块
+// 核心模块方法
 // -----------------------------
 async function loadWorks(params) {
     const p = params || {};
@@ -272,26 +261,25 @@ async function getActorWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language)).cast.map(normalizeItem);
-    return formatOutput(list, p.logMode);
+    return formatOutput((await fetchCredits(personId, p.language)).cast.map(normalizeItem), p.logMode);
 }
 
 async function getDirectorWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language))
-        .crew.filter(i => i.job?.toLowerCase().includes("director"))
-        .map(normalizeItem);
-    return formatOutput(list, p.logMode);
+    return formatOutput(
+        (await fetchCredits(personId, p.language)).crew.filter(i => i.job?.toLowerCase().includes("director")).map(normalizeItem),
+        p.logMode
+    );
 }
 
 async function getOtherWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language))
-        .crew.filter(i => !(i.job?.toLowerCase().includes("director")))
-        .map(normalizeItem);
-    return formatOutput(list, p.logMode);
+    return formatOutput(
+        (await fetchCredits(personId, p.language)).crew.filter(i => !(i.job?.toLowerCase().includes("director"))).map(normalizeItem),
+        p.logMode
+    );
 }
