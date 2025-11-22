@@ -142,6 +142,11 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
+// 全局共享缓存
+// -----------------------------
+let sharedPersonCache = {}; // 人物作品缓存
+
+// -----------------------------
 // 日志函数
 // -----------------------------
 function createLogger(mode) {
@@ -400,30 +405,37 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 }
 
 // -----------------------------
-// 核心共享缓存 + 多模块加载
+// 核心共享缓存
 // -----------------------------
 let personIdCache = {}; // personName + language => ID
 async function getCachedPersonId(personInput, language = "zh-CN", logMode = "info") {
-    const key = `${personInput}_${language}`;
+    const trimmedInput = (personInput || "").trim();
+    if (!trimmedInput) return null; // 空输入直接返回 null
+    const key = `${trimmedInput}_${language}`;
     if (personIdCache[key]) return personIdCache[key];
-    const id = await resolvePersonId(personInput, language, logMode);
-    personIdCache[key] = id;
+    const id = await resolvePersonId(trimmedInput, language, logMode);
+    if (id) personIdCache[key] = id; // 仅在获取到有效 ID 时写入缓存
     return id;
 }
 
 // -----------------------------
-// 核心共享缓存 + 多模块加载
+// 核心共享加载函数
 // -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
-    const personKey = `${p.personId}_${p.language}`;
+    const trimmedPerson = (p.personId || "").trim();
+    if (!trimmedPerson) {
+        logger.warning("人物输入为空，无法获取作品");
+        return [];
+    }
+    const personKey = `${trimmedPerson}_${p.language}`;
 
-    // 初始化 TMDB 类型缓存（只初始化一次）
+    // 初始化 TMDB 类型缓存
     await initTmdbGenres(p.language || "zh-CN", p.logMode);
 
-    // 获取人物ID（缓存避免重复请求）
-    const personId = await getCachedPersonId(p.personId, p.language, p.logMode);
+    // 获取人物ID
+    const personId = await getCachedPersonId(trimmedPerson, p.language, p.logMode);
     if (!personId) {
         logger.warning("未获取到人物ID");
         sharedPersonCache[personKey] = [];
@@ -459,27 +471,23 @@ async function loadSharedWorks(params) {
 }
 
 // -----------------------------
-// 模块函数（依赖 loadSharedWorks）
+// 模块函数
 // -----------------------------
 async function getAllWorks(params) {
-    // 获取所有作品
     return await loadSharedWorks(params);
 }
 
 async function getActorWorks(params) {
-    // 获取仅演员作品（有角色信息的）
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.characters.length);
 }
 
 async function getDirectorWorks(params) {
-    // 获取仅导演作品（jobs 中包含 director）
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.jobs.some(j => /director/i.test(j)));
 }
 
 async function getOtherWorks(params) {
-    // 获取非演员且非导演作品
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
 }
