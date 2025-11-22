@@ -4,13 +4,13 @@
   "icon": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/bb1e749546c2b0bcbaecae3b85f5a21772d300e2/.github/scripts/icon.png",
   "widgets": [
     {
-      "id": "bangumi_charts_tmdb_v3",
+      "id": "bangumi-tmdb_v3",
       "title": "Bangumi 热门榜单",
       "version": "3.0.0",
       "description": "获取Bangumi近期热门、每日放送数据，支持榜单筛选。",
       "requiredVersion": "0.0.1",
       "author": "ICoeMix (Optimized by ChatGPT)",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/bangumi_charts_tmdb_v3.js"
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/bangumi-tmdb_v3.js"
     },
     {
       "id": "tmdb.person.movie",
@@ -128,6 +128,15 @@
       "version": "1.2.1",
       "author": "两块",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/hot_picks.js"
+    },
+    {
+      "id": "bangumi_charts_tmdb_v3",
+      "title": "Bangumi 热门榜单",
+      "description": "获取Bangumi近期热门、每日放送数据，支持榜单筛选。",
+      "requiredVersion": "0.0.1",
+      "version": "2.0.0",
+      "author": "Autism",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/bangumi_charts_tmdb_v3.js"
     },
     {
       "id": "person.movie.tmdb",
