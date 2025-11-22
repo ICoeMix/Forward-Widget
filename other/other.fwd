@@ -4,15 +4,6 @@
     "icon": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/bb1e749546c2b0bcbaecae3b85f5a21772d300e2/.github/scripts/icon.png",
     "widgets": [
         {
-            "id": "yuanqi.wallpaper",
-            "title": "🖼️ ✨wallpaper",
-            "description": "✨ Dynamic wallpaper For Topshelf",
-            "requiredVersion": "0.0.1",
-            "version": "1.1.0",
-            "author": "Discount Code：VEUS",
-            "url": "https://raw.githubusercontent.com/ocd0711/forward_module/refs/heads/master/other/wallpaper.js"
-        },
-        {
             "id": "bangumi_charts_tmdb_v3",
             "title": "Bangumi 热门榜单",
             "version": "3.0.0",
@@ -29,15 +20,6 @@
             "requiredVersion": "0.0.1",
             "author": "ICoeMix (Optimized by ChatGPT)",
             "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/refs/heads/master/other/Bangumi.js"
-        },
-        {
-            "id": "xtream_api_en",
-            "title": "Xtream API Live",
-            "description": "Fetch live channels via official Xtream-Codes REST API with keyword search",
-            "requiredVersion": "0.0.1",
-            "version": "2.1.2",
-            "author": "Discount Code：VEUS",
-            "url": "https://raw.githubusercontent.com/ocd0711/forward_module/refs/heads/master/other/xtream_api.js"
         }
     ]
 }
