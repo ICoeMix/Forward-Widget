@@ -320,7 +320,7 @@ function filterByKeywords(list, filterStr) {
 }
 
 // -----------------------------
-// 核心加载函数（保证稳定输出）
+// 核心加载函数（彻底隔离输出）
 // -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
@@ -334,12 +334,13 @@ async function loadSharedWorks(params) {
 
         if (!sharedPersonCache.has(personKey)) {
             const credits = await fetchCredits(personId, p.language);
-            const worksArray = [...credits.cast,...credits.crew].map(normalizeItem);
+            const worksArray = [...credits.cast,...credits.crew].map(i=>normalizeItem(i));
+            // 存储缓存副本，隔离外部引用
             sharedPersonCache.set(personKey, worksArray.map(i=>({...i})));
             if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
         }
 
-        let works = [...(sharedPersonCache.get(personKey) || [])];
+        let works = sharedPersonCache.get(personKey).map(i=>({...i})); // 深拷贝
         if (p.type && p.type!=="all") {
             const now = new Date();
             works = works.filter(i=>i.releaseDate ? (p.type==="released"?new Date(i.releaseDate)<=now:new Date(i.releaseDate)>now):false);
@@ -359,8 +360,7 @@ async function loadSharedWorks(params) {
 async function loadSharedWorksSafe(params) {
     try { return await loadSharedWorks(params); }
     catch (err) { console.warn("loadSharedWorksSafe 捕获异常:", err); return formatOutput([]); }
-}
-// 模块函数
+}// 模块函数
 // -----------------------------
 async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
 async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => Array.isArray(i.characters) && i.characters.length); }
