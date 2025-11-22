@@ -110,6 +110,7 @@ const MAX_PERSON_CACHE = 200;
 let sharedPersonCache = new Map();
 let tmdbGenresCache = {};
 const personIdCache = new Map();
+const worksPromiseCache = new Map();
 
 // -----------------------------
 // 日志函数
@@ -355,48 +356,56 @@ function filterByKeywords(list, filterStr, logMode="info") {
 }
 
 // -----------------------------
-// 获取人物作品
+// 获取人物作品（优化版）
 // -----------------------------
+function setCacheWithLimit(cache, key, value, maxSize) {
+    cache.set(key, value);
+    if (cache.size > maxSize) {
+        const oldestKey = cache.keys().next().value;
+        cache.delete(oldestKey);
+    }
+}
+
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    const [personId] = await Promise.all([
-        getCachedPersonId(p.personId, p.language, p.logMode),
-        initTmdbGenres(p.language || "zh-CN", p.logMode)
-    ]);
+    // 使用 Promise 缓存避免重复请求
+    if (!worksPromiseCache.has(personKey)) {
+        worksPromiseCache.set(personKey, (async () => {
+            const [personId] = await Promise.all([
+                getCachedPersonId(p.personId, p.language, p.logMode),
+                initTmdbGenres(p.language || "zh-CN", p.logMode)
+            ]);
 
-    if (!personId) {
-        logger.warning("未获取到人物ID");
-        sharedPersonCache.set(personKey, []);
-        return formatOutput([], p.logMode);
+            if (!personId) {
+                logger.warning("未获取到人物ID");
+                setCacheWithLimit(sharedPersonCache, personKey, [], MAX_PERSON_CACHE);
+                return formatOutput([], p.logMode);
+            }
+
+            if (!sharedPersonCache.has(personKey)) {
+                const credits = await fetchCredits(personId, p.language, p.logMode);
+                const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
+                setCacheWithLimit(sharedPersonCache, personKey, worksArray, MAX_PERSON_CACHE);
+                if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
+            } else if (p.logMode === "debug") logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
+
+            let works = [...(sharedPersonCache.get(personKey) || [])];
+
+            if (p.type && p.type !== "all") {
+                const now = new Date();
+                works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
+                if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
+            }
+
+            if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
+            return formatOutput(works, p.logMode);
+        })());
     }
 
-    if (!sharedPersonCache.has(personKey)) {
-        const credits = await fetchCredits(personId, p.language, p.logMode);
-        const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
-        sharedPersonCache.set(personKey, worksArray);
-
-        // 删除最旧缓存
-        if (sharedPersonCache.size > MAX_PERSON_CACHE) {
-            const oldestKey = sharedPersonCache.keys().next().value;
-            sharedPersonCache.delete(oldestKey);
-        }
-
-        if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
-    } else if (p.logMode === "debug") logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
-
-    let works = [...(sharedPersonCache.get(personKey) || [])];
-
-    if (p.type && p.type !== "all") {
-        const now = new Date();
-        works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
-        if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
-    }
-
-    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
-    return formatOutput(works, p.logMode);
+    return worksPromiseCache.get(personKey);
 }
 
 async function loadSharedWorksSafe(params) {
