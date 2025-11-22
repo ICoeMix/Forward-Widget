@@ -397,77 +397,113 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 // -----------------------------
 // 获取人物作品（loadSharedWorks）
 // -----------------------------
-async function loadSharedWorks(params) {
+// -----------------------------
+// Promise 缓存 + 共享缓存
+// -----------------------------
+const worksPromiseCache = new Map();
+const sharedPersonCache = new Map(); // 原来的共享缓存
+
+// -----------------------------
+// 安全打印函数（避免对象引用被修改）
+// -----------------------------
+function debugSnapshot(logger, label, data) {
+    if (!logger || !label) return;
+    try {
+        logger.debug(label, JSON.parse(JSON.stringify(data)));
+    } catch (e) {
+        logger.debug(label, data);
+    }
+}
+
+// -----------------------------
+// 优化后的 loadSharedWorksSafe
+// -----------------------------
+async function loadSharedWorksSafe(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    // 并发初始化 TMDB 类型 + 获取人物ID
-    const [personId] = await Promise.all([
-        getCachedPersonId(p.personId, p.language, p.logMode),
-        initTmdbGenres(p.language || "zh-CN", p.logMode)
-    ]);
-
-    if (!personId) {
-        logger.warning("未获取到人物ID");
-        sharedPersonCache.set(personKey, []);
-        return [];
+    // 如果已有 Promise 缓存，直接 await
+    if (worksPromiseCache.has(personKey)) {
+        return await worksPromiseCache.get(personKey);
     }
 
-    // 获取共享缓存或加载新作品
-    if (!sharedPersonCache.has(personKey)) {
-        const credits = await fetchCredits(personId, p.language, p.logMode);
-        const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
-        sharedPersonCache.set(personKey, worksArray);
+    // 创建一个新的 Promise 并缓存
+    const worksPromise = (async () => {
+        // 并发初始化 TMDB 类型 + 获取人物ID
+        const [personId] = await Promise.all([
+            getCachedPersonId(p.personId, p.language, p.logMode),
+            initTmdbGenres(p.language || "zh-CN", p.logMode)
+        ]);
 
-        if (sharedPersonCache.size > MAX_PERSON_CACHE) {
-            const firstKey = sharedPersonCache.keys().next().value;
-            sharedPersonCache.delete(firstKey);
+        if (!personId) {
+            logger.warning("未获取到人物ID");
+            sharedPersonCache.set(personKey, []);
+            return [];
         }
 
-        if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
-    } else {
-        if (p.logMode === "debug") logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
-    }
+        // 获取共享缓存或加载新作品
+        let worksArray;
+        if (!sharedPersonCache.has(personKey)) {
+            const credits = await fetchCredits(personId, p.language, p.logMode);
+            worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
 
-    let works = [...sharedPersonCache.get(personKey)];
+            // 按缓存容量控制
+            sharedPersonCache.set(personKey, worksArray);
+            if (sharedPersonCache.size > MAX_PERSON_CACHE) {
+                const firstKey = sharedPersonCache.keys().next().value;
+                sharedPersonCache.delete(firstKey);
+            }
 
-    // 按上映状态过滤
-    if (p.type && p.type !== "all") {
-        const now = new Date();
-        works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
-        if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
-    }
+            debugSnapshot(logger, "共享缓存加载完成作品快照", worksArray);
+        } else {
+            worksArray = [...sharedPersonCache.get(personKey)];
+            debugSnapshot(logger, "使用共享缓存作品快照", worksArray);
+        }
 
-    // AC+正则过滤
-    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
+        // 按上映状态过滤
+        let works = [...worksArray];
+        if (p.type && p.type !== "all") {
+            const now = new Date();
+            works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
+            debugSnapshot(logger, "按上映状态过滤后作品快照", works);
+        }
 
-    // 格式化输出
-    return formatOutput(works, p.logMode);
+        // AC+正则过滤
+        if (p.filter?.trim()) {
+            works = filterByKeywords(works, p.filter, p.logMode);
+            debugSnapshot(logger, "按关键词过滤后作品快照", works);
+        }
+
+        // 格式化输出
+        const finalWorks = formatOutput(works, p.logMode);
+        debugSnapshot(logger, "最终格式化输出作品快照", finalWorks);
+        return finalWorks;
+    })();
+
+    // 缓存 Promise
+    worksPromiseCache.set(personKey, worksPromise);
+    return await worksPromise;
 }
 
 // -----------------------------
-// 模块函数
+// 安全获取各类作品函数
 // -----------------------------
 async function getAllWorks(params) {
-    return await loadSharedWorks(params);
+    return await loadSharedWorksSafe(params);
 }
 
 async function getActorWorks(params) {
-    const allWorks = await loadSharedWorks(params);
+    const allWorks = await loadSharedWorksSafe(params);
     return allWorks.filter(i => i.characters.length);
 }
 
 async function getDirectorWorks(params) {
-    const allWorks = await loadSharedWorks(params);
+    const allWorks = await loadSharedWorksSafe(params);
     return allWorks.filter(i => i.jobs.some(j => /director/i.test(j)));
 }
 
 async function getOtherWorks(params) {
-    const allWorks = await loadSharedWorks(params);
+    const allWorks = await loadSharedWorksSafe(params);
     return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
-}async function getOtherWorks(params) { return (await loadSharedWorks(params, "getOtherWorks")).filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j))); }// -----------------------------
-async function getAllWorks(params) { return await loadSharedWorks(params, "getAllWorks"); }
-async function getActorWorks(params) { return (await loadSharedWorks(params, "getActorWorks")).filter(i => i.characters.length); }
-async function getDirectorWorks(params) { return (await loadSharedWorks(params, "getDirectorWorks")).filter(i => i.jobs.some(j => /director/i.test(j))); }
-async function getOtherWorks(params) { return (await loadSharedWorks(params, "getOtherWorks")).filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j))); }
+}
