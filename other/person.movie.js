@@ -372,56 +372,66 @@ function setCacheWithLimit(cache, key, value, maxSize) {
 // -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
-    // 强制创建 logger，但屏蔽 debug/info 输出，直到最终处理完成
-    const logger = {
-        debug: () => {}, 
-        info: () => {}, 
-        warning: (...args) => console.warn("[WARN]", ...args), 
-        notify: (...args) => console.info("[NOTIFY]", ...args)
-    };
-
     const personKey = `${p.personId}_${p.language}`;
 
-    // 先获取 personId 和类型缓存，但不输出任何 debug/info
-    const [personId] = await Promise.all([
-        getCachedPersonId(p.personId, p.language, "info"), // 用 info 仅获取，不输出动态日志
-        initTmdbGenres(p.language || "zh-CN", "info")
-    ]);
+    // 如果已有正在进行的 Promise，直接返回
+    if (worksPromiseCache.has(personKey)) return await worksPromiseCache.get(personKey);
 
-    if (!personId) {
-        sharedPersonCache.set(personKey, []);
-        return formatOutput([], p.logMode);
-    }
+    // 创建 Promise 并缓存
+    const promise = (async () => {
+        const logger = createLogger(p.logMode || "info");
 
-    if (!sharedPersonCache.has(personKey)) {
-        const credits = await fetchCredits(personId, p.language, "info"); // 不输出动态日志
-        const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
-        sharedPersonCache.set(personKey, worksArray);
-        if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
-    }
+        // 获取 personId 和类型缓存
+        const [personId] = await Promise.all([
+            getCachedPersonId(p.personId, p.language, "info"),
+            initTmdbGenres(p.language || "zh-CN", "info")
+        ]);
 
-    // 拿到缓存数据
-    let works = [...(sharedPersonCache.get(personKey) || [])];
+        if (!personId) {
+            sharedPersonCache.set(personKey, []);
+            return formatOutput([], p.logMode);
+        }
 
-    // 按上映状态过滤
-    if (p.type && p.type !== "all") {
-        const now = new Date();
-        works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
-    }
+        // 如果缓存不存在，则拉取作品并标准化
+        if (!sharedPersonCache.has(personKey)) {
+            const credits = await fetchCredits(personId, p.language, "info");
+            const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
+            sharedPersonCache.set(personKey, worksArray);
+            if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
+        }
 
-    // 按关键词过滤
-    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, "info");
+        let works = sharedPersonCache.get(personKey);
 
-    // 在最终返回前才创建 logger 并输出 debug/info
-    const finalLogger = createLogger(p.logMode || "info");
-    if (p.logMode === "debug") finalLogger.debug("最终输出作品数量:", works.length);
+        // 按上映状态过滤
+        if (p.type && p.type !== "all") {
+            const now = Date.now();
+            works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate).getTime() <= now : new Date(i.releaseDate).getTime() > now) : false);
+        }
 
-    return formatOutput(works, p.logMode);
+        // 按关键词过滤
+        if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode || "info");
+
+        if (p.logMode === "debug") logger.debug("最终输出作品数量:", works.length);
+
+        return formatOutput(works, p.logMode);
+    })();
+
+    worksPromiseCache.set(personKey, promise);
+    const result = await promise;
+    worksPromiseCache.delete(personKey); // 完成后移除缓存
+    return result;
 }
 
+// -----------------------------
+// 安全封装
+// -----------------------------
 async function loadSharedWorksSafe(params) {
     try { return await loadSharedWorks(params); }
-    catch (err) { const logger = createLogger(params?.logMode || "info"); logger.warning("loadSharedWorksSafe 捕获异常:", err); return formatOutput([], params?.logMode || "info"); }
+    catch (err) {
+        const logger = createLogger(params?.logMode || "info");
+        logger.warning("loadSharedWorksSafe 捕获异常:", err);
+        return formatOutput([], params?.logMode || "info");
+    }
 }
 
 // -----------------------------
