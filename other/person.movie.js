@@ -103,7 +103,6 @@ const Params = [
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
-
 // -----------------------------
 // 全局共享缓存
 // -----------------------------
@@ -153,9 +152,9 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// resolvePersonId
+// resolvePersonId（安全版）
 // -----------------------------
-async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
+async function resolvePersonIdSafe(personInput, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
     if (!personInput || !personInput.toString().trim()) return null;
     if (!isNaN(personInput)) return Number(personInput);
@@ -166,29 +165,32 @@ async function resolvePersonId(personInput, language = "zh-CN", logMode = "info"
     try {
         logger.debug("搜索人物:", personInput);
         const res = await Widget.tmdb.get("search/person", { params: { query: personInput, language } });
-        const id = res?.results?.[0]?.id || null;
+        const results = Array.isArray(res?.results) ? res.results : [];
+        if (!results.length) return null;
+
+        const id = results[0]?.id || null;
         if (id) personIdCache.set(cacheKey, id);
         return id;
     } catch (err) {
-        logger.warning("resolvePersonId 获取人物ID失败", err);
+        logger.warning("resolvePersonIdSafe 获取人物ID失败", err);
         return null;
     }
 }
 
 async function getCachedPersonId(personInput, language = "zh-CN", logMode = "info") {
-    return await resolvePersonId(personInput, language, logMode);
+    return await resolvePersonIdSafe(personInput, language, logMode);
 }
 
 // -----------------------------
-// 获取作品
+// 获取作品（安全版）
 // -----------------------------
-async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
+async function fetchCreditsSafe(personId, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
+    if (!personId) return { cast: [], crew: [] };
     try {
-        logger.debug("获取人物作品 personId:", personId);
         const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
-        const safe = v => Array.isArray(v) ? v : [];
-        return { cast: safe(response?.cast), crew: safe(response?.crew) };
+        const safeArray = v => Array.isArray(v) ? v.filter(item => item && typeof item === 'object') : [];
+        return { cast: safeArray(response?.cast), crew: safeArray(response?.crew) };
     } catch (err) {
         logger.warning("TMDB 获取作品失败", err);
         return { cast: [], crew: [] };
@@ -357,31 +359,17 @@ function filterByKeywords(list, filterStr, logMode="info") {
 }
 
 // -----------------------------
-// 获取人物作品（优化版）
+// 获取人物作品（安全版，带并发保护）
 // -----------------------------
-function setCacheWithLimit(cache, key, value, maxSize) {
-    cache.set(key, value);
-    if (cache.size > maxSize) {
-        const oldestKey = cache.keys().next().value;
-        cache.delete(oldestKey);
-    }
-}
-
-// -----------------------------
-// 获取人物作品
-// -----------------------------
-async function loadSharedWorks(params) {
+async function loadSharedWorksSafeCache(params) {
     const p = params || {};
     const personKey = `${p.personId}_${p.language}`;
 
-    // 如果已有正在进行的 Promise，直接返回
     if (worksPromiseCache.has(personKey)) return await worksPromiseCache.get(personKey);
 
-    // 创建 Promise 并缓存
     const promise = (async () => {
         const logger = createLogger(p.logMode || "info");
 
-        // 获取 personId 和类型缓存
         const [personId] = await Promise.all([
             getCachedPersonId(p.personId, p.language, "info"),
             initTmdbGenres(p.language || "zh-CN", "info")
@@ -392,9 +380,8 @@ async function loadSharedWorks(params) {
             return formatOutput([], p.logMode);
         }
 
-        // 如果缓存不存在，则拉取作品并标准化
         if (!sharedPersonCache.has(personKey)) {
-            const credits = await fetchCredits(personId, p.language, "info");
+            const credits = await fetchCreditsSafe(personId, p.language, "info");
             const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
             sharedPersonCache.set(personKey, worksArray);
             if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
@@ -402,13 +389,13 @@ async function loadSharedWorks(params) {
 
         let works = sharedPersonCache.get(personKey);
 
-        // 按上映状态过滤
+        // 上映状态过滤
         if (p.type && p.type !== "all") {
             const now = Date.now();
             works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate).getTime() <= now : new Date(i.releaseDate).getTime() > now) : false);
         }
 
-        // 按关键词过滤
+        // 关键词过滤
         if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode || "info");
 
         if (p.logMode === "debug") logger.debug("最终输出作品数量:", works.length);
@@ -418,24 +405,20 @@ async function loadSharedWorks(params) {
 
     worksPromiseCache.set(personKey, promise);
     const result = await promise;
-    worksPromiseCache.delete(personKey); // 完成后移除缓存
+    worksPromiseCache.delete(personKey);
     return result;
 }
 
 // -----------------------------
-// 安全封装
+// Safe wrapper
 // -----------------------------
 async function loadSharedWorksSafe(params) {
-    try { return await loadSharedWorks(params); }
-    catch (err) {
-        const logger = createLogger(params?.logMode || "info");
-        logger.warning("loadSharedWorksSafe 捕获异常:", err);
-        return formatOutput([], params?.logMode || "info");
-    }
+    try { return await loadSharedWorksSafeCache(params); }
+    catch (err) { const logger = createLogger(params?.logMode || "info"); logger.warning("loadSharedWorksSafe 捕获异常:", err); return formatOutput([], params?.logMode || "info"); }
 }
 
 // -----------------------------
-// 模块函数
+// 模块函数保持不变
 // -----------------------------
 async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
 async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => Array.isArray(i.characters) && i.characters.length); }
