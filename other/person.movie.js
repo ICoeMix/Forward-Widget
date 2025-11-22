@@ -1,3 +1,146 @@
+// -----------------------------
+// Widget Metadata
+// -----------------------------
+WidgetMetadata = {
+    id: "tmdb.person.movie",
+    title: "TMDB人物影视作品",
+    version: "2.3.8",
+    requiredVersion: "0.0.1",
+    description: "获取 TMDB 人物作品数据",
+    author: "ICoeMix (Optimized by ChatGPT)",
+    site: "https://github.com/ICoeMix/ForwardWidgets",
+    cacheDuration: 172800,
+    modules: [
+        { id: "allWorks", title: "全部作品", functionName: "getAllWorks", cacheDuration: 172800 },
+        { id: "actorWorks", title: "演员作品", functionName: "getActorWorks", cacheDuration: 172800 },
+        { id: "directorWorks", title: "导演作品", functionName: "getDirectorWorks", cacheDuration: 172800 },
+        { id: "otherWorks", title: "其他作品", functionName: "getOtherWorks", cacheDuration: 172800 }
+    ]
+};
+
+// -----------------------------
+// 参数模板 Params
+// -----------------------------
+const Params = [
+    {
+        name: "personId",
+        title: "人物搜索",
+        type: "input",
+        description: "输入名字自动获取 TMDB 网站人物的个人 ID，失效请手动输入个人 ID",
+        placeholders: [
+            { title: "张艺谋", value: "607" },
+            { title: "李安", value: "1614" },
+            { title: "周星驰", value: "57607" },
+            { title: "成龙", value: "18897" },
+            { title: "吴京", value: "78871" },
+            { title: "王家卫", value: "12453" },
+            { title: "姜文", value: "77301" },
+            { title: "贾樟柯", value: "24011" },
+            { title: "陈凯歌", value: "20640" },
+            { title: "徐峥", value: "118711" },
+            { title: "宁浩", value: "17295" },
+            { title: "黄渤", value: "128026" },
+            { title: "葛优", value: "76913" },
+            { title: "胡歌", value: "1106514" },
+            { title: "张译", value: "146098" },
+            { title: "沈腾", value: "1519026" },
+            { title: "王宝强", value: "71051" },
+            { title: "赵丽颖", value: "1260868" },
+            { title: "孙俪", value: "52898" },
+            { title: "张若昀", value: "1675905" },
+            { title: "秦昊", value: "1016315" },
+            { title: "易烊千玺", value: "2223265" },
+            { title: "王倦", value: "2467977" },
+            { title: "孔笙", value: "1494556" },
+            { title: "张国立", value: "543178" },
+            { title: "陈思诚", value: "1065761" },
+            { title: "徐克", value: "26760" },
+            { title: "林超贤", value: "81220" },
+            { title: "郭帆", value: "1100748" },
+            { title: "史蒂文·斯皮尔伯格", value: "488" },
+            { title: "詹姆斯·卡梅隆", value: "2710" },
+            { title: "克里斯托弗·诺兰", value: "525" },
+            { title: "阿尔弗雷德·希区柯克", value: "2636" },
+            { title: "斯坦利·库布里克", value: "240" },
+            { title: "黑泽明", value: "5026" },
+            { title: "莱昂纳多·迪卡普里奥", value: "6193" },
+            { title: "阿米尔·汗", value: "52763" },
+            { title: "宫崎骏", value: "608" },
+            { title: "蒂姆·伯顿", value: "510" },
+            { title: "杨紫琼", value: "1620" },
+            { title: "凯特·布兰切特", value: "112" },
+            { title: "丹尼尔·戴·刘易斯", value: "11856" },
+            { title: "宋康昊", value: "20738" }
+        ],
+        value: " "
+    },
+    {
+        name: "language",
+        title: "语言",
+        type: "enumeration",
+        enumOptions: [
+            { title: "中文", value: "zh-CN" },
+            { title: "英文", value: "en-US" },
+            { title: "日文", value: "ja-JP" },
+            { title: "韩文", value: "ko-KR" },
+            { title: "法文", value: "fr-FR" }
+        ],
+        value: "zh-CN"
+    },
+    {
+        name: "type",
+        title: "上映状态",
+        type: "enumeration",
+        enumOptions: [
+            { title: "全部作品", value: "all" },
+            { title: "已上映", value: "released" },
+            { title: "即将上映", value: "upcoming" }
+        ],
+        value: "all"
+    },
+    {
+        name: "filter",
+        title: "关键词过滤",
+        type: "input",
+        description: "过滤标题中包含指定关键词的作品",
+        placeholders: [
+            { title: "关键词过滤", value: "A" },
+            { title: "完全匹配 A", value: "^A$" },
+            { title: "以 A 开头", value: "^A.*" },
+            { title: "以 B 结尾", value: ".*B$" },
+            { title: "包含 A 或 B", value: "A|B" },
+            { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
+            { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
+            { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" }
+        ],
+        value: ""
+    },
+    {
+        name: "sort_by",
+        title: "排序方式",
+        type: "enumeration",
+        value: "release_date.desc",
+        enumOptions: [
+            { title: "发行日期降序", value: "release_date.desc" },
+            { title: "评分降序", value: "vote_average.desc" },
+            { title: "热门降序", value: "popularity.desc" }
+        ]
+    },
+    {
+        name: "logMode",
+        title: "日志模式",
+        type: "enumeration",
+        value: "info",
+        enumOptions: [
+            { title: "关闭", value: "off" },
+            { title: "调试", value: "debug" },
+            { title: "信息", value: "info" },
+            { title: "警告", value: "warning" },
+            { title: "通知", value: "notify" }
+        ]
+    }
+];
+
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
