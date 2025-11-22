@@ -130,10 +130,10 @@ const Params = [
         name: "logMode",
         title: "日志模式",
         type: "enumeration",
-        value: "info",
+        value: "info", // 默认 info
         enumOptions: [
-            { title: "信息", value: "info" },
-            { title: "调试", value: "debug" } 
+            { title: "调试", value: "debug" },
+            { title: "信息", value: "info" }
         ]
     }
 ];
@@ -144,7 +144,7 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 // 日志函数
 // -----------------------------
 function createLogger(mode) {
-    const m = mode || "info";
+    const m = mode || "info"; // 默认 info
     return {
         debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
         info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
