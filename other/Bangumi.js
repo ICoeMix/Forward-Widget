@@ -321,7 +321,7 @@ async function fetchRecentHot(params = {}) {
     return pages[page - 1] || [];
 }
 
-/ ==================== 优化后的 fetchAirtimeRanking ====================
+/* ==================== 优化后的 fetchAirtimeRanking ==================== */
 async function fetchAirtimeRanking(params = {}) {
     await fetchAndCacheGlobalData();
     const category = params.category || "anime";
@@ -390,7 +390,7 @@ async function fetchAirtimeRanking(params = {}) {
     globalData.dynamic[dynamicKey] = listItems;
     return listItems;
 }
-/* ==================== 优化后的 fetchAirtimeRanking ==================== */
+/* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
