@@ -106,10 +106,10 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 // -----------------------------
 // 全局共享缓存
 // -----------------------------
-const MAX_PERSON_CACHE = 200;
-let sharedPersonCache = new Map();  // key=personKey, value=作品数组
-let tmdbGenresCache = {};            // TMDB 类型缓存
-const personIdCache = new Map();     // 人物ID缓存
+const MAX_PERSON_CACHE = 200; // 最大人物缓存数量，可根据实际调整
+let sharedPersonCache = new Map(); // key=personKey, value=作品数组
+let tmdbGenresCache = {};           // TMDB 类型缓存
+const personIdCache = new Map();    // 人物ID缓存
 
 // -----------------------------
 // 日志函数
@@ -133,15 +133,20 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 
     try {
         logger.debug("初始化 TMDB 类型，语言:", language);
+
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
         ]);
+
         tmdbGenresCache = {
             movie: movieGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {},
             tv: tvGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {}
         };
-        if (logMode === "debug") logger.debug("TMDB 类型缓存完成:", JSON.stringify(tmdbGenresCache, null, 2));
+
+        if (logMode === "debug") {
+            logger.debug("TMDB 类型缓存完成:", JSON.stringify(tmdbGenresCache, null, 2));
+        }
     } catch (err) {
         logger.warning("初始化 TMDB 类型失败", err);
         tmdbGenresCache = { movie: {}, tv: {} };
@@ -212,8 +217,8 @@ function normalizeItem(item) {
         jobs: item.job ? [item.job] : [],
         characters: item.character ? [item.character] : [],
         genre_ids: item.genre_ids || [],
-        _normalizedTitle: title.toLowerCase(),
-        _genreTitleCache: {}
+        _normalizedTitle: title.toLowerCase(), // 缓存normalizedTitle
+        _genreTitleCache: {} // 对 genreIds 组合的缓存
     };
 }
 
@@ -263,7 +268,7 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// 高性能 AC + 正则过滤器
+// 高性能 AC + 正则过滤器（保留原有功能）
 // -----------------------------
 const acCache = new Map();
 const regexCache = new Map();
@@ -390,14 +395,14 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 }
 
 // -----------------------------
-// 获取人物作品（并发+保证ID先获取）
+// 获取人物作品（loadSharedWorks）
 // -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    // 并发初始化 TMDB 类型 + 获取ID
+    // 并发初始化 TMDB 类型 + 获取人物ID
     const [personId] = await Promise.all([
         getCachedPersonId(p.personId, p.language, p.logMode),
         initTmdbGenres(p.language || "zh-CN", p.logMode)
@@ -409,7 +414,7 @@ async function loadSharedWorks(params) {
         return [];
     }
 
-    // 使用共享缓存
+    // 获取共享缓存或加载新作品
     if (!sharedPersonCache.has(personKey)) {
         const credits = await fetchCredits(personId, p.language, p.logMode);
         const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
@@ -427,14 +432,17 @@ async function loadSharedWorks(params) {
 
     let works = [...sharedPersonCache.get(personKey)];
 
+    // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
         if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
     }
 
+    // AC+正则过滤
     if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
+    // 格式化输出
     return formatOutput(works, p.logMode);
 }
 
@@ -456,6 +464,9 @@ async function getDirectorWorks(params) {
 }
 
 async function getOtherWorks(params) {
+    const allWorks = await loadSharedWorks(params);
+    return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
+}async function getOtherWorks(params) {
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
 }
