@@ -4,9 +4,9 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.3.9",
+    version: "2.3.8",
     requiredVersion: "0.0.1",
-    description: "获取 TMDB 人物作品数据（增强缺失保护）",
+    description: "获取 TMDB 人物作品",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -28,9 +28,13 @@ const Params = [
         type: "input",
         description: "输入名字自动获取 TMDB 网站人物的个人 ID，失效请手动输入个人 ID",
         placeholders: [
-            { title: "张艺谋", value: "607" }, { title: "李安", value: "1614" }, { title: "周星驰", value: "57607" }
+            { title: "张艺谋", value: "607" }, { title: "李安", value: "1614" }, { title: "周星驰", value: "57607" }, { title: "成龙", value: "18897" }, { title: "吴京", value: "78871" }, { title: "王家卫", value: "12453" }, { title: "姜文", value: "77301" }, { title: "贾樟柯", value: "24011" }, { title: "陈凯歌", value: "20640" }, { title: "徐峥", value: "118711" },
+            { title: "宁浩", value: "17295" }, { title: "黄渤", value: "128026" }, { title: "葛优", value: "76913" }, { title: "胡歌", value: "1106514" }, { title: "张译", value: "146098" }, { title: "沈腾", value: "1519026" }, { title: "王宝强", value: "71051" }, { title: "赵丽颖", value: "1260868" }, { title: "孙俪", value: "52898" }, { title: "张若昀", value: "1675905" },
+            { title: "秦昊", value: "1016315" }, { title: "易烊千玺", value: "2223265" }, { title: "王倦", value: "2467977" }, { title: "孔笙", value: "1494556" }, { title: "张国立", value: "543178" }, { title: "陈思诚", value: "1065761" }, { title: "徐克", value: "26760" }, { title: "林超贤", value: "81220" }, { title: "郭帆", value: "1100748" }, { title: "史蒂文·斯皮尔伯格", value: "488" },
+            { title: "詹姆斯·卡梅隆", value: "2710" }, { title: "克里斯托弗·诺兰", value: "525" }, { title: "阿尔弗雷德·希区柯克", value: "2636" }, { title: "斯坦利·库布里克", value: "240" }, { title: "黑泽明", value: "5026" }, { title: "莱昂纳多·迪卡普里奥", value: "6193" }, { title: "阿米尔·汗", value: "52763" }, { title: "宫崎骏", value: "608" }, { title: "蒂姆·伯顿", value: "510" }, { title: "杨紫琼", value: "1620" },
+            { title: "凯特·布兰切特", value: "112" }, { title: "丹尼尔·戴·刘易斯", value: "11856" }, { title: "宋康昊", value: "20738" }
         ],
-        value: " "
+        value: ""
     },
     {
         name: "language",
@@ -38,7 +42,10 @@ const Params = [
         type: "enumeration",
         enumOptions: [
             { title: "中文", value: "zh-CN" },
-            { title: "英文", value: "en-US" }
+            { title: "英文", value: "en-US" },
+            { title: "日文", value: "ja-JP" },
+            { title: "韩文", value: "ko-KR" },
+            { title: "法文", value: "fr-FR" }
         ],
         value: "zh-CN"
     },
@@ -58,7 +65,18 @@ const Params = [
         title: "关键词过滤",
         type: "input",
         description: "过滤标题中包含指定关键词的作品",
-        value: " "
+        placeholders: [
+            { title: "默认（不过滤）", value: "" },
+            { title: "关键词过滤", value: "A" },
+            { title: "完全匹配 A", value: "^A$" },
+            { title: "以 A 开头", value: "^A.*" },
+            { title: "以 B 结尾", value: ".*B$" },
+            { title: "包含 A 或 B", value: "A|B" },
+            { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
+            { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
+            { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" }
+        ],
+        value: ""
     },
     {
         name: "sort_by",
@@ -81,7 +99,7 @@ const Params = [
         ],
         value: "info",
     }
-];
+]
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
@@ -133,7 +151,7 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// resolvePersonId（增加缓存 & 宽松空值判定）
+// resolvePersonId
 // -----------------------------
 async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
@@ -160,7 +178,7 @@ async function getCachedPersonId(personInput, language = "zh-CN", logMode = "inf
 }
 
 // -----------------------------
-// 获取作品（增强空值保护）
+// 获取作品
 // -----------------------------
 async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
@@ -176,7 +194,7 @@ async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// 数据标准化（全字段缺失保护）
+// 数据标准化
 // -----------------------------
 function normalizeItem(item) {
     if (!item || typeof item !== "object") item = {};
@@ -200,7 +218,7 @@ function normalizeItem(item) {
 }
 
 // -----------------------------
-// 获取类型名称（安全处理）
+// 获取类型名称
 // -----------------------------
 function getTmdbGenreTitles(item) {
     if (!item || !Array.isArray(item.genre_ids) || !item.mediaType) return "";
@@ -242,7 +260,7 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// AC + 正则过滤器（保留原功能）
+// AC + 正则过滤器
 // -----------------------------
 const acCache = new Map();
 const regexCache = new Map();
@@ -359,7 +377,13 @@ async function loadSharedWorks(params) {
         const credits = await fetchCredits(personId, p.language, p.logMode);
         const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
         sharedPersonCache.set(personKey, worksArray);
-        if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
+
+        // 删除最旧缓存
+        if (sharedPersonCache.size > MAX_PERSON_CACHE) {
+            const oldestKey = sharedPersonCache.keys().next().value;
+            sharedPersonCache.delete(oldestKey);
+        }
+
         if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
     } else if (p.logMode === "debug") logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
 
