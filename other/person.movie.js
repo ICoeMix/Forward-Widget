@@ -402,46 +402,49 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 // -----------------------------
 // 核心共享缓存 + 多模块加载
 // -----------------------------
-let sharedPersonCache = {}; // personId + language 的共享缓存
+let personIdCache = {}; // personName + language => ID
+async function getCachedPersonId(personInput, language = "zh-CN", logMode = "info") {
+    const key = `${personInput}_${language}`;
+    if (personIdCache[key]) return personIdCache[key];
+    const id = await resolvePersonId(personInput, language, logMode);
+    personIdCache[key] = id;
+    return id;
+}
 
+// -----------------------------
+// 核心共享缓存 + 多模块加载
+// -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    // 先检查缓存
+    // 初始化 TMDB 类型缓存（只初始化一次）
+    await initTmdbGenres(p.language || "zh-CN", p.logMode);
+
+    // 获取人物ID（缓存避免重复请求）
+    const personId = await getCachedPersonId(p.personId, p.language, p.logMode);
+    if (!personId) {
+        logger.warning("未获取到人物ID");
+        sharedPersonCache[personKey] = [];
+        return [];
+    }
+
+    // 加载共享缓存
     if (!sharedPersonCache[personKey]) {
-        // 先获取人物 ID
-        const personId = await resolvePersonId(p.personId, p.language, p.logMode);
-
-        // ID 未获取到，直接返回空数组
-        if (!personId) {
-            logger.warning("未获取到人物ID，作品列表为空");
-            sharedPersonCache[personKey] = [];
-        } else {
-            // 获取 ID 成功后再初始化类型
-            await initTmdbGenres(p.language || "zh-CN", p.logMode);
-
-            // 抓取作品
-            const credits = await fetchCredits(personId, p.language, p.logMode);
-
-            // 标准化作品并缓存
-            sharedPersonCache[personKey] = [...credits.cast, ...credits.crew].map(normalizeItem);
-            logger.debug("共享缓存加载完成，作品数量:", sharedPersonCache[personKey].length);
-        }
+        const credits = await fetchCredits(personId, p.language, p.logMode);
+        sharedPersonCache[personKey] = [...credits.cast, ...credits.crew].map(normalizeItem);
+        logger.debug("共享缓存加载完成，作品数量:", sharedPersonCache[personKey].length);
     } else {
         logger.debug("使用共享缓存，作品数量:", sharedPersonCache[personKey].length);
     }
 
-    // 从缓存获取作品
     let works = [...sharedPersonCache[personKey]];
 
     // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
-        works = works.filter(i => i.releaseDate && (
-            (p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now
-        ));
+        works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
         logger.debug("按上映状态过滤后作品数量:", works.length);
     }
 
@@ -456,23 +459,27 @@ async function loadSharedWorks(params) {
 }
 
 // -----------------------------
-// 模块函数
+// 模块函数（依赖 loadSharedWorks）
 // -----------------------------
-async function getAllWorks(params) { 
-    return await loadSharedWorks(params); 
+async function getAllWorks(params) {
+    // 获取所有作品
+    return await loadSharedWorks(params);
 }
 
 async function getActorWorks(params) {
+    // 获取仅演员作品（有角色信息的）
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.characters.length);
 }
 
 async function getDirectorWorks(params) {
+    // 获取仅导演作品（jobs 中包含 director）
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.jobs.some(j => /director/i.test(j)));
 }
 
 async function getOtherWorks(params) {
+    // 获取非演员且非导演作品
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
 }
