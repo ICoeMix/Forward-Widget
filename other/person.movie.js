@@ -402,47 +402,56 @@ async function loadSharedWorks(params) {
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    // 并发初始化 TMDB 类型 + 获取人物ID
-    const [personId] = await Promise.all([
-        getCachedPersonId(p.personId, p.language, p.logMode),
-        initTmdbGenres(p.language || "zh-CN", p.logMode)
-    ]);
-
+    // 1️⃣ 获取人物ID
+    let personId = null;
+    try {
+        personId = await getCachedPersonId(p.personId, p.language, p.logMode);
+    } catch(err) {
+        logger.warning("获取人物ID失败", err);
+    }
     if (!personId) {
-        logger.warning("未获取到人物ID");
+        logger.warning("未获取到人物ID，返回空作品数组");
         sharedPersonCache.set(personKey, []);
         return [];
     }
 
-    // 获取共享缓存或加载新作品
-    if (!sharedPersonCache.has(personKey)) {
-        const credits = await fetchCredits(personId, p.language, p.logMode);
-        const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
-        sharedPersonCache.set(personKey, worksArray);
+    // 2️⃣ 并发获取 TMDB 类型缓存和人物作品
+    const [genreInitResult, creditsResult] = await Promise.allSettled([
+        initTmdbGenres(p.language || "zh-CN", p.logMode),
+        (async () => {
+            if (!sharedPersonCache.has(personKey)) {
+                const credits = await fetchCredits(personId, p.language, p.logMode);
+                const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
+                sharedPersonCache.set(personKey, worksArray);
 
-        if (sharedPersonCache.size > MAX_PERSON_CACHE) {
-            const firstKey = sharedPersonCache.keys().next().value;
-            sharedPersonCache.delete(firstKey);
-        }
+                // 控制缓存大小
+                if (sharedPersonCache.size > MAX_PERSON_CACHE) {
+                    const firstKey = sharedPersonCache.keys().next().value;
+                    sharedPersonCache.delete(firstKey);
+                }
+            }
+            return sharedPersonCache.get(personKey);
+        })()
+    ]);
 
-        if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
-    } else {
-        if (p.logMode === "debug") logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
-    }
-
+    // 3️⃣ 获取最终作品列表
     let works = [...sharedPersonCache.get(personKey)];
 
     // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
-        if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
     }
 
     // AC+正则过滤
     if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
-    // 格式化输出
+    // 4️⃣ 只有在最终作品确定后才打印日志
+    if (p.logMode === "debug") {
+        logger.debug("最终作品数量:", works.length, "作品标题:", works.map(i => i.title));
+    }
+
+    // 5️⃣ 格式化输出
     return formatOutput(works, p.logMode);
 }
 
