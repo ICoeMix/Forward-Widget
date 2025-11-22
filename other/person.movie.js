@@ -132,8 +132,8 @@ const Params = [
         type: "enumeration",
         value: "info",
         enumOptions: [
-            { title: "调试", value: "debug" },
-            { title: "信息", value: "info" }
+            { title: "信息", value: "info" },
+            { title: "调试", value: "debug" } 
         ]
     }
 ];
