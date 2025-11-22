@@ -6,7 +6,7 @@ WidgetMetadata = {
     title: "TMDB人物影视作品",
     version: "2.3.9",
     requiredVersion: "0.0.1",
-    description: "获取 TMDB 人物作品（稳定版）",
+    description: "获取 TMDB 人物作品",
     author: "ICoeMix (Optimized by ChatGPT)",
     site: "https://github.com/ICoeMix/ForwardWidgets",
     cacheDuration: 172800,
@@ -95,7 +95,8 @@ const Params = [
         type: "enumeration",
         enumOptions: [
             { title: "信息", value: "info" },
-            { title: "调试", value: "debug" }
+            { title: "调试", value: "debug" },
+            { title: "警告", value: "warning" }
         ],
         value: "info",
     }
