@@ -104,11 +104,11 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 全局共享缓存
+// 全局缓存
 // -----------------------------
 const MAX_PERSON_CACHE = 200;
-let sharedPersonCache = new Map();
-let tmdbGenresCache = {};
+const sharedPersonCache = new Map();
+const tmdbGenresCache = {};
 const personIdCache = new Map();
 const worksPromiseCache = new Map();
 
@@ -126,7 +126,7 @@ function createLogger(mode) {
 }
 
 // -----------------------------
-// TMDB 类型缓存
+// 初始化 TMDB 类型
 // -----------------------------
 async function initTmdbGenres(language = "zh-CN") {
     if (tmdbGenresCache.movie && tmdbGenresCache.tv) return;
@@ -135,17 +135,16 @@ async function initTmdbGenres(language = "zh-CN") {
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
         ]);
-        tmdbGenresCache = {
-            movie: (movieGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}),
-            tv: (tvGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {})
-        };
-    } catch (e) {
-        tmdbGenresCache = { movie: {}, tv: {} };
+        tmdbGenresCache.movie = (movieGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {});
+        tmdbGenresCache.tv = (tvGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {});
+    } catch(e) {
+        tmdbGenresCache.movie = {};
+        tmdbGenresCache.tv = {};
     }
 }
 
 // -----------------------------
-// resolvePersonId
+// 获取 Person ID
 // -----------------------------
 async function resolvePersonId(personInput, language = "zh-CN") {
     if (!personInput || !personInput.toString().trim()) return null;
@@ -159,30 +158,26 @@ async function resolvePersonId(personInput, language = "zh-CN") {
         const id = res?.results?.[0]?.id || null;
         if (id) personIdCache.set(cacheKey, id);
         return id;
-    } catch (e) {
+    } catch(e) {
         return null;
     }
 }
 
-async function getCachedPersonId(personInput, language = "zh-CN") {
-    return await resolvePersonId(personInput, language);
-}
-
 // -----------------------------
-// 获取作品
+// 获取人物作品
 // -----------------------------
 async function fetchCredits(personId, language = "zh-CN") {
     try {
         const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
         const safe = v => Array.isArray(v) ? v : [];
         return { cast: safe(response?.cast), crew: safe(response?.crew) };
-    } catch (e) {
+    } catch(e) {
         return { cast: [], crew: [] };
     }
 }
 
 // -----------------------------
-// 数据标准化
+// 标准化作品
 // -----------------------------
 function normalizeItem(item) {
     if (!item || typeof item !== "object") item = {};
@@ -223,37 +218,31 @@ function getTmdbGenreTitles(item) {
 // 格式化输出
 // -----------------------------
 function formatOutput(list) {
-    const sortedList = [...(Array.isArray(list) ? list : [])].sort((a, b) => {
-        const ta = isNaN(new Date(a?.releaseDate)) ? 0 : new Date(a.releaseDate).getTime();
-        const tb = isNaN(new Date(b?.releaseDate)) ? 0 : new Date(b.releaseDate).getTime();
-        return tb - ta;
-    });
-
-    return sortedList.map(i => ({
-        id: i.id,
-        type: "tmdb",
-        title: i.title || "未知",
-        description: i.overview || "",
-        releaseDate: i.releaseDate || "",
-        rating: i.rating || 0,
-        popularity: i.popularity || 0,
-        posterPath: i.posterPath || "",
-        backdropPath: i.backdropPath || "",
-        mediaType: i.mediaType || "",
-        jobs: Array.isArray(i.jobs) ? i.jobs : [],
-        characters: Array.isArray(i.characters) ? i.characters : [],
-        genreTitle: Array.isArray(i.genre_ids) && i.genre_ids.length ? getTmdbGenreTitles(i) : ""
-    }));
+    return [...list]
+        .sort((a,b) => (new Date(b.releaseDate).getTime()||0) - (new Date(a.releaseDate).getTime()||0))
+        .map(i => ({
+            id: i.id,
+            type: "tmdb",
+            title: i.title,
+            description: i.overview,
+            releaseDate: i.releaseDate,
+            rating: i.rating,
+            popularity: i.popularity,
+            posterPath: i.posterPath,
+            backdropPath: i.backdropPath,
+            mediaType: i.mediaType,
+            jobs: i.jobs,
+            characters: i.characters,
+            genreTitle: i.genre_ids.length ? getTmdbGenreTitles(i) : ""
+        }));
 }
 
 // -----------------------------
-// AC + 正则过滤器
+// AC + 正则过滤
 // -----------------------------
-const acCache = new Map();
-const regexCache = new Map();
-const filterUnitCache = new Map();
+const acCache = new Map(), regexCache = new Map(), filterUnitCache = new Map();
 
-function normalizeTitleForMatch(s) { return s ? s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase() : ""; }
+function normalizeTitleForMatch(s) { return s ? s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().normalize('NFC').toLowerCase() : ""; }
 
 class ACAutomaton {
     constructor() { this.root = { next: Object.create(null), fail: null, output: [] }; }
@@ -295,22 +284,20 @@ class ACAutomaton {
 }
 
 function isPlainText(term) { return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
-function getRegex(term) { if (regexCache.has(term)) return regexCache.get(term); let re = null; try { re = new RegExp(term, 'i'); } catch(e) { re = null; } regexCache.set(term, re); return re; }
+function getRegex(term) { if (regexCache.has(term)) return regexCache.get(term); let re = null; try { re = new RegExp(term, 'i'); } catch(e){ re=null; } regexCache.set(term, re); return re; }
 function buildFilterUnit(filterStr) {
-    if (!filterStr || !filterStr.trim()) return null;
+    if (!filterStr?.trim()) return null;
     if (filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr);
-
-    const terms = filterStr.split(/\s*\|\|\s*/).map(t => t.trim()).filter(Boolean);
-    const plainTerms = [], regexTerms = [];
-    for (const t of terms) (isPlainText(t) ? plainTerms : regexTerms).push(t);
-
-    let ac = null;
+    const terms = filterStr.split(/\s*\|\|\s*/).map(t=>t.trim()).filter(Boolean);
+    const plainTerms=[], regexTerms=[];
+    for (const t of terms) (isPlainText(t)?plainTerms:regexTerms).push(t);
+    let ac=null;
     if (plainTerms.length) {
         const key = plainTerms.slice().sort().join("\u0001");
         if (acCache.has(key)) ac = acCache.get(key);
         else {
             ac = new ACAutomaton();
-            plainTerms.forEach(p => ac.insert(p.toLowerCase()));
+            plainTerms.forEach(p=>ac.insert(p.toLowerCase()));
             ac.build();
             acCache.set(key, ac);
         }
@@ -321,51 +308,42 @@ function buildFilterUnit(filterStr) {
 }
 
 function filterByKeywords(list, filterStr) {
-    if (!filterStr || !filterStr.trim() || !Array.isArray(list) || !list.length) return list;
+    if (!filterStr?.trim() || !Array.isArray(list) || !list.length) return list;
     const unit = buildFilterUnit(filterStr); if (!unit) return list;
     const { ac, regexTerms } = unit;
-
     return list.filter(item => {
-        if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
-        const title = item._normalizedTitle || "";
-
+        const title = item._normalizedTitle || (item._normalizedTitle = normalizeTitleForMatch(item.title));
         let excluded = ac && ac.match(title).size ? true : false;
-        if (!excluded) for (const r of regexTerms) { const re = getRegex(r); if (re && re.test(title)) { excluded = true; break; } }
+        if (!excluded) for (const r of regexTerms) { const re = getRegex(r); if (re?.test(title)) { excluded=true; break; } }
         return !excluded;
     });
 }
 
 // -----------------------------
-// 获取人物作品（稳定版）
+// 核心加载函数（保证稳定输出）
 // -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
     const personKey = `${p.personId}_${p.language}`;
-
     if (worksPromiseCache.has(personKey)) return await worksPromiseCache.get(personKey);
 
     const promise = (async () => {
-        const personId = await getCachedPersonId(p.personId, p.language);
+        const personId = await resolvePersonId(p.personId, p.language);
         await initTmdbGenres(p.language);
-
         if (!personId) return [];
 
         if (!sharedPersonCache.has(personKey)) {
             const credits = await fetchCredits(personId, p.language);
-            const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
-            sharedPersonCache.set(personKey, worksArray.map(i => ({ ...i }))); // 深拷贝
+            const worksArray = [...credits.cast,...credits.crew].map(normalizeItem);
+            sharedPersonCache.set(personKey, worksArray.map(i=>({...i})));
             if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
         }
 
         let works = [...(sharedPersonCache.get(personKey) || [])];
-
-        // 按上映状态过滤
-        if (p.type && p.type !== "all") {
+        if (p.type && p.type!=="all") {
             const now = new Date();
-            works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
+            works = works.filter(i=>i.releaseDate ? (p.type==="released"?new Date(i.releaseDate)<=now:new Date(i.releaseDate)>now):false);
         }
-
-        // 按关键词过滤
         if (p.filter?.trim()) works = filterByKeywords(works, p.filter);
 
         return formatOutput(works);
@@ -382,8 +360,6 @@ async function loadSharedWorksSafe(params) {
     try { return await loadSharedWorks(params); }
     catch (err) { console.warn("loadSharedWorksSafe 捕获异常:", err); return formatOutput([]); }
 }
-
-// -----------------------------
 // 模块函数
 // -----------------------------
 async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
