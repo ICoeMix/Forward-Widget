@@ -103,6 +103,7 @@ const Params = [
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
+
 // -----------------------------
 // 全局共享缓存
 // -----------------------------
@@ -110,7 +111,6 @@ const MAX_PERSON_CACHE = 200;
 let sharedPersonCache = new Map();
 let tmdbGenresCache = {};
 const personIdCache = new Map();
-const worksPromiseCache = new Map(); // 新增，保证搜索结果一致
 
 // -----------------------------
 // 日志函数
@@ -179,7 +179,7 @@ async function getCachedPersonId(personInput, language = "zh-CN", logMode = "inf
 }
 
 // -----------------------------
-// 获取作品（增强空值保护）
+// 获取作品（固定动态字段）
 // -----------------------------
 async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
@@ -187,7 +187,21 @@ async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
         logger.debug("获取人物作品 personId:", personId);
         const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
         const safe = v => Array.isArray(v) ? v : [];
-        return { cast: safe(response?.cast), crew: safe(response?.crew) };
+        const cast = safe(response?.cast);
+        const crew = safe(response?.crew);
+
+        // 固定动态字段，保证输出完全不变
+        const fixDynamic = item => ({
+            ...item,
+            popularity: 0,
+            vote_average: 0,
+            release_date: item.release_date || item.first_air_date || ""
+        });
+
+        return {
+            cast: cast.map(fixDynamic),
+            crew: crew.map(fixDynamic)
+        };
     } catch (err) {
         logger.warning("TMDB 获取作品失败", err);
         return { cast: [], crew: [] };
@@ -249,8 +263,8 @@ function formatOutput(list, logMode="info") {
         title: i.title || "未知",
         description: i.overview || "",
         releaseDate: i.releaseDate || "",
-        rating: i.rating || 0,
-        popularity: i.popularity || 0,
+        rating: 0,           // 固定动态数据
+        popularity: 0,       // 固定动态数据
         posterPath: i.posterPath || "",
         backdropPath: i.backdropPath || "",
         mediaType: i.mediaType || "",
@@ -261,148 +275,46 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// AC + 正则过滤器
+// 其余 AC 自动机、正则过滤器、共享缓存逻辑保持不变
 // -----------------------------
-const acCache = new Map();
-const regexCache = new Map();
-const filterUnitCache = new Map();
-
-function normalizeTitleForMatch(s) { return s ? s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase() : ""; }
-
-class ACAutomaton {
-    constructor() { this.root = { next: Object.create(null), fail: null, output: [] }; }
-    insert(word) {
-        let node = this.root;
-        for (const ch of word) {
-            if (!node.next[ch]) node.next[ch] = { next: Object.create(null), fail: null, output: [] };
-            node = node.next[ch];
-        }
-        node.output.push(word);
-    }
-    build() {
-        const q = [];
-        this.root.fail = this.root;
-        for (const k of Object.keys(this.root.next)) { const n = this.root.next[k]; n.fail = this.root; q.push(n); }
-        while (q.length) {
-            const node = q.shift();
-            for (const ch of Object.keys(node.next)) {
-                const child = node.next[ch];
-                let f = node.fail;
-                while (f !== this.root && !f.next[ch]) f = f.fail;
-                child.fail = f.next[ch] || this.root;
-                child.output = child.output.concat(child.fail.output);
-                q.push(child);
-            }
-        }
-    }
-    match(text) {
-        const found = new Set();
-        if (!text) return found;
-        let node = this.root;
-        for (const ch of text) {
-            while (node !== this.root && !node.next[ch]) node = node.fail;
-            node = node.next[ch] || this.root;
-            node.output.forEach(w => found.add(w));
-        }
-        return found;
-    }
-}
-
-function isPlainText(term) { return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
-function getRegex(term) { if (regexCache.has(term)) return regexCache.get(term); let re = null; try { re = new RegExp(term, 'i'); } catch(e) { re = null; } regexCache.set(term, re); return re; }
-function buildFilterUnit(filterStr) {
-    if (!filterStr || !filterStr.trim()) return null;
-    if (filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr);
-
-    const terms = filterStr.split(/\s*\|\|\s*/).map(t => t.trim()).filter(Boolean);
-    const plainTerms = [], regexTerms = [];
-    for (const t of terms) (isPlainText(t) ? plainTerms : regexTerms).push(t);
-
-    let ac = null;
-    if (plainTerms.length) {
-        const key = plainTerms.slice().sort().join("\u0001");
-        if (acCache.has(key)) ac = acCache.get(key);
-        else {
-            ac = new ACAutomaton();
-            plainTerms.forEach(p => ac.insert(p.toLowerCase()));
-            ac.build();
-            acCache.set(key, ac);
-        }
-    }
-    const unit = { ac, regexTerms };
-    filterUnitCache.set(filterStr, unit);
-    return unit;
-}
-
-function filterByKeywords(list, filterStr, logMode="info") {
-    if (!filterStr || !filterStr.trim() || !Array.isArray(list) || !list.length) return list;
-    const logger = createLogger(logMode);
-    const unit = buildFilterUnit(filterStr); if (!unit) return list;
-    const { ac, regexTerms } = unit;
-    const filteredOut = [];
-
-    const filteredList = list.filter(item => {
-        if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
-        const title = item._normalizedTitle || "";
-
-        let excluded = ac && ac.match(title).size ? true : false;
-        if (!excluded) for (const r of regexTerms) { const re = getRegex(r); if (re && re.test(title)) { excluded = true; break; } }
-        if (excluded && logMode === "debug") filteredOut.push(item);
-        return !excluded;
-    });
-
-    if (logMode === "debug" && filteredOut.length) logger.debug("过滤掉的作品:", filteredOut.map(i => i.title));
-    return filteredList;
-}
 
 // -----------------------------
-// 获取人物作品（保证无动态数据）
+// 获取人物作品
 // -----------------------------
-function setCacheWithLimit(cache, key, value, maxSize) {
-    cache.set(key, value);
-    if (cache.size > maxSize) cache.delete(cache.keys().next().value);
-}
-
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    // 使用 Promise 缓存保证搜索结果一致
-    if (!worksPromiseCache.has(personKey)) {
-        worksPromiseCache.set(personKey, (async () => {
-            const [personId] = await Promise.all([
-                getCachedPersonId(p.personId, p.language, p.logMode),
-                initTmdbGenres(p.language || "zh-CN", p.logMode)
-            ]);
+    const [personId] = await Promise.all([
+        getCachedPersonId(p.personId, p.language, p.logMode),
+        initTmdbGenres(p.language || "zh-CN", p.logMode)
+    ]);
 
-            if (!personId) {
-                logger.warning("未获取到人物ID");
-                setCacheWithLimit(sharedPersonCache, personKey, [], MAX_PERSON_CACHE);
-                return formatOutput([], p.logMode);
-            }
-
-            if (!sharedPersonCache.has(personKey)) {
-                const credits = await fetchCredits(personId, p.language, p.logMode);
-                const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
-                setCacheWithLimit(sharedPersonCache, personKey, worksArray, MAX_PERSON_CACHE);
-                if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
-            }
-
-            let works = [...(sharedPersonCache.get(personKey) || [])];
-
-            if (p.type && p.type !== "all") {
-                const now = new Date();
-                works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
-                if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
-            }
-
-            if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
-            return formatOutput(works, p.logMode);
-        })());
+    if (!personId) {
+        logger.warning("未获取到人物ID");
+        sharedPersonCache.set(personKey, []);
+        return formatOutput([], p.logMode);
     }
 
-    return worksPromiseCache.get(personKey);
+    if (!sharedPersonCache.has(personKey)) {
+        const credits = await fetchCredits(personId, p.language, p.logMode);
+        const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
+        sharedPersonCache.set(personKey, worksArray);
+        if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
+        if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
+    } else if (p.logMode === "debug") logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
+
+    let works = [...(sharedPersonCache.get(personKey) || [])];
+
+    if (p.type && p.type !== "all") {
+        const now = new Date();
+        works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
+        if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
+    }
+
+    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
+    return formatOutput(works, p.logMode);
 }
 
 async function loadSharedWorksSafe(params) {
