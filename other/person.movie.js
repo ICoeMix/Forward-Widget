@@ -103,7 +103,6 @@ const Params = [
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
-
 // -----------------------------
 // 全局共享缓存
 // -----------------------------
@@ -215,7 +214,7 @@ function normalizeItem(item) {
         characters: Array.isArray(item.characters) ? item.characters : (item.character ? [item.character] : []),
         genre_ids: Array.isArray(item.genre_ids) ? item.genre_ids : [],
         _normalizedTitle: title.toLowerCase(),
-        _genreTitleCache: {} // 避免共享导致动态变化
+        _genreTitleCache: item._genreTitleCache ? {...item._genreTitleCache} : {}
     };
 }
 
@@ -225,7 +224,12 @@ function normalizeItem(item) {
 function getTmdbGenreTitles(item) {
     if (!item || !Array.isArray(item.genre_ids) || !item.mediaType) return "";
     const genres = tmdbGenresCache[item.mediaType] || {};
-    return item.genre_ids.map(id => genres[id] || `未知类型(${id})`).join('•');
+    const key = item.genre_ids.join(",");
+    if (item._genreTitleCache && item._genreTitleCache[key]) return item._genreTitleCache[key];
+
+    const title = item.genre_ids.map(id => genres[id] || `未知类型(${id})`).join('•');
+    item._genreTitleCache[key] = title;
+    return title;
 }
 
 // -----------------------------
@@ -250,8 +254,8 @@ function formatOutput(list, logMode="info") {
         posterPath: i.posterPath || "",
         backdropPath: i.backdropPath || "",
         mediaType: i.mediaType || "",
-        jobs: Array.isArray(i.jobs) ? i.jobs : [],
-        characters: Array.isArray(i.characters) ? i.characters : [],
+        jobs: Array.isArray(i.jobs) ? [...i.jobs] : [],
+        characters: Array.isArray(i.characters) ? [...i.characters] : [],
         genreTitle: Array.isArray(i.genre_ids) && i.genre_ids.length ? getTmdbGenreTitles(i) : ""
     }));
 }
@@ -352,49 +356,54 @@ function filterByKeywords(list, filterStr, logMode="info") {
 }
 
 // -----------------------------
-// 获取人物作品（优化版，保证稳定输出）
+// 获取人物作品（优化版）
+// -----------------------------
+function setCacheWithLimit(cache, key, value, maxSize) {
+    cache.set(key, value);
+    if (cache.size > maxSize) {
+        const oldestKey = cache.keys().next().value;
+        cache.delete(oldestKey);
+    }
+}
+
+// -----------------------------
+// 获取人物作品（稳定版，去除动态变化）
 // -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
-    const personKey = `${p.personId}_${p.language}`;
-    
-    if (!worksPromiseCache.has(personKey)) {
-        worksPromiseCache.set(personKey, (async () => {
-            const logger = createLogger(p.logMode || "info");
+    const finalLogger = createLogger(p.logMode || "info");
+    const personId = await getCachedPersonId(p.personId, p.language || "zh-CN", p.logMode);
 
-            const [personId] = await Promise.all([
-                getCachedPersonId(p.personId, p.language, "info"),
-                initTmdbGenres(p.language || "zh-CN", "info")
-            ]);
+    if (!personId) return formatOutput([], p.logMode);
 
-            if (!personId) {
-                sharedPersonCache.set(personKey, []);
-                return formatOutput([], p.logMode);
-            }
+    const cacheKey = `${personId}_${p.language || "zh-CN"}`;
 
-            let works = [];
-            const credits = await fetchCredits(personId, p.language, "info");
-            works = [...credits.cast, ...credits.crew].map(normalizeItem);
-
-            // 按上映状态过滤
-            if (p.type && p.type !== "all") {
-                const now = new Date();
-                works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
-            }
-
-            // 按关键词过滤
-            if (p.filter?.trim()) works = filterByKeywords(works, p.filter, "info");
-
-            // 写入共享缓存
-            sharedPersonCache.set(personKey, works);
-            if (sharedPersonCache.size > MAX_PERSON_CACHE) sharedPersonCache.delete(sharedPersonCache.keys().next().value);
-
-            if (p.logMode === "debug") logger.debug("最终输出作品数量:", works.length);
-            return formatOutput(works, p.logMode);
+    // 如果已有正在进行的 Promise，直接等待
+    if (!worksPromiseCache.has(cacheKey)) {
+        worksPromiseCache.set(cacheKey, (async () => {
+            await initTmdbGenres(p.language || "zh-CN", p.logMode);
+            const credits = await fetchCredits(personId, p.language || "zh-CN", p.logMode);
+            const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
+            sharedPersonCache.set(cacheKey, worksArray);
+            setCacheWithLimit(sharedPersonCache, cacheKey, worksArray, MAX_PERSON_CACHE);
+            return worksArray;
         })());
     }
 
-    return await worksPromiseCache.get(personKey);
+    let works = [...(await worksPromiseCache.get(cacheKey))];
+
+    // 按上映状态过滤
+    if (p.type && p.type !== "all") {
+        const now = new Date();
+        works = works.filter(i => i.releaseDate ? (p.type === "released" ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now) : false);
+    }
+
+    // 按关键词过滤
+    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
+
+    if (p.logMode === "debug") finalLogger.debug("最终输出作品数量:", works.length);
+
+    return formatOutput(works, p.logMode);
 }
 
 async function loadSharedWorksSafe(params) {
