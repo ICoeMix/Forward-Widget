@@ -106,10 +106,10 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 // -----------------------------
 // 全局共享缓存
 // -----------------------------
-const MAX_PERSON_CACHE = 200; // 最大人物缓存数量，可根据实际调整
-let sharedPersonCache = new Map(); // key=personKey, value=作品数组
-let tmdbGenresCache = {};           // TMDB 类型缓存
-const personIdCache = new Map();    // 人物ID缓存
+const MAX_PERSON_CACHE = 200;
+let sharedPersonCache = new Map();  // key=personKey, value=作品数组
+let tmdbGenresCache = {};            // TMDB 类型缓存
+const personIdCache = new Map();     // 人物ID缓存
 
 // -----------------------------
 // 日志函数
@@ -133,20 +133,15 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 
     try {
         logger.debug("初始化 TMDB 类型，语言:", language);
-
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
         ]);
-
         tmdbGenresCache = {
             movie: movieGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {},
             tv: tvGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {}
         };
-
-        if (logMode === "debug") {
-            logger.debug("TMDB 类型缓存完成:", JSON.stringify(tmdbGenresCache, null, 2));
-        }
+        if (logMode === "debug") logger.debug("TMDB 类型缓存完成:", JSON.stringify(tmdbGenresCache, null, 2));
     } catch (err) {
         logger.warning("初始化 TMDB 类型失败", err);
         tmdbGenresCache = { movie: {}, tv: {} };
@@ -217,8 +212,8 @@ function normalizeItem(item) {
         jobs: item.job ? [item.job] : [],
         characters: item.character ? [item.character] : [],
         genre_ids: item.genre_ids || [],
-        _normalizedTitle: title.toLowerCase(), // 缓存normalizedTitle
-        _genreTitleCache: {} // 对 genreIds 组合的缓存
+        _normalizedTitle: title.toLowerCase(),
+        _genreTitleCache: {}
     };
 }
 
@@ -268,7 +263,7 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// 高性能 AC + 正则过滤器（保留原有功能）
+// 高性能 AC + 正则过滤器
 // -----------------------------
 const acCache = new Map();
 const regexCache = new Map();
@@ -395,7 +390,7 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 }
 
 // -----------------------------
-// 获取人物作品（loadSharedWorks）
+// 获取人物作品（并发+保证ID先获取）
 // -----------------------------
 // -----------------------------
 // Promise 缓存 + 共享缓存
