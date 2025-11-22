@@ -132,11 +132,8 @@ const Params = [
         type: "enumeration",
         value: "info",
         enumOptions: [
-            { title: "关闭", value: "off" },
             { title: "调试", value: "debug" },
-            { title: "信息", value: "info" },
-            { title: "警告", value: "warning" },
-            { title: "通知", value: "notify" }
+            { title: "信息", value: "info" }
         ]
     }
 ];
@@ -151,8 +148,8 @@ function createLogger(mode) {
     return {
         debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
         info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
-        warning: (...args) => (["debug","info","warning"].includes(m)) && console.warn("[WARN]", ...args),
-        notify: (...args) => (["debug","info","warning","notify"].includes(m)) && console.info("[NOTIFY]", ...args)
+        warning: (...args) => (["debug","info"].includes(m)) && console.warn("[WARN]", ...args),
+        notify: (...args) => (["debug","info"].includes(m)) && console.info("[NOTIFY]", ...args)
     };
 }
 
@@ -356,27 +353,39 @@ function buildFilterUnit(filterStr) {
     return unit;
 }
 
-function filterByKeywords(list, filterStr) {
+function filterByKeywords(list, filterStr, logMode = "info") {
     if (!filterStr || !filterStr.trim()) return list;
     if (!Array.isArray(list) || list.length === 0) return list;
 
+    const logger = createLogger(logMode);
     const unit = buildFilterUnit(filterStr);
     if (!unit) return list;
 
     const { ac, regexTerms } = unit;
+    const filteredOut = [];
 
-    return list.filter(item => {
+    const filteredList = list.filter(item => {
         if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
         const title = item._normalizedTitle;
 
-        if (ac && ac.match(title).size) return false;
-        for (const r of regexTerms) {
-            const re = getRegex(r);
-            if (re && re.test(title)) return false;
+        let excluded = false;
+        if (ac && ac.match(title).size) excluded = true;
+        if (!excluded) {
+            for (const r of regexTerms) {
+                const re = getRegex(r);
+                if (re && re.test(title)) { excluded = true; break; }
+            }
         }
 
-        return true;
+        if (excluded && logMode === "debug") filteredOut.push(item);
+        return !excluded;
     });
+
+    if (logMode === "debug" && filteredOut.length) {
+        logger.debug("过滤掉的作品:", filteredOut.map(i => i.title));
+    }
+
+    return filteredList;
 }
 
 // -----------------------------
@@ -409,10 +418,15 @@ async function loadWorks(params) {
         merged = merged.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
     }
 
-    if (p.filter?.trim()) merged = filterByKeywords(merged, p.filter);
+    if (p.filter?.trim()) merged = filterByKeywords(merged, p.filter, p.logMode);
 
     const finalData = formatOutput(merged, p.logMode);
     personWorksCache[personKey] = finalData;
+
+    if (p.logMode === "debug") {
+        logger.debug("最终返回作品数量:", finalData.length);
+    }
+
     return finalData;
 }
 
@@ -424,11 +438,11 @@ async function getActorWorks(params) {
 }
 async function getDirectorWorks(params) {
     const p = params || {};
-    const data = (await loadWorks(p)).filter(i => i.jobs.some(j => j.toLowerCase().includes("director")));
+    const data = (await loadWorks(p)).filter(i => i.jobs.some(j => /director/i.test(j)));
     return data;
 }
 async function getOtherWorks(params) {
     const p = params || {};
-    const data = (await loadWorks(p)).filter(i => !i.jobs.some(j => j.toLowerCase().includes("director")));
+    const data = (await loadWorks(p)).filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
     return data;
 }
