@@ -130,11 +130,11 @@ const Params = [
         name: "logMode",
         title: "日志模式",
         type: "enumeration",
-        value: "info", // 默认 info
         enumOptions: [
-            { title: "调试", value: "debug" },
-            { title: "信息", value: "info" }
-        ]
+            { title: "信息", value: "info" },
+            { title: "调试", value: "debug" }
+        ],
+        value: "info",
     }
 ];
 
@@ -144,7 +144,7 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 // 日志函数
 // -----------------------------
 function createLogger(mode) {
-    const m = mode || "info"; // 默认 info
+    const m = mode || "info";
     return {
         debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
         info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
@@ -262,7 +262,7 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// 高性能 AC + 正则过滤器（忽略大小写）
+// 高性能 AC + 正则过滤器
 // -----------------------------
 const acCache = new Map();
 const regexCache = new Map();
@@ -389,60 +389,64 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 }
 
 // -----------------------------
-// 核心加载 + 缓存
+// 核心共享缓存 + 多模块加载
 // -----------------------------
-let personWorksCache = {};
+let sharedPersonCache = {}; // personId + language 的共享缓存
 
-async function loadWorks(params) {
+async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
-    const personKey = `${p.personId}_${p.language}_${p.type}_${p.filter||""}`;
+    const personKey = `${p.personId}_${p.language}`;
 
-    if (personWorksCache[personKey]) return personWorksCache[personKey];
+    if (!sharedPersonCache[personKey]) {
+        const [_, personId] = await Promise.all([
+            initTmdbGenres(p.language || "zh-CN"),
+            resolvePersonId(p.personId, p.language)
+        ]);
 
-    const [_, personId] = await Promise.all([
-        initTmdbGenres(p.language || "zh-CN"),
-        resolvePersonId(p.personId, p.language)
-    ]);
+        if (!personId) {
+            logger.warning("未获取到人物ID");
+            sharedPersonCache[personKey] = [];
+        } else {
+            const credits = await fetchCredits(personId, p.language);
+            sharedPersonCache[personKey] = [...credits.cast, ...credits.crew].map(normalizeItem);
+        }
 
-    if (!personId) { 
-        logger.warning("未获取到人物ID"); 
-        return []; 
+        if (p.logMode === "debug") {
+            logger.debug("共享缓存加载完成，作品数量:", sharedPersonCache[personKey].length);
+        }
     }
 
-    const credits = await fetchCredits(personId, p.language);
-    let merged = [...credits.cast, ...credits.crew].map(normalizeItem);
+    let works = [...sharedPersonCache[personKey]];
 
     if (p.type && p.type !== "all") {
         const now = new Date();
-        merged = merged.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
+        works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
     }
 
-    if (p.filter?.trim()) merged = filterByKeywords(merged, p.filter, p.logMode);
+    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
-    const finalData = formatOutput(merged, p.logMode);
-    personWorksCache[personKey] = finalData;
-
-    if (p.logMode === "debug") {
-        logger.debug("最终返回作品数量:", finalData.length);
-    }
-
-    return finalData;
+    return formatOutput(works, p.logMode);
 }
 
-async function getAllWorks(params) { return loadWorks(params); }
+// -----------------------------
+// 模块函数
+// -----------------------------
+async function getAllWorks(params) { 
+    return await loadSharedWorks(params); 
+}
+
 async function getActorWorks(params) {
-    const p = params || {};
-    const data = (await loadWorks(p)).filter(i => i.characters.length);
-    return data;
+    const allWorks = await loadSharedWorks(params);
+    return allWorks.filter(i => i.characters.length);
 }
+
 async function getDirectorWorks(params) {
-    const p = params || {};
-    const data = (await loadWorks(p)).filter(i => i.jobs.some(j => /director/i.test(j)));
-    return data;
+    const allWorks = await loadSharedWorks(params);
+    return allWorks.filter(i => i.jobs.some(j => /director/i.test(j)));
 }
+
 async function getOtherWorks(params) {
-    const p = params || {};
-    const data = (await loadWorks(p)).filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
-    return data;
+    const allWorks = await loadSharedWorks(params);
+    return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
 }
