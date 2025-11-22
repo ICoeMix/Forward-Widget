@@ -28,7 +28,24 @@ var WidgetMetadata = {
             cacheDuration: 500000,
             params: [
                 { name: "category", title: "分类", type: "enumeration", value: "anime", enumOptions: [ { title: "动画", value: "anime" } ] },
-                { name: "page", title: "页码", type: "page", value: "1" },
+               { 
+                    name: "pages", 
+                    title: "页码范围", 
+                    type: "input", 
+                    value: "1", 
+                    description: "可输入单页数字或多页范围，如 1 或 1-3" 
+                },
+                {
+                    name: "sort",
+                    title: "排序方式",
+                    type: "enumeration",
+                    value: "default", // 默认值
+                    enumOptions: [
+                        { title: "默认", value: "default" },
+                        { title: "发行时间", value: "date" },
+                        { title: "评分", value: "score" }
+                    ]
+                },
                 {
                     name: "keywordFilter",
                     title: "关键词过滤",
@@ -315,10 +332,37 @@ function filterByKeywords(list, filterStr) {
 
 async function fetchRecentHot(params = {}) {
     await fetchAndCacheGlobalData();
-    const category = "anime";
-    const page = parseInt(params.page || "1", 10);
+    const category = params.category || "anime";
+
+    // --- 解析多页输入 ---
+    let pageList = [];
+    const pageInput = params.pages || "1";
+    if (pageInput.includes("-")) {
+        const [start, end] = pageInput.split("-").map(n => parseInt(n, 10));
+        for (let i = start; i <= end; i++) pageList.push(i);
+    } else {
+        pageList.push(parseInt(pageInput, 10));
+    }
+
     const pages = globalData.recentHot?.[category] || [];
-    return pages[page - 1] || [];
+    let resultList = [];
+    for (const p of pageList) {
+        if (pages[p - 1]) resultList = resultList.concat(pages[p - 1]);
+    }
+
+    // --- 排序 ---
+    const sort = params.sort || "default";
+    if (sort === "date") {
+        resultList.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
+    } else if (sort === "score") {
+        resultList.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+
+    // --- 关键词过滤 ---
+    const keywordFilter = params.keywordFilter || "";
+    resultList = filterByKeywords(resultList, keywordFilter);
+
+    return resultList;
 }
 
 /* ==================== 优化后的 fetchAirtimeRanking ==================== */
