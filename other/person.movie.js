@@ -403,7 +403,10 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 // -----------------------------
 // 获取人物作品（最终返回才算输出）
 // -----------------------------
-async function loadSharedWorks(params) {
+// -----------------------------
+// 获取人物作品（最终返回才算输出）
+// -----------------------------
+async function loadSharedWorks(params, source = "unknown") {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
@@ -413,7 +416,7 @@ async function loadSharedWorks(params) {
     if (!personId) {
         if (p.logMode === "debug") {
             debugFinalReturnCount++;
-            logger.debug(`[DEBUG] 返回最终作品数据 #${debugFinalReturnCount}，触发原因: 人物ID未获取到`);
+            logger.debug(`[DEBUG] 返回最终作品数据 #${debugFinalReturnCount}，触发原因: 人物ID未获取到，来源: ${source}`);
         }
         return [];
     }
@@ -426,7 +429,7 @@ async function loadSharedWorks(params) {
 
     if (!sharedPersonCache.has(personKey)) {
         debugIntermediateCount++;
-        if (p.logMode === "debug") logger.debug(`[INTERMEDIATE] 使用新缓存，处理次数: ${debugIntermediateCount}`);
+        if (p.logMode === "debug") logger.debug(`[INTERMEDIATE] 使用新缓存，处理次数: ${debugIntermediateCount}, 来源: ${source}`);
         const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
         sharedPersonCache.set(personKey, worksArray);
 
@@ -436,7 +439,7 @@ async function loadSharedWorks(params) {
         }
     } else {
         debugIntermediateCount++;
-        if (p.logMode === "debug") logger.debug(`[INTERMEDIATE] 使用已有缓存，处理次数: ${debugIntermediateCount}`);
+        if (p.logMode === "debug") logger.debug(`[INTERMEDIATE] 使用已有缓存，处理次数: ${debugIntermediateCount}, 来源: ${source}`);
     }
 
     let works = [...sharedPersonCache.get(personKey)];
@@ -448,7 +451,7 @@ async function loadSharedWorks(params) {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
         if (p.logMode === "debug") {
-            logger.debug(`[INTERMEDIATE] 按上映状态过滤后作品数量: ${works.length}，处理次数: ${debugIntermediateCount}, 原数量: ${beforeCount}`);
+            logger.debug(`[INTERMEDIATE] 按上映状态过滤后作品数量: ${works.length}，处理次数: ${debugIntermediateCount}, 原数量: ${beforeCount}, 来源: ${source}`);
         }
     }
 
@@ -458,27 +461,23 @@ async function loadSharedWorks(params) {
         const beforeCount = works.length;
         works = filterByKeywords(works, p.filter, p.logMode);
         if (p.logMode === "debug") {
-            logger.debug(`[INTERMEDIATE] AC+正则过滤后作品数量: ${works.length}，处理次数: ${debugIntermediateCount}, 过滤掉: ${beforeCount - works.length}`);
+            logger.debug(`[INTERMEDIATE] AC+正则过滤后作品数量: ${works.length}，处理次数: ${debugIntermediateCount}, 过滤掉: ${beforeCount - works.length}, 来源: ${source}`);
         }
     }
 
     // 最终返回
     if (p.logMode === "debug") {
         debugFinalReturnCount++;
-        logger.debug(`[DEBUG] 返回最终作品数据 #${debugFinalReturnCount}，作品总数: ${works.length}`);
+        logger.debug(`[DEBUG] 返回最终作品数据 #${debugFinalReturnCount}，作品总数: ${works.length}，来源: ${source}`);
     }
 
     return formatOutput(works, p.logMode);
 }
 
 // -----------------------------
-// 模块函数
+// 对外函数传入 source
 // -----------------------------
-async function getAllWorks(params) { return await loadSharedWorks(params); }
-async function getActorWorks(params) { return (await loadSharedWorks(params)).filter(i => i.characters.length); }
-async function getDirectorWorks(params) { return (await loadSharedWorks(params)).filter(i => i.jobs.some(j => /director/i.test(j))); }
-async function getOtherWorks(params) { return (await loadSharedWorks(params)).filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j))); }    return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
-}}async function getOtherWorks(params) {
-    const allWorks = await loadSharedWorks(params);
-    return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
-}
+async function getAllWorks(params) { return await loadSharedWorks(params, "getAllWorks"); }
+async function getActorWorks(params) { return (await loadSharedWorks(params, "getActorWorks")).filter(i => i.characters.length); }
+async function getDirectorWorks(params) { return (await loadSharedWorks(params, "getDirectorWorks")).filter(i => i.jobs.some(j => /director/i.test(j))); }
+async function getOtherWorks(params) { return (await loadSharedWorks(params, "getOtherWorks")).filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j))); }
