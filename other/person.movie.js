@@ -104,6 +104,7 @@ const Params = [
         type: "input",
         description: "过滤标题中包含指定关键词的作品",
         placeholders: [
+            { title: "默认（不过滤）", value: " " },
             { title: "关键词过滤", value: "A" },
             { title: "完全匹配 A", value: "^A$" },
             { title: "以 A 开头", value: "^A.*" },
@@ -113,7 +114,7 @@ const Params = [
             { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
             { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" }
         ],
-        value: ""
+        value: " "
     },
     {
         name: "sort_by",
@@ -157,9 +158,11 @@ function createLogger(mode) {
 // TMDB 类型缓存
 // -----------------------------
 let tmdbGenresCache = {};
-async function initTmdbGenres(language = "zh-CN") {
+async function initTmdbGenres(language = "zh-CN", logMode = "info") {
+    const logger = createLogger(logMode);
     if (tmdbGenresCache.movie && tmdbGenresCache.tv) return;
     try {
+        logger.debug("初始化 TMDB 类型，语言:", language);
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
@@ -168,8 +171,9 @@ async function initTmdbGenres(language = "zh-CN") {
             movie: movieGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {},
             tv: tvGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {}
         };
+        logger.debug("TMDB 类型缓存完成", tmdbGenresCache);
     } catch (err) {
-        console.error("初始化 TMDB 类型失败", err);
+        logger.warning("初始化 TMDB 类型失败", err);
         tmdbGenresCache = { movie: {}, tv: {} };
     }
 }
@@ -177,14 +181,18 @@ async function initTmdbGenres(language = "zh-CN") {
 // -----------------------------
 // resolvePersonId
 // -----------------------------
-async function resolvePersonId(personInput, language = "zh-CN") {
+async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
+    const logger = createLogger(logMode);
     if (!personInput) return null;
     if (!isNaN(personInput)) return personInput;
     try {
+        logger.debug("搜索人物:", personInput, "语言:", language);
         const res = await Widget.tmdb.get("search/person", { params: { query: personInput, language } });
-        return res?.results?.[0]?.id || null;
+        const id = res?.results?.[0]?.id || null;
+        logger.debug("获取人物ID:", id);
+        return id;
     } catch (err) {
-        console.error("resolvePersonId 获取人物ID失败", err);
+        logger.warning("resolvePersonId 获取人物ID失败", err);
         return null;
     }
 }
@@ -192,15 +200,18 @@ async function resolvePersonId(personInput, language = "zh-CN") {
 // -----------------------------
 // 获取作品
 // -----------------------------
-async function fetchCredits(personId, language) {
+async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
+    const logger = createLogger(logMode);
     try {
+        logger.debug("获取人物作品 personId:", personId, "语言:", language);
         const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
+        logger.debug("获取作品成功，cast数量:", response.cast?.length, "crew数量:", response.crew?.length);
         return {
             cast: Array.isArray(response.cast) ? response.cast : [],
             crew: Array.isArray(response.crew) ? response.crew : []
         };
     } catch (err) {
-        console.error("TMDB 获取作品失败", err);
+        logger.warning("TMDB 获取作品失败", err);
         return { cast: [], crew: [] };
     }
 }
@@ -400,21 +411,20 @@ async function loadSharedWorks(params) {
 
     if (!sharedPersonCache[personKey]) {
         const [_, personId] = await Promise.all([
-            initTmdbGenres(p.language || "zh-CN"),
-            resolvePersonId(p.personId, p.language)
+            initTmdbGenres(p.language || "zh-CN", p.logMode),
+            resolvePersonId(p.personId, p.language, p.logMode)
         ]);
 
         if (!personId) {
             logger.warning("未获取到人物ID");
             sharedPersonCache[personKey] = [];
         } else {
-            const credits = await fetchCredits(personId, p.language);
+            const credits = await fetchCredits(personId, p.language, p.logMode);
             sharedPersonCache[personKey] = [...credits.cast, ...credits.crew].map(normalizeItem);
-        }
-
-        if (p.logMode === "debug") {
             logger.debug("共享缓存加载完成，作品数量:", sharedPersonCache[personKey].length);
         }
+    } else {
+        logger.debug("使用共享缓存，作品数量:", sharedPersonCache[personKey].length);
     }
 
     let works = [...sharedPersonCache[personKey]];
@@ -422,30 +432,29 @@ async function loadSharedWorks(params) {
     if (p.type && p.type !== "all") {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
+        logger.debug("按上映状态过滤后作品数量:", works.length);
     }
 
     if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
-    return formatOutput(works, p.logMode);
+    const formatted = formatOutput(works, p.logMode);
+    if (p.logMode === "debug") logger.debug("格式化输出完成，数量:", formatted.length);
+
+    return formatted;
 }
 
 // -----------------------------
 // 模块函数
 // -----------------------------
-async function getAllWorks(params) { 
-    return await loadSharedWorks(params); 
-}
-
+async function getAllWorks(params) { return await loadSharedWorks(params); }
 async function getActorWorks(params) {
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.characters.length);
 }
-
 async function getDirectorWorks(params) {
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => i.jobs.some(j => /director/i.test(j)));
 }
-
 async function getOtherWorks(params) {
     const allWorks = await loadSharedWorks(params);
     return allWorks.filter(i => !i.characters.length && !i.jobs.some(j => /director/i.test(j)));
