@@ -397,27 +397,9 @@ function filterByKeywords(list, filterStr, logMode = "info") {
 // -----------------------------
 // 获取人物作品（loadSharedWorks）
 // -----------------------------
-// -----------------------------
-// 调试最终返回次数
-// -----------------------------
-const finalReturnLog = {
-    count: 0,
-    records: [] // 每条记录存放触发条件和时间
-};
+// 全局 debug 计数
+let debugReturnCount = 0;
 
-function logFinalReturn(trigger, personKey) {
-    finalReturnLog.count += 1;
-    finalReturnLog.records.push({
-        trigger,
-        personKey,
-        time: new Date().toISOString()
-    });
-    console.info(`[DEBUG] 最终作品返回 #${finalReturnLog.count} | trigger: ${trigger} | personKey: ${personKey}`);
-}
-
-// -----------------------------
-// 修改 loadSharedWorks
-// -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
@@ -426,7 +408,10 @@ async function loadSharedWorks(params) {
     // 1. 获取人物ID
     const personId = await getCachedPersonId(p.personId, p.language, p.logMode);
     if (!personId) {
-        logFinalReturn("no_personId", personKey);
+        if (p.logMode === "debug") {
+            debugReturnCount++;
+            logger.debug(`[DEBUG] 返回最终作品数据 #${debugReturnCount}，触发原因: 人物ID未获取到`);
+        }
         return [];
     }
 
@@ -445,21 +430,42 @@ async function loadSharedWorks(params) {
             const firstKey = sharedPersonCache.keys().next().value;
             sharedPersonCache.delete(firstKey);
         }
+
+        if (p.logMode === "debug") {
+            logger.debug(`[DEBUG] 缓存加载完成，作品数量: ${worksArray.length}`);
+        }
+    } else if (p.logMode === "debug") {
+        logger.debug(`[DEBUG] 使用共享缓存，作品数量: ${sharedPersonCache.get(personKey).length}`);
     }
 
     // 4. 处理最终作品数据（过滤+格式化）
     let works = [...sharedPersonCache.get(personKey)];
 
+    // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
+        if (p.logMode === "debug") {
+            logger.debug(`[DEBUG] 按上映状态过滤后作品数量: ${works.length}`);
+        }
     }
 
-    if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
+    // AC + 正则过滤
+    if (p.filter?.trim()) {
+        const beforeCount = works.length;
+        works = filterByKeywords(works, p.filter, p.logMode);
+        if (p.logMode === "debug") {
+            logger.debug(`[DEBUG] AC+正则过滤后作品数量: ${works.length}，过滤掉: ${beforeCount - works.length}`);
+        }
+    }
 
-    // 5. 最终返回，记录触发
-    logFinalReturn("formatOutput", personKey);
-    return formatOutput(works, p.logMode);
+    // 5. 返回最终作品数据
+    if (p.logMode === "debug") {
+        debugReturnCount++;
+        logger.debug(`[DEBUG] 返回最终作品数据 #${debugReturnCount}，作品总数: ${works.length}`);
+    }
+
+    return formatOutput(works, p.logMode); // 这里才返回最终数据
 }
 
 // -----------------------------
