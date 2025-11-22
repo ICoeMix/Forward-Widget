@@ -165,17 +165,30 @@ function createLogger(mode) {
 let tmdbGenresCache = {};
 async function initTmdbGenres(language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
+    // 已经缓存就直接返回
     if (tmdbGenresCache.movie && tmdbGenresCache.tv) return;
+
     try {
         logger.debug("初始化 TMDB 类型，语言:", language);
+
+        // 并行请求电影和电视类型
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
         ]);
+
+        // debug 模式下打印原始返回数据
+        if (logMode === "debug") {
+            logger.debug("TMDB movieGenres 原始数据:", movieGenres);
+            logger.debug("TMDB tvGenres 原始数据:", tvGenres);
+        }
+
+        // 构建缓存
         tmdbGenresCache = {
             movie: movieGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {},
             tv: tvGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {}
         };
+
         logger.debug("TMDB 类型缓存完成", tmdbGenresCache);
     } catch (err) {
         logger.warning("初始化 TMDB 类型失败", err);
