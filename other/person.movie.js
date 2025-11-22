@@ -113,7 +113,7 @@ const Params = [
             { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
             { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" },
         ],
-        value: " ",
+        value: "",
     },
     {
         name: "sort_by",
@@ -125,58 +125,57 @@ const Params = [
             { title: "评分降序", value: "vote_average.desc" },
             { title: "热门降序", value: "popularity.desc" }
         ]
+    },
+    {
+        name: "logMode",
+        title: "日志模式",
+        type: "enumeration",
+        value: "info",
+        enumOptions: [
+            { title: "关闭", value: "off" },
+            { title: "调试", value: "debug" },
+            { title: "信息", value: "info" },
+            { title: "警告", value: "warning" },
+            { title: "通知", value: "notify" }
+        ],
+        description: "选择日志输出模式，可实时切换"
     }
 ];
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 日志模式和 UI 开关
+// 日志函数（全局复用）
 // -----------------------------
-let currentLogMode = "warning"; // 默认 warning
-function log(message, level="info") {
-    const levels = { warning:1, info:2, debug:3, notify:4 };
-    if (levels[level] <= levels[currentLogMode]) {
-        if (currentLogMode === "notify" && typeof Widget !== "undefined" && Widget.UI) {
-            Widget.UI.notify(message);
-        } else {
-            console.log(`[${level.toUpperCase()}] ${message}`);
-        }
-    }
+const globalLogger = { mode: "info" };
+function createLogger(mode) {
+    const m = mode || globalLogger.mode || "info";
+    return {
+        debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
+        info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
+        warning: (...args) => (["debug","info","warning"].includes(m)) && console.warn("[WARN]", ...args),
+        notify: (...args) => (["debug","info","warning","notify"].includes(m)) && console.info("[NOTIFY]", ...args)
+    };
 }
 
-function createLogModeSwitchUI() {
-    if (typeof Widget === "undefined" || !Widget.UI) return;
-    const modes = ["warning", "info", "debug", "notify"];
-    Widget.UI.addButton({
-        title: `日志模式: ${currentLogMode.toUpperCase()}`,
-        onClick: () => {
-            const currentIndex = modes.indexOf(currentLogMode);
-            currentLogMode = modes[(currentIndex + 1) % modes.length];
-            Widget.UI.updateButtonTitle(`日志模式: ${currentLogMode.toUpperCase()}`);
-            log(`日志模式已切换为 ${currentLogMode}`, "info");
-        }
-    });
-}
-createLogModeSwitchUI();
-
 // -----------------------------
-// 核心 TMDB 数据函数
+// TMDB 数据处理
 // -----------------------------
 async function fetchCredits(personId, language) {
     try {
         const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
         return {
-            cast: Array.isArray(response.cast) ? response.cast.map(normalizeItem) : [],
-            crew: Array.isArray(response.crew) ? response.crew.map(normalizeItem) : []
+            cast: Array.isArray(response.cast) ? response.cast : [],
+            crew: Array.isArray(response.crew) ? response.crew : []
         };
     } catch (err) {
-        log("TMDB 获取作品失败: " + err, "warning");
+        console.error("TMDB 获取作品失败", err);
         return { cast: [], crew: [] };
     }
 }
 
 function normalizeItem(item) {
+    const normalizedTitle = (item.title || item.name || "未知").toLowerCase();
     return {
         id: item.id,
         title: item.title || item.name || "未知",
@@ -187,9 +186,10 @@ function normalizeItem(item) {
         releaseDate: item.release_date || item.first_air_date || "",
         popularity: item.popularity || 0,
         rating: item.vote_average || 0,
-        job: item.job || null,
-        character: item.character || null,
-        genre_ids: item.genre_ids || []
+        jobs: item.job ? [item.job] : [],
+        characters: item.character ? [item.character] : [],
+        genre_ids: item.genre_ids || [],
+        _normalizedTitle: normalizedTitle
     };
 }
 
@@ -199,8 +199,9 @@ function guessMediaType(item) {
     return "movie";
 }
 
-function getTmdbGenreTitles(genreIds, mediaType) {
+function getTmdbGenreTitles(genreIds, mediaType, logger=createLogger()) {
     const genres = tmdbGenresCache?.[mediaType] || {};
+    if (!Object.keys(genres).length) logger.debug("tmdbGenresCache 未加载，使用默认类型");
     const topThreeIds = genreIds.slice(0, 3);
     return topThreeIds
         .map(id => genres[id]?.trim() || `未知类型(${id})`)
@@ -208,7 +209,9 @@ function getTmdbGenreTitles(genreIds, mediaType) {
         .join('•');
 }
 
-function formatOutput(list) {
+function formatOutput(list, logMode="info") {
+    const logger = createLogger(logMode);
+    logger.debug("开始格式化输出, 条目数:", list.length);
     return list.map(i => ({
         id: i.id,
         type: "tmdb",
@@ -222,60 +225,81 @@ function formatOutput(list) {
         mediaType: i.mediaType,
         jobs: i.jobs,
         characters: i.characters,
-        genreTitle: (i.genre_ids && i.genre_ids.length ? `EU1*•${getTmdbGenreTitles(i.genre_ids, i.mediaType)}` : "")
+        genreTitle: (i.genre_ids?.length ? `EU1*•${getTmdbGenreTitles(i.genre_ids, i.mediaType, logger)}` : "")
     }));
 }
 
 // -----------------------------
-// 核心模块方法
+// 核心模块
 // -----------------------------
 async function loadWorks(params) {
     const p = params || {};
+    const logger = createLogger(p.logMode || "info");
     const personId = await resolvePersonId(p.personId, p.language);
-    if (!personId) return [];
+    if (!personId) {
+        logger.warning("未获取到人物ID:", p.personId);
+        return [];
+    }
 
     let credits = await fetchCredits(personId, p.language);
-    let merged = mergeCredits(credits.cast, credits.crew);
-    merged.forEach(item => { if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || ""); });
+    let merged = [...credits.cast, ...credits.crew].map(normalizeItem);
 
     merged = filterByType(merged, p.type);
     merged = sortResults(merged, p.sort_by);
-    merged = filterByKeywords(merged, p.filter);
 
-    return formatOutput(merged);
+    if (p.filter?.trim()) {
+        const regex = new RegExp(p.filter.toLowerCase());
+        merged = merged.filter(i => regex.test(i._normalizedTitle));
+    }
+
+    logger.info("返回作品条目:", merged.length);
+    return formatOutput(merged, p.logMode);
 }
 
 async function getAllWorks(params) { return loadWorks(params); }
+
 async function getActorWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language)).cast;
-    list.forEach(item => { if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || ""); });
+    let list = (await fetchCredits(personId, p.language)).cast.map(normalizeItem);
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
-    list = filterByKeywords(list, p.filter);
-    return formatOutput(list);
+    if (p.filter?.trim()) {
+        const regex = new RegExp(p.filter.toLowerCase());
+        list = list.filter(i => regex.test(i._normalizedTitle));
+    }
+    return formatOutput(list, p.logMode);
 }
+
 async function getDirectorWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language)).crew.filter(i => i.job && i.job.toLowerCase().includes("director"));
-    list.forEach(item => { if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || ""); });
+    let list = (await fetchCredits(personId, p.language))
+        .crew.filter(i => i.job?.toLowerCase().includes("director"))
+        .map(normalizeItem);
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
-    list = filterByKeywords(list, p.filter);
-    return formatOutput(list);
+    if (p.filter?.trim()) {
+        const regex = new RegExp(p.filter.toLowerCase());
+        list = list.filter(i => regex.test(i._normalizedTitle));
+    }
+    return formatOutput(list, p.logMode);
 }
+
 async function getOtherWorks(params) {
     const p = params || {};
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
-    let list = (await fetchCredits(personId, p.language)).crew.filter(i => !(i.job && i.job.toLowerCase().includes("director")));
-    list.forEach(item => { if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || ""); });
+    let list = (await fetchCredits(personId, p.language))
+        .crew.filter(i => !(i.job?.toLowerCase().includes("director")))
+        .map(normalizeItem);
     list = filterByType(list, p.type);
     list = sortResults(list, p.sort_by);
-    list = filterByKeywords(list, p.filter);
-    return formatOutput(list);
+    if (p.filter?.trim()) {
+        const regex = new RegExp(p.filter.toLowerCase());
+        list = list.filter(i => regex.test(i._normalizedTitle));
+    }
+    return formatOutput(list, p.logMode);
 }
