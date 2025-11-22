@@ -140,14 +140,13 @@ const Params = [
 ];
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
-
 // -----------------------------
 // 全局共享缓存
 // -----------------------------
-const MAX_PERSON_CACHE = 200; // 最大人物缓存数量，可根据实际调整
+const MAX_PERSON_CACHE = 200; // 最大人物缓存数量
 let sharedPersonCache = new Map(); // key=personKey, value=作品数组
 let tmdbGenresCache = {};           // TMDB 类型缓存
-let tmdbGenresInited = false;      // 批量初始化标记
+let tmdbGenresInited = false;       // TMDB 类型是否初始化过
 const personIdCache = new Map();    // 人物ID缓存
 
 // -----------------------------
@@ -168,22 +167,19 @@ function createLogger(mode) {
 // -----------------------------
 async function initTmdbGenres(language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
-    if (tmdbGenresInited && tmdbGenresCache.movie && tmdbGenresCache.tv) return;
-    if (tmdbGenresCache.movie && tmdbGenresCache.tv) return;
+    if (tmdbGenresInited) return; // 已初始化直接返回
 
     try {
         logger.debug("初始化 TMDB 类型，语言:", language);
-
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
         ]);
-
         tmdbGenresCache = {
             movie: movieGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {},
             tv: tvGenres.genres?.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {}) || {}
         };
-
+        tmdbGenresInited = true;
         if (logMode === "debug") {
             logger.debug("TMDB 类型缓存完成:", JSON.stringify(tmdbGenresCache, null, 2));
         }
@@ -191,21 +187,6 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
         logger.warning("初始化 TMDB 类型失败", err);
         tmdbGenresCache = { movie: {}, tv: {} };
     }
-}
-
-// -----------------------------
-// 批量初始化 TMDB 类型
-// -----------------------------
-async function batchInitTmdbGenres(languages = ["zh-CN"], logMode = "debug") {
-    if (tmdbGenresInited) return;
-
-    for (const lang of languages) {
-        if (!tmdbGenresCache.movie || !tmdbGenresCache.tv) {
-            await initTmdbGenres(lang, logMode);
-        }
-    }
-
-    tmdbGenresInited = true;
 }
 
 // -----------------------------
@@ -323,7 +304,7 @@ function formatOutput(list, logMode="info") {
 }
 
 // -----------------------------
-// 高性能 AC + 正则过滤器
+// AC 自动机 + 正则过滤器
 // -----------------------------
 const acCache = new Map();
 const regexCache = new Map();
@@ -457,20 +438,18 @@ async function loadSharedWorks(params) {
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    // 初始化 TMDB 类型（批量初始化可调用 batchInitTmdbGenres）
-    if (!tmdbGenresInited) {
-        await initTmdbGenres(p.language || "zh-CN", p.logMode);
-    }
+    // 先初始化 TMDB 类型缓存
+    await initTmdbGenres(p.language || "zh-CN", p.logMode);
 
-    // 获取人物ID
+    // 获取人物 ID
     const personId = await getCachedPersonId(p.personId, p.language, p.logMode);
     if (!personId) {
-        logger.warning("未获取到人物ID，直接返回空数组");
+        logger.warning("未获取到人物ID");
         sharedPersonCache.set(personKey, []);
         return [];
     }
 
-    // 已获取到ID，才继续后续逻辑
+    // 如果缓存不存在，则拉取作品
     if (!sharedPersonCache.has(personKey)) {
         const credits = await fetchCredits(personId, p.language, p.logMode);
         const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
@@ -482,32 +461,23 @@ async function loadSharedWorks(params) {
             sharedPersonCache.delete(firstKey);
         }
 
-        if (p.logMode === "debug") {
-            logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
-        }
+        if (p.logMode === "debug") logger.debug("共享缓存加载完成，作品数量:", worksArray.length);
     } else {
-        if (p.logMode === "debug") {
-            logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
-        }
+        if (p.logMode === "debug") logger.debug("使用共享缓存，作品数量:", sharedPersonCache.get(personKey).length);
     }
 
-    // 拷贝缓存，用于过滤、格式化
     let works = [...sharedPersonCache.get(personKey)];
 
-    // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
         if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
     }
 
-    // 按关键词过滤
     if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
-    // 返回格式化后的作品列表
     return formatOutput(works, p.logMode);
 }
-
 
 // -----------------------------
 // 模块函数
