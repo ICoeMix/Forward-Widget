@@ -4,7 +4,7 @@
 WidgetMetadata = {
     id: "tmdb.person.movie",
     title: "TMDB人物影视作品",
-    version: "2.3.3",
+    version: "2.3.4",
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品数据",
     author: "ICoeMix (Optimized by ChatGPT)",
@@ -147,15 +147,30 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 // -----------------------------
 // 日志函数（全局复用）
 // -----------------------------
-const globalLogger = { mode: "info" };
 function createLogger(mode) {
-    const m = mode || globalLogger.mode || "info";
+    const m = mode || "info";
     return {
         debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
         info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
         warning: (...args) => (["debug","info","warning"].includes(m)) && console.warn("[WARN]", ...args),
         notify: (...args) => (["debug","info","warning","notify"].includes(m)) && console.info("[NOTIFY]", ...args)
     };
+}
+
+// -----------------------------
+// resolvePersonId：名字转ID
+// -----------------------------
+async function resolvePersonId(personInput, language = "zh-CN") {
+    if (!personInput) return null;
+    if (!isNaN(personInput)) return personInput; // 输入就是数字ID
+    try {
+        const res = await Widget.tmdb.get("search/person", { params: { query: personInput, language } });
+        if (res?.results?.length) return res.results[0].id;
+        return null;
+    } catch (err) {
+        console.error("resolvePersonId 获取人物ID失败", err);
+        return null;
+    }
 }
 
 // -----------------------------
@@ -182,7 +197,7 @@ function normalizeItem(item) {
         overview: item.overview || "",
         posterPath: item.poster_path || "",
         backdropPath: item.backdrop_path || "",
-        mediaType: item.media_type || guessMediaType(item),
+        mediaType: item.media_type || (item.release_date ? "movie" : "tv"),
         releaseDate: item.release_date || item.first_air_date || "",
         popularity: item.popularity || 0,
         rating: item.vote_average || 0,
@@ -191,22 +206,6 @@ function normalizeItem(item) {
         genre_ids: item.genre_ids || [],
         _normalizedTitle: normalizedTitle
     };
-}
-
-function guessMediaType(item) {
-    if (item.release_date) return "movie";
-    if (item.first_air_date) return "tv";
-    return "movie";
-}
-
-function getTmdbGenreTitles(genreIds, mediaType, logger=createLogger()) {
-    const genres = tmdbGenresCache?.[mediaType] || {};
-    if (!Object.keys(genres).length) logger.debug("tmdbGenresCache 未加载，使用默认类型");
-    const topThreeIds = genreIds.slice(0, 3);
-    return topThreeIds
-        .map(id => genres[id]?.trim() || `未知类型(${id})`)
-        .filter(Boolean)
-        .join('•');
 }
 
 function formatOutput(list, logMode="info") {
@@ -225,7 +224,7 @@ function formatOutput(list, logMode="info") {
         mediaType: i.mediaType,
         jobs: i.jobs,
         characters: i.characters,
-        genreTitle: (i.genre_ids?.length ? `EU1*•${getTmdbGenreTitles(i.genre_ids, i.mediaType, logger)}` : "")
+        genreTitle: (i.genre_ids?.length ? `EU1*•${i.genre_ids.join("•")}` : "")
     }));
 }
 
@@ -236,17 +235,28 @@ async function loadWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
     const personId = await resolvePersonId(p.personId, p.language);
-    if (!personId) {
-        logger.warning("未获取到人物ID:", p.personId);
-        return [];
-    }
+    if (!personId) { logger.warning("未获取到人物ID"); return []; }
 
     let credits = await fetchCredits(personId, p.language);
     let merged = [...credits.cast, ...credits.crew].map(normalizeItem);
 
-    merged = filterByType(merged, p.type);
-    merged = sortResults(merged, p.sort_by);
+    // 上映状态筛选
+    if (p.type && p.type !== "all") {
+        const now = new Date();
+        merged = merged.filter(i => {
+            if (!i.releaseDate) return false;
+            const d = new Date(i.releaseDate);
+            return (p.type === "released") ? d <= now : d > now;
+        });
+    }
 
+    // 排序
+    if (p.sort_by) {
+        const [key, order] = p.sort_by.split(".");
+        merged.sort((a, b) => order === "desc" ? b[key] - a[key] : a[key] - b[key]);
+    }
+
+    // 关键词过滤
     if (p.filter?.trim()) {
         const regex = new RegExp(p.filter.toLowerCase());
         merged = merged.filter(i => regex.test(i._normalizedTitle));
@@ -263,12 +273,6 @@ async function getActorWorks(params) {
     const personId = await resolvePersonId(p.personId, p.language);
     if (!personId) return [];
     let list = (await fetchCredits(personId, p.language)).cast.map(normalizeItem);
-    list = filterByType(list, p.type);
-    list = sortResults(list, p.sort_by);
-    if (p.filter?.trim()) {
-        const regex = new RegExp(p.filter.toLowerCase());
-        list = list.filter(i => regex.test(i._normalizedTitle));
-    }
     return formatOutput(list, p.logMode);
 }
 
@@ -279,12 +283,6 @@ async function getDirectorWorks(params) {
     let list = (await fetchCredits(personId, p.language))
         .crew.filter(i => i.job?.toLowerCase().includes("director"))
         .map(normalizeItem);
-    list = filterByType(list, p.type);
-    list = sortResults(list, p.sort_by);
-    if (p.filter?.trim()) {
-        const regex = new RegExp(p.filter.toLowerCase());
-        list = list.filter(i => regex.test(i._normalizedTitle));
-    }
     return formatOutput(list, p.logMode);
 }
 
@@ -295,11 +293,5 @@ async function getOtherWorks(params) {
     let list = (await fetchCredits(personId, p.language))
         .crew.filter(i => !(i.job?.toLowerCase().includes("director")))
         .map(normalizeItem);
-    list = filterByType(list, p.type);
-    list = sortResults(list, p.sort_by);
-    if (p.filter?.trim()) {
-        const regex = new RegExp(p.filter.toLowerCase());
-        list = list.filter(i => regex.test(i._normalizedTitle));
-    }
     return formatOutput(list, p.logMode);
 }
