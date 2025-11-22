@@ -131,11 +131,19 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
+// Debug 开关
+// -----------------------------
+const DEBUG = false; // 设置为 true 开启调试输出
+
+function debugLog(...args) { if (DEBUG) console.log(...args); }
+
+// -----------------------------
 // TMDB 数据获取及处理函数
 // -----------------------------
 async function fetchCredits(personId, language) {
     try {
         const response = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
+        debugLog("原始 credits:", response);
         return {
             cast: Array.isArray(response.cast) ? response.cast.map(normalizeItem) : [],
             crew: Array.isArray(response.crew) ? response.crew.map(normalizeItem) : []
@@ -177,27 +185,33 @@ function mergeCredits(cast, crew) {
     }
     cast.forEach(add);
     crew.forEach(add);
-    return Object.values(dict);
+    const merged = Object.values(dict);
+    debugLog("merge 后数据:", merged);
+    return merged;
 }
 
 function filterByType(list, type) {
     const today = new Date();
-    if (type === "released") return list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
-    if (type === "upcoming") return list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
-    return list;
+    let result = list;
+    if (type === "released") result = list.filter(i => i.releaseDate && new Date(i.releaseDate) <= today);
+    if (type === "upcoming") result = list.filter(i => i.releaseDate && new Date(i.releaseDate) > today);
+    debugLog(`filterByType(${type}):`, result);
+    return result;
 }
 
 function sortResults(list, sortBy) {
-    return list.slice().sort((a, b) => {
+    const sorted = list.slice().sort((a, b) => {
         if (sortBy === "popularity.desc") return b.popularity - a.popularity;
         if (sortBy === "vote_average.desc") return b.rating - a.rating;
         if (sortBy === "release_date.desc") return new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0);
         return 0;
     });
+    debugLog(`sortResults(${sortBy}):`, sorted);
+    return sorted;
 }
 
 // -----------------------------
-// 高性能 AC + 完全正则过滤器（忽略大小写）
+// 高性能 AC + 正则过滤器
 // -----------------------------
 const acCache = new Map();
 const regexCache = new Map();
@@ -295,7 +309,7 @@ function filterByKeywords(list, filterStr) {
 
     const { ac, regexTerms } = unit;
 
-    return list.filter(item => {
+    const filtered = list.filter(item => {
         if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
         const title = item._normalizedTitle;
 
@@ -306,12 +320,16 @@ function filterByKeywords(list, filterStr) {
         }
         return true;
     });
+
+    debugLog(`filterByKeywords(${filterStr}):`, filtered);
+    return filtered;
 }
 
 // -----------------------------
 // 输出格式化
 // -----------------------------
 function formatOutput(list) {
+    debugLog("formatOutput:", list);
     return list.map(i=>({
         id:i.id,
         type:"tmdb",
@@ -335,6 +353,7 @@ async function getPersonIdByName(name, language="zh-CN") {
     if(!name) return null;
     try {
         const response = await Widget.tmdb.get("search/person",{params:{query:name,language}});
+        debugLog(`getPersonIdByName(${name}):`, response);
         return response.results && response.results.length>0?response.results[0].id:null;
     } catch(err) {
         console.error("TMDB 搜索人物失败:",err);
@@ -345,7 +364,9 @@ async function getPersonIdByName(name, language="zh-CN") {
 async function resolvePersonId(input, language){
     if(!input) return null;
     if(!isNaN(Number(input))) return Number(input);
-    return await getPersonIdByName(input, language);
+    const id = await getPersonIdByName(input, language);
+    debugLog(`resolvePersonId(${input}):`, id);
+    return id;
 }
 
 // -----------------------------
