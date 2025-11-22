@@ -419,23 +419,19 @@ async function getCachedPersonId(personInput, language = "zh-CN", logMode = "inf
 }
 
 // -----------------------------
-// 核心共享加载函数
+// 核心共享缓存 + 多模块加载（优化并行请求）
 // -----------------------------
 async function loadSharedWorks(params) {
     const p = params || {};
     const logger = createLogger(p.logMode || "info");
-    const trimmedPerson = (p.personId || "").trim();
-    if (!trimmedPerson) {
-        logger.warning("人物输入为空，无法获取作品");
-        return [];
-    }
-    const personKey = `${trimmedPerson}_${p.language}`;
+    const personKey = `${p.personId}_${p.language}`;
 
-    // 初始化 TMDB 类型缓存
-    await initTmdbGenres(p.language || "zh-CN", p.logMode);
+    // 并行初始化类型缓存 + 获取人物ID
+    const [personId] = await Promise.all([
+        getCachedPersonId(p.personId, p.language, p.logMode),
+        initTmdbGenres(p.language || "zh-CN", p.logMode)
+    ]);
 
-    // 获取人物ID
-    const personId = await getCachedPersonId(trimmedPerson, p.language, p.logMode);
     if (!personId) {
         logger.warning("未获取到人物ID");
         sharedPersonCache[personKey] = [];
