@@ -457,27 +457,26 @@ async function loadSharedWorks(params) {
     const logger = createLogger(p.logMode || "info");
     const personKey = `${p.personId}_${p.language}`;
 
-    // 优化：先使用缓存，如果已批量初始化过就不再等待请求
+    // 初始化 TMDB 类型（批量初始化可调用 batchInitTmdbGenres）
     if (!tmdbGenresInited) {
         await initTmdbGenres(p.language || "zh-CN", p.logMode);
     }
 
-    if (p.logMode === "debug") {
-        logger.debug("当前 TMDB 类型缓存:", JSON.stringify(tmdbGenresCache, null, 2));
-    }
-
+    // 获取人物ID
     const personId = await getCachedPersonId(p.personId, p.language, p.logMode);
     if (!personId) {
-        logger.warning("未获取到人物ID");
+        logger.warning("未获取到人物ID，直接返回空数组");
         sharedPersonCache.set(personKey, []);
         return [];
     }
 
+    // 已获取到ID，才继续后续逻辑
     if (!sharedPersonCache.has(personKey)) {
         const credits = await fetchCredits(personId, p.language, p.logMode);
         const worksArray = [...credits.cast, ...credits.crew].map(normalizeItem);
         sharedPersonCache.set(personKey, worksArray);
 
+        // 控制缓存大小
         if (sharedPersonCache.size > MAX_PERSON_CACHE) {
             const firstKey = sharedPersonCache.keys().next().value;
             sharedPersonCache.delete(firstKey);
@@ -492,18 +491,23 @@ async function loadSharedWorks(params) {
         }
     }
 
+    // 拷贝缓存，用于过滤、格式化
     let works = [...sharedPersonCache.get(personKey)];
 
+    // 按上映状态过滤
     if (p.type && p.type !== "all") {
         const now = new Date();
         works = works.filter(i => i.releaseDate && ((p.type === "released") ? new Date(i.releaseDate) <= now : new Date(i.releaseDate) > now));
         if (p.logMode === "debug") logger.debug("按上映状态过滤后作品数量:", works.length);
     }
 
+    // 按关键词过滤
     if (p.filter?.trim()) works = filterByKeywords(works, p.filter, p.logMode);
 
+    // 返回格式化后的作品列表
     return formatOutput(works, p.logMode);
 }
+
 
 // -----------------------------
 // 模块函数
