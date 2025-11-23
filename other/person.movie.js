@@ -329,16 +329,17 @@ async function loadPersonWorks(params) {
 }
 
 // -----------------------------
-// Module Functions
-WidgetMetadata.modules.forEach(m=>{
-    m.function = async (params)=>{
-        const works = await loadPersonWorks(params);
-        switch(m.id){
-            case "allWorks": return formatOutput(works);
-            case "actorWorks": return formatOutput(works.filter(w=>w.jobs.includes("Actor")||w.jobs.includes("演员")||w.characters.length));
-            case "directorWorks": return formatOutput(works.filter(w=>w.jobs.includes("Director")||w.jobs.includes("导演")));
-            case "otherWorks": return formatOutput(works.filter(w=>!w.jobs.includes("Actor")&&!w.jobs.includes("导演")&&!w.characters.length));
-            default: return formatOutput(works);
-        }
-    };
-});
+// 导出接口
+async function getAllWorks(params) { return loadPersonWorks(params); }
+async function getActorWorks(params) {
+    const works = await loadPersonWorks(params);
+    return works.filter(w => w.jobs.length === 0 || w.characters.length > 0);
+}
+async function getDirectorWorks(params) {
+    const works = await loadPersonWorks(params);
+    return works.filter(w => w.jobs.includes("Director"));
+}
+async function getOtherWorks(params) {
+    const works = await loadPersonWorks(params);
+    return works.filter(w => w.jobs.length > 0 && !w.jobs.includes("Director"));
+}
