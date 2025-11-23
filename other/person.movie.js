@@ -118,9 +118,9 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 // -----------------------------
 // 全局缓存
 const MAX_CACHE = 200;
-const personIdCache = new Map();
-const tmdbGenresCache = {};
 const personWorksCache = new Map();
+const personIdCache = new Map();
+const tmdbGenresCache = { movie: {}, tv: {} };
 
 // -----------------------------
 // 日志函数
@@ -156,7 +156,7 @@ function debounce(fn, wait = 400) {
 }
 
 // -----------------------------
-// resolvePersonId
+// resolvePersonId（动态监控）
 async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
     if (!personInput?.toString().trim()) return null;
@@ -185,22 +185,24 @@ async function resolvePersonId(personInput, language = "zh-CN", logMode = "info"
 }
 
 // -----------------------------
-// initTmdbGenres
+// initTmdbGenres（动态监控）
 async function initTmdbGenres(language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
-    if (tmdbGenresCache.movie && tmdbGenresCache.tv) {
+    if (tmdbGenresCache.movie && tmdbGenresCache.tv &&
+        Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
         logger.info("TMDB类型缓存已存在，跳过初始化");
         return;
     }
+
+    logger.info("初始化TMDB类型缓存...");
     try {
-        logger.info("初始化TMDB类型缓存...");
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
         ]);
         tmdbGenresCache.movie = (movieGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {});
         tmdbGenresCache.tv = (tvGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {});
-        logger.info("TMDB类型缓存完成", tmdbGenresCache);
+        logger.info(`TMDB类型缓存完成: movie(${Object.keys(tmdbGenresCache.movie).length}), tv(${Object.keys(tmdbGenresCache.tv).length})`);
     } catch (err) {
         logger.warning("初始化TMDB类型失败", err);
         tmdbGenresCache.movie = {};
@@ -209,7 +211,7 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// fetchCredits
+// fetchCredits（动态监控）
 async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
     logger.info(`开始抓取人物作品 personId=${personId}`);
@@ -218,7 +220,7 @@ async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
         const cast = Array.isArray(res?.cast) ? res.cast : [];
         const crew = Array.isArray(res?.crew) ? res.crew : [];
         const allTitles = [...cast, ...crew].map(i => i.title || i.name || "未知");
-        logger.info(`抓取作品完成 personId=${personId}，共抓取 ${allTitles.length} 部作品:`, allTitles);
+        logger.info(`抓取作品完成 personId=${personId}，共 ${allTitles.length} 部作品，前10个标题:`, allTitles.slice(0, 10));
         return { cast, crew };
     } catch (err) {
         logger.warning("fetchCredits 获取作品失败", err);
@@ -270,7 +272,7 @@ function formatOutput(list) {
             mediaType: i.mediaType || "",
             jobs: i.jobs,
             characters: i.characters,
-            genreTitle: i.genre_ids.length ? i.genre_ids.map(id => (tmdbGenresCache[i.mediaType]||{})[id]||`未知类型(${id})`).join('•') : ""
+            genreTitle: i.genre_ids.length ? i.genre_ids.map(id => (tmdbGenresCache[i.mediaType]||{})[id] || `未知类型(${id})`).join('•') : ""
         }));
 }
 // -----------------------------
@@ -376,80 +378,60 @@ function filterByKeywords(list, filterStr, logMode="info") {
 }
 
 // -----------------------------
-// LRU 缓存 + 获取作品（动态追踪版）
-// -----------------------------
-const MAX_CACHE = 200;
-const personWorksCache = new Map();
-
+// loadPersonWorks（动态追踪 + 数量打印）
 async function loadPersonWorks(params) {
     const personKey = `${params.personId}_${params.language || "zh-CN"}`;
     const now = Date.now();
-    const logger = createLogger(params?.logMode || "info");
-
     if (personWorksCache.has(personKey)) {
         const entry = personWorksCache.get(personKey);
         entry.timestamp = now;
-        return await entry.promise; // 保留原始返回值
+        return await entry.promise;
     }
 
     const promise = (async () => {
+        const logger = createLogger(params?.logMode || "info");
         let finalList = [];
-        const infoStages = [];
-
         try {
             // 1. 解析人物ID
             const personId = await resolvePersonId(params.personId, params.language, params.logMode);
-            infoStages.push({ stage: "解析人物ID", data: personId ? [personId] : [] });
             if (!personId) return [];
+            logger.info(`阶段[解析人物ID]完成 personId=${personId}`);
 
-            // 2. 初始化TMDB类型缓存
+            // 2. 初始化类型缓存
             await initTmdbGenres(params.language || "zh-CN", params.logMode);
-            infoStages.push({ stage: "初始化TMDB类型缓存", data: Object.keys(tmdbGenresCache.movie).slice(0, 10) });
 
-            // 3. 抓取原始作品
+            // 3. 抓取作品
             const credits = await fetchCredits(personId, params.language, params.logMode);
-            let works = [...credits.cast, ...credits.crew];
-            infoStages.push({ stage: "抓取原始作品", data: works.map(i => i.title || i.name || "未知") });
+            let works = [...credits.cast, ...credits.crew].map(normalizeItem);
+            logger.info(`阶段[标准化作品]完成，共 ${works.length} 部作品，前10个标题:`, works.slice(0,10).map(i=>i.title));
 
-            // 4. 标准化作品
-            works = works.map(i => normalizeItem(i));
-            infoStages.push({ stage: "标准化作品", data: works.map(i => i.title) });
-
-            // 5. 上映状态过滤
+            // 4. 上映状态过滤
             if (params.type && params.type !== "all") {
                 const nowDate = new Date();
                 works = works.filter(i => i.releaseDate ?
                     (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
                     : false);
-                infoStages.push({ stage: "上映状态过滤后作品", data: works.map(i => i.title) });
+                logger.info(`阶段[上映状态过滤]完成，共 ${works.length} 部作品`);
             }
 
-            // 6. 关键词过滤
+            // 5. 关键词过滤
             if (params.filter?.trim()) {
                 works = filterByKeywords(works, params.filter, params.logMode);
-                infoStages.push({ stage: "关键词过滤后作品", data: works.map(i => i.title) });
+                logger.info(`阶段[关键词过滤]完成，共 ${works.length} 部作品`);
             }
 
-            // 7. 格式化输出
+            // 6. 格式化输出
             finalList = formatOutput(works);
-            infoStages.push({ stage: "最终返回作品", data: finalList.map(i => i.title) });
-
-            // 8. 打印 info
-            infoStages.forEach(stage => {
-                console.group(`INFO - ${stage.stage} (${stage.data.length})`);
-                console.table(stage.data.map((title, idx) => ({ "#": idx + 1, title })));
-                console.groupEnd();
-            });
+            logger.info(`阶段[最终返回作品]完成，共 ${finalList.length} 部作品，前10个标题:`, finalList.slice(0,10).map(i=>i.title));
 
         } catch (err) {
             logger.warning("loadPersonWorks 捕获异常:", err);
         }
-
-        return finalList; // ✅ 最终返回给 Widget
+        return finalList;
     })();
 
-    // 缓存 & LRU
     personWorksCache.set(personKey, { promise, timestamp: now });
+
     if (personWorksCache.size > MAX_CACHE) {
         let oldestKey = null, oldestTime = Infinity;
         for (const [k, v] of personWorksCache.entries()) {
@@ -458,7 +440,7 @@ async function loadPersonWorks(params) {
         if (oldestKey) personWorksCache.delete(oldestKey);
     }
 
-    return await promise; // ✅ 保证返回值
+    return await promise;
 }
 
 // -----------------------------
