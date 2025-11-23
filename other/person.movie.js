@@ -386,10 +386,9 @@ async function loadPersonWorks(params) {
     const now = Date.now();
     const logger = createLogger(params?.logMode || "info");
 
-    // 如果缓存已有，直接返回固定 Promise
     if (personWorksCache.has(personKey)) {
         const entry = personWorksCache.get(personKey);
-        entry.timestamp = now; // 更新使用时间
+        entry.timestamp = now;
         return await entry.promise;
     }
 
@@ -409,53 +408,30 @@ async function loadPersonWorks(params) {
             const credits = await fetchCredits(personId, params.language, params.logMode);
             let works = [...credits.cast, ...credits.crew];
 
-            if (params.logMode === "debug" || params.logMode === "info") {
-                logger.info("抓取到的原始作品数量:", works.length, works.map(i => i?.title || i?.name));
-            }
-
-            // 第4步：标准化每条作品
-            works = works.map((i, idx) => {
-                const normalized = normalizeItem(i);
-                if (params.logMode === "debug") {
-                    logger.debug(`标准化作品[${idx}]:`, {
-                        original: i,
-                        normalized
-                    });
-                }
-                return normalized;
-            });
-
-            // info 日志显示所有标准化作品标题
+            // 第4步：统一 info 输出抓取数量和标题
             if (params.logMode === "info" || params.logMode === "debug") {
-                const allTitles = works.map(i => i.title || "未知");
-                logger.info("所有标准化作品列表:", allTitles);
+                const titles = works.map(i => i?.title || i?.name || "未知");
+                logger.info(`抓取到的作品数量: ${works.length}, 标题列表: ${titles.join(", ")}`);
             }
 
-            // 第5步：按上映状态过滤
+            // 第5步：标准化作品
+            works = works.map(normalizeItem);
+
+            // 第6步：按上映状态过滤
             if (params.type && params.type !== "all") {
                 const nowDate = new Date();
-                works = works.filter((i, idx) => {
-                    const keep = i.releaseDate ?
-                        (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
-                        : false;
-                    if (params.logMode === "debug") {
-                        logger.debug(`上映状态过滤[${idx}]: ${i.title}, releaseDate=${i.releaseDate}, keep=${keep}`);
-                    }
-                    return keep;
-                });
+                works = works.filter(i => i.releaseDate ?
+                    (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
+                    : false);
             }
 
-            // 第6步：关键词/正则过滤
+            // 第7步：关键词/正则过滤
             if (params.filter?.trim()) {
                 works = filterByKeywords(works, params.filter, params.logMode);
             }
 
-            // 第7步：返回格式化后的静态数组
+            // 第8步：返回格式化后的静态数组
             const finalList = formatOutput(works);
-            if (params.logMode === "debug") {
-                logger.debug("最终返回作品数量:", finalList.length);
-            }
-
             return finalList;
 
         } catch (err) {
@@ -464,10 +440,8 @@ async function loadPersonWorks(params) {
         }
     })();
 
-    // 缓存固定 Promise
     personWorksCache.set(personKey, { promise, timestamp: now });
 
-    // 清理最老缓存
     if (personWorksCache.size > MAX_CACHE) {
         let oldestKey = null, oldestTime = Infinity;
         for (const [k, v] of personWorksCache.entries()) {
@@ -480,15 +454,14 @@ async function loadPersonWorks(params) {
 }
 
 // -----------------------------
-// 安全包装 + info 日志显示最终返回作品
+// 安全包装 + info 日志显示最终返回数量和标题
 async function loadSharedWorksSafe(params) {
     const logger = createLogger(params?.logMode || "info");
     try {
         const works = await loadPersonWorks(params);
-        // 集中 info 输出最终标准化作品标题
         if (params.logMode === "info" || params.logMode === "debug") {
             const titles = works.map(i => i.title || "未知");
-            logger.info("最终返回的标准化作品列表:", titles);
+            logger.info(`最终返回的标准化作品数量: ${works.length}, 标题列表: ${titles.join(", ")}`);
         }
         return works;
     } catch (err) {
