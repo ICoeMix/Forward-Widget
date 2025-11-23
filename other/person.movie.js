@@ -116,15 +116,21 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 防抖函数
-// -----------------------------
-function debounce(fn, wait = 500) {
+// 防抖函数（仅用于外部调用输入）
+function debounce(fn, wait = 400) {
     let timer = null;
+    let lastResolve = null;
     return function(...args) {
         if (timer) clearTimeout(timer);
         return new Promise(resolve => {
+            lastResolve = resolve;
             timer = setTimeout(async () => {
-                try { resolve(await fn.apply(this, args)); } catch(e) { resolve(null); }
+                try {
+                    const result = await fn.apply(this, args);
+                    lastResolve(result);
+                } catch(e) {
+                    lastResolve(null);
+                }
             }, wait);
         });
     };
@@ -132,7 +138,6 @@ function debounce(fn, wait = 500) {
 
 // -----------------------------
 // 日志函数
-// -----------------------------
 function createLogger(mode) {
     const m = mode || "info";
     return {
@@ -145,7 +150,6 @@ function createLogger(mode) {
 
 // -----------------------------
 // TMDB 类型缓存
-// -----------------------------
 let tmdbGenresCache = {};
 async function initTmdbGenres(language = "zh-CN", logMode = "info") {
     if (tmdbGenresCache.movie && tmdbGenresCache.tv) return;
@@ -168,8 +172,7 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// 人物 ID 缓存 + 防抖
-// -----------------------------
+// 人物 ID 缓存（核心逻辑不防抖）
 const personIdCache = new Map();
 async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
     if (!personInput?.toString().trim()) return null;
@@ -192,15 +195,11 @@ async function resolvePersonId(personInput, language = "zh-CN", logMode = "info"
     return await promise;
 }
 
+// 可选：在 UI 调用时使用防抖
 const debouncedResolvePersonId = debounce(resolvePersonId, 400);
-
-async function getCachedPersonId(personInput, language, logMode) {
-    return await resolvePersonId(personInput, language, logMode);
-}
 
 // -----------------------------
 // 获取作品
-// -----------------------------
 async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
     try {
@@ -216,7 +215,6 @@ async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
 
 // -----------------------------
 // 数据标准化 + 类型名称
-// -----------------------------
 function normalizeItem(item) {
     try {
         const title = item?.title || item?.name || "未知";
@@ -255,7 +253,6 @@ function getTmdbGenreTitles(item) {
 
 // -----------------------------
 // 格式化输出
-// -----------------------------
 function formatOutput(list) {
     return [...(Array.isArray(list) ? list : [])]
         .sort((a,b)=>new Date(b.releaseDate||0)-new Date(a.releaseDate||0))
@@ -379,8 +376,7 @@ function filterByKeywords(list, filterStr, logMode="info") {
 }
 
 // -----------------------------
-// Promise + LRU 缓存获取作品
-// -----------------------------
+// LRU 缓存 + 获取作品
 const MAX_CACHE = 200;
 const personWorksCache = new Map();
 
@@ -396,7 +392,7 @@ async function loadPersonWorks(params) {
 
     const promise = (async () => {
         try {
-            const personId = await debouncedResolvePersonId(params.personId, params.language, params.logMode);
+            const personId = await resolvePersonId(params.personId, params.language, params.logMode);
             if (!personId) return [];
             await initTmdbGenres(params.language || "zh-CN", params.logMode);
             const credits = await fetchCredits(personId, params.language, params.logMode);
@@ -431,20 +427,18 @@ async function loadPersonWorks(params) {
 
 // -----------------------------
 // 安全包装函数
-// -----------------------------
 async function loadSharedWorksSafe(params) {
     try { 
         return await loadPersonWorks(params); 
     } catch(err) { 
         const logger = createLogger(params?.logMode || "info"); 
         logger.warning("loadSharedWorksSafe 捕获异常:", err); 
-        return formatOutput([], params?.logMode || "info"); 
+        return formatOutput([]); 
     }
 }
 
 // -----------------------------
 // 模块接口保持不变
-// -----------------------------
 async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
 async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
 async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j=>/director/i.test(j))); }
