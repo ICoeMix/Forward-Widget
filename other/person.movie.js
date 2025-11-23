@@ -116,7 +116,7 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 防抖函数（仅用于外部调用输入）
+// 防抖函数（仅用于输入层）
 function debounce(fn, wait = 400) {
     let timer = null;
     let lastResolve = null;
@@ -172,7 +172,7 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// 人物 ID 缓存（核心逻辑不防抖）
+// 人物 ID 缓存
 const personIdCache = new Map();
 async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
     if (!personInput?.toString().trim()) return null;
@@ -195,7 +195,7 @@ async function resolvePersonId(personInput, language = "zh-CN", logMode = "info"
     return await promise;
 }
 
-// 可选：在 UI 调用时使用防抖
+// 可选：输入层使用防抖
 const debouncedResolvePersonId = debounce(resolvePersonId, 400);
 
 // -----------------------------
@@ -214,7 +214,7 @@ async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// 数据标准化 + 类型名称
+// 数据标准化
 function normalizeItem(item) {
     try {
         const title = item?.title || item?.name || "未知";
@@ -392,19 +392,22 @@ async function loadPersonWorks(params) {
 
     const promise = (async () => {
         try {
+            // 核心逻辑不使用防抖
             const personId = await resolvePersonId(params.personId, params.language, params.logMode);
             if (!personId) return [];
+
             await initTmdbGenres(params.language || "zh-CN", params.logMode);
             const credits = await fetchCredits(personId, params.language, params.logMode);
             let works = [...credits.cast, ...credits.crew].map(normalizeItem);
 
             if (params.type && params.type !== "all") {
                 const nowDate = new Date();
-                works = works.filter(i => i.releaseDate ? 
-                    (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate) 
+                works = works.filter(i => i.releaseDate ?
+                    (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
                     : false);
             }
             if (params.filter?.trim()) works = filterByKeywords(works, params.filter, params.logMode);
+
             return formatOutput(works);
         } catch(err) {
             const logger = createLogger(params?.logMode || "info");
@@ -426,7 +429,7 @@ async function loadPersonWorks(params) {
 }
 
 // -----------------------------
-// 安全包装函数
+// 安全包装
 async function loadSharedWorksSafe(params) {
     try { 
         return await loadPersonWorks(params); 
