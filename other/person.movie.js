@@ -376,7 +376,7 @@ function filterByKeywords(list, filterStr, logMode="info") {
 }
 
 // -----------------------------
-// LRU 缓存 + 获取作品（稳定版）
+// LRU 缓存 + 获取作品（带动态过程追踪版）
 // -----------------------------
 const MAX_CACHE = 200;
 const personWorksCache = new Map();
@@ -384,6 +384,7 @@ const personWorksCache = new Map();
 async function loadPersonWorks(params) {
     const personKey = `${params.personId}_${params.language || "zh-CN"}`;
     const now = Date.now();
+    const logger = createLogger(params?.logMode || "info");
 
     // 如果缓存已有，直接返回固定 Promise
     if (personWorksCache.has(personKey)) {
@@ -393,31 +394,63 @@ async function loadPersonWorks(params) {
     }
 
     const promise = (async () => {
-        const logger = createLogger(params?.logMode || "info");
         try {
+            // 第1步：解析人物ID
             const personId = await resolvePersonId(params.personId, params.language, params.logMode);
-            if (!personId) return [];
-
-            // 初始化类型缓存
-            await initTmdbGenres(params.language || "zh-CN", params.logMode);
-
-            // 获取人物作品
-            const credits = await fetchCredits(personId, params.language, params.logMode);
-            let works = [...credits.cast, ...credits.crew].map(normalizeItem);
-
-            // 按上映状态过滤
-            if (params.type && params.type !== "all") {
-                const nowDate = new Date();
-                works = works.filter(i => i.releaseDate ?
-                    (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
-                    : false);
+            if (!personId) {
+                logger.warning("未找到人物ID:", params.personId);
+                return [];
             }
 
-            // 按关键词过滤
-            if (params.filter?.trim()) works = filterByKeywords(works, params.filter, params.logMode);
+            // 第2步：初始化TMDB类型缓存
+            await initTmdbGenres(params.language || "zh-CN", params.logMode);
 
-            // 返回格式化后的静态数组
-            return formatOutput(works);
+            // 第3步：抓取人物作品
+            const credits = await fetchCredits(personId, params.language, params.logMode);
+            let works = [...credits.cast, ...credits.crew];
+
+            if (params.logMode === "debug") {
+                logger.debug("抓取到的原始作品数量:", works.length, works.map(i => i?.title || i?.name));
+            }
+
+            // 第4步：标准化每条作品
+            works = works.map((i, idx) => {
+                const normalized = normalizeItem(i);
+                if (params.logMode === "debug") {
+                    logger.debug(`标准化作品[${idx}]:`, {
+                        original: i,
+                        normalized
+                    });
+                }
+                return normalized;
+            });
+
+            // 第5步：按上映状态过滤
+            if (params.type && params.type !== "all") {
+                const nowDate = new Date();
+                works = works.filter((i, idx) => {
+                    const keep = i.releaseDate ?
+                        (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
+                        : false;
+                    if (params.logMode === "debug") {
+                        logger.debug(`上映状态过滤[${idx}]: ${i.title}, releaseDate=${i.releaseDate}, keep=${keep}`);
+                    }
+                    return keep;
+                });
+            }
+
+            // 第6步：关键词/正则过滤
+            if (params.filter?.trim()) {
+                works = filterByKeywords(works, params.filter, params.logMode);
+            }
+
+            // 第7步：返回格式化后的静态数组
+            const finalList = formatOutput(works);
+            if (params.logMode === "debug") {
+                logger.debug("最终返回作品数量:", finalList.length);
+            }
+
+            return finalList;
 
         } catch (err) {
             logger.warning("loadPersonWorks 捕获异常:", err);
