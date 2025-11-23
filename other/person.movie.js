@@ -122,23 +122,19 @@ class CacheManager {
         this.maxSize = maxSize;
         this.cache = new Map();
     }
-
     async get(key) {
         const entry = this.cache.get(key);
         if (!entry) return null;
         entry.ts = Date.now();
         return await entry.value;
     }
-
     set(key, value) {
         const ts = Date.now();
         this.cache.set(key, { value, ts });
         this._evictIfNeeded();
     }
-
     has(key) { return this.cache.has(key); }
     delete(key) { this.cache.delete(key); }
-
     _evictIfNeeded() {
         if (this.cache.size <= this.maxSize) return;
         const oldest = [...this.cache.entries()].reduce((acc, [k, v]) => v.ts < acc[1] ? [k, v.ts] : acc, [null, Infinity])[0];
@@ -146,8 +142,6 @@ class CacheManager {
     }
 }
 
-// -----------------------------
-// 缓存实例
 const personWorksCache = new CacheManager(200);
 const personIdCache = new CacheManager(200);
 const tmdbGenresCache = { movie: {}, tv: {} };
@@ -167,10 +161,12 @@ function createLogger(mode) {
 // -----------------------------
 // resolvePersonId 防抖 + 请求复用
 const resolvePersonIdDebounceMap = new Map();
-
 async function resolvePersonIdDebounced(personInput, language = "zh-CN", logMode = "debug", delay = 250) {
     const logger = createLogger(logMode);
-    if (!personInput?.toString().trim()) { logger.warning("输入为空或仅空白，无法解析人物ID"); return null; }
+    if (!personInput?.toString().trim()) { 
+        logger.warning("输入为空或仅空白，无法解析人物ID"); 
+        return null; 
+    }
 
     const s = personInput.toString().trim();
     if (!isNaN(s)) return Number(s);
@@ -178,7 +174,9 @@ async function resolvePersonIdDebounced(personInput, language = "zh-CN", logMode
     const cacheKey = `${s}_${language}`;
     if (personIdCache.has(cacheKey)) return await personIdCache.get(cacheKey);
 
-    if (resolvePersonIdDebounceMap.has(cacheKey)) return resolvePersonIdDebounceMap.get(cacheKey).promise;
+    if (resolvePersonIdDebounceMap.has(cacheKey)) {
+        return resolvePersonIdDebounceMap.get(cacheKey).promise;
+    }
 
     let resolver;
     const promise = new Promise((resolve) => { resolver = resolve; });
@@ -286,7 +284,7 @@ function formatOutput(list) {
 }
 
 // -----------------------------
-// AC 自动机 + 正则过滤器
+// AC 自动机 + 正则过滤器（不变）
 const acCache = new Map();
 const regexCache = new Map();
 const filterUnitCache = new Map();
@@ -303,7 +301,7 @@ function buildFilterUnit(filterStr){ if(!filterStr?.trim()) return null; if(filt
 function filterByKeywords(list,filterStr,logMode="info"){if(!filterStr?.trim()||!Array.isArray(list)||!list.length)return list; const logger=createLogger(logMode); const unit=buildFilterUnit(filterStr); if(!unit)return list; const {ac,regexTerms}=unit; const filteredOut=[]; const filteredList=list.filter(item=>{try{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||""); const title=item._normalizedTitle; let excluded=false; if(ac&&ac.match(title).size) excluded=true; if(!excluded){for(const r of regexTerms){const re=getRegex(r); if(re?.test(title)){excluded=true; break;}}} if(excluded&&logMode==="debug") filteredOut.push(item); return !excluded;}catch(err){return true;}}); if(logMode==="debug"&&filteredOut.length) logger.debug("过滤掉的作品:",filteredOut.map(i=>i.title)); return filteredList;}
 
 // -----------------------------
-// loadPersonWorks
+// loadPersonWorks（修复 await + 防抖）
 async function loadPersonWorks(params) {
     const logger = createLogger(params.logMode);
     if (!params.personId) { logger.warning("没有输入人物ID"); return []; }
@@ -316,14 +314,14 @@ async function loadPersonWorks(params) {
 
     if (personWorksCache.has(personId)) {
         logger.info("命中人物作品缓存");
-        return personWorksCache.get(personId);
+        return await personWorksCache.get(personId);
     }
 
     logger.info("阶段[获取人物作品]开始...");
     const { cast, crew } = await fetchCredits(personId, params.language, params.logMode);
     const allWorks = [...cast.map(i => normalizeItem(i)), ...crew.map(i => normalizeItem(i))];
 
-    const filteredWorks = filterByKeywords(allWorks, params.filter, params.logMode);
+    const filteredWorks = filterByKeywords(allWorks, params.filter, params.logMode) || allWorks;
     personWorksCache.set(personId, Promise.resolve(filteredWorks));
     logger.info("阶段[获取人物作品]完成");
 
@@ -331,17 +329,16 @@ async function loadPersonWorks(params) {
 }
 
 // -----------------------------
-// 导出接口
-async function getAllWorks(params) { return loadPersonWorks(params); }
-async function getActorWorks(params) {
-    const works = await loadPersonWorks(params);
-    return works.filter(w => w.jobs.length === 0 || w.characters.length > 0);
-}
-async function getDirectorWorks(params) {
-    const works = await loadPersonWorks(params);
-    return works.filter(w => w.jobs.includes("Director"));
-}
-async function getOtherWorks(params) {
-    const works = await loadPersonWorks(params);
-    return works.filter(w => w.jobs.length > 0 && !w.jobs.includes("Director"));
-}
+// Module Functions
+WidgetMetadata.modules.forEach(m=>{
+    m.function = async (params)=>{
+        const works = await loadPersonWorks(params);
+        switch(m.id){
+            case "allWorks": return formatOutput(works);
+            case "actorWorks": return formatOutput(works.filter(w=>w.jobs.includes("Actor")||w.jobs.includes("演员")||w.characters.length));
+            case "directorWorks": return formatOutput(works.filter(w=>w.jobs.includes("Director")||w.jobs.includes("导演")));
+            case "otherWorks": return formatOutput(works.filter(w=>!w.jobs.includes("Actor")&&!w.jobs.includes("导演")&&!w.characters.length));
+            default: return formatOutput(works);
+        }
+    };
+});
