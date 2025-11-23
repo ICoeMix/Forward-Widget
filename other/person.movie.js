@@ -123,32 +123,35 @@ const personIdCache = new Map();
 const tmdbGenresCache = { movie: {}, tv: {} };
 
 // -----------------------------
-// 日志函数
+// 日志函数（修正了不同等级的输出控制）
 function createLogger(mode) {
     const m = mode || "info";
     return {
         debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
         info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
-        warning: (...args) => console.warn("[WARN]", ...args),
-        notify: (...args) => console.info("[NOTIFY]", ...args)
+        warning: (...args) => (["debug","info","warning"].includes(m)) && console.warn("[WARN]", ...args),
+        notify: (...args) => (["debug","info","warning"].includes(m)) && console.info("[NOTIFY]", ...args)
     };
 }
 
 // -----------------------------
-// 防抖函数（可选）
+// 防抖函数（修复：支持多个并发调用的 Promise 都能被 resolve）
 function debounce(fn, wait = 400) {
     let timer = null;
-    let lastResolve = null;
+    let resolvers = []; // 存储多个待 resolve 的回调
     return function(...args) {
-        if (timer) clearTimeout(timer);
-        return new Promise(resolve => {
-            lastResolve = resolve;
+        return new Promise((resolve, reject) => {
+            resolvers.push({ resolve, reject });
+            if (timer) clearTimeout(timer);
             timer = setTimeout(async () => {
+                timer = null;
+                const currentResolvers = resolvers.slice();
+                resolvers = [];
                 try {
                     const result = await fn.apply(this, args);
-                    lastResolve(result);
-                } catch(e) {
-                    lastResolve(null);
+                    currentResolvers.forEach(r => r.resolve(result));
+                } catch (e) {
+                    currentResolvers.forEach(r => r.reject(e));
                 }
             }, wait);
         });
@@ -159,21 +162,25 @@ function debounce(fn, wait = 400) {
 // resolvePersonId（动态监控）
 async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
-    if (!personInput?.toString().trim()) return null;
-    if (!isNaN(personInput)) return Number(personInput);
+    if (personInput === undefined || personInput === null) return null;
+    const s = personInput.toString().trim();
+    if (!s) return null;
+    // 数字字符串直接返回数字 id
+    if (!isNaN(s)) return Number(s);
 
-    const cacheKey = `${personInput}_${language}`;
+    const cacheKey = `${s}_${language}`;
     if (personIdCache.has(cacheKey)) {
-        logger.info(`人物ID缓存命中: ${personInput}`);
+        logger.info(`人物ID缓存命中: ${s}`);
         return await personIdCache.get(cacheKey);
     }
 
-    logger.info(`开始搜索人物ID: ${personInput}`);
+    logger.info(`开始搜索人物ID: ${s}`);
     const promise = (async () => {
         try {
-            const res = await Widget.tmdb.get("search/person", { params: { query: personInput, language } });
-            const id = res?.results?.[0]?.id || null;
-            logger.info(`搜索人物ID完成: ${personInput} -> ${id}`);
+            const res = await Widget.tmdb.get("search/person", { params: { query: s, language } });
+            // 更安全地取第一个结果的 id
+            const id = (Array.isArray(res?.results) && res.results.length) ? res.results[0].id : null;
+            logger.info(`搜索人物ID完成: ${s} -> ${id}`);
             return id;
         } catch (err) {
             logger.warning("resolvePersonId 获取人物ID失败", err);
@@ -252,7 +259,6 @@ function normalizeItem(item) {
     try {
         const title = item?.title || item?.name || "未知";
 
-        // ⚠确保 mediaType 一定有默认值，避免后续 genre 访问报错
         const mediaType =
             item?.media_type ||
             (item?.release_date ? "movie" : (item?.first_air_date ? "tv" : "movie"));
@@ -287,16 +293,20 @@ function normalizeItem(item) {
 }
 
 // -----------------------------
-// 格式化输出
+// 格式化输出（修复：排序的日期处理更健壮）
 function formatOutput(list) {
+    // 辅助：安全解析日期（返回时间戳）
+    function safeTime(s) {
+        const t = Date.parse(s || "");
+        return isNaN(t) ? 0 : t;
+    }
+
     return [...(Array.isArray(list) ? list : [])]
-        .filter(i => i && typeof i === "object")  // ⚠过滤掉 null / undefined
-        .sort((a, b) => new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0))
+        .filter(i => i && typeof i === "object")
+        .sort((a, b) => safeTime(b.releaseDate) - safeTime(a.releaseDate))
         .map(i => {
-            const mediaType = i.mediaType || "movie";   // ⚠强制默认值
-
-            const genreMap = tmdbGenresCache[mediaType] || {}; // ⚠避免 undefined
-
+            const mediaType = i.mediaType || "movie";
+            const genreMap = tmdbGenresCache[mediaType] || {};
             const genreTitle = Array.isArray(i.genre_ids)
                 ? i.genre_ids.map(id => genreMap[id] || `未知类型(${id})`).join("•")
                 : "";
@@ -318,6 +328,7 @@ function formatOutput(list) {
             };
         });
 }
+
 // -----------------------------
 // AC 自动机 + 正则过滤器（安全）
 // -----------------------------
@@ -330,14 +341,22 @@ function normalizeTitleForMatch(s) { return s ? s.replace(/[\u200B-\u200D\uFEFF]
 class ACAutomaton {
     constructor() { this.root = { next: Object.create(null), fail: null, output: [] }; }
     insert(word) {
+        // 插入时期望 word 已经是标准化（小写、NFC 等）
         let node = this.root;
-        for (const ch of word) { if (!node.next[ch]) node.next[ch] = { next: Object.create(null), fail: null, output: [] }; node = node.next[ch]; }
+        for (const ch of word) {
+            if (!node.next[ch]) node.next[ch] = { next: Object.create(null), fail: null, output: [] };
+            node = node.next[ch];
+        }
         node.output.push(word);
     }
     build() {
         const q = [];
         this.root.fail = this.root;
-        for (const k of Object.keys(this.root.next)) { const n = this.root.next[k]; n.fail = this.root; q.push(n); }
+        for (const k of Object.keys(this.root.next)) {
+            const n = this.root.next[k];
+            n.fail = this.root;
+            q.push(n);
+        }
         while (q.length) {
             const node = q.shift();
             for (const ch of Object.keys(node.next)) {
@@ -364,29 +383,35 @@ class ACAutomaton {
 }
 
 function isPlainText(term) { return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
-function getRegex(term) { 
-    if (regexCache.has(term)) return regexCache.get(term); 
-    let re = null; 
-    try { re = new RegExp(term, 'i'); } catch(e) { re = null; } 
-    regexCache.set(term, re); 
-    return re; 
+function getRegex(term) {
+    if (regexCache.has(term)) return regexCache.get(term);
+    let re = null;
+    try { re = new RegExp(term, 'i'); } catch (e) { re = null; }
+    regexCache.set(term, re);
+    return re;
 }
 
 function buildFilterUnit(filterStr) {
     if (!filterStr?.trim()) return null;
     if (filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr);
 
-    const terms = filterStr.split(/\s*\|\|\s*/).map(t => t.trim()).filter(Boolean);
+    // 支持 "|" 或 "||" 作为分隔（更灵活）
+    const terms = filterStr.split(/\s*\|\|?\s*/).map(t => t.trim()).filter(Boolean);
     const plainTerms = [], regexTerms = [];
-    for (const t of terms) (isPlainText(t) ? plainTerms : regexTerms).push(t);
+    for (const t of terms) {
+        if (isPlainText(t)) plainTerms.push(t);
+        else regexTerms.push(t);
+    }
 
     let ac = null;
     if (plainTerms.length) {
-        const key = plainTerms.slice().sort().join("\u0001");
+        // 规范化 plain terms（小写、NFC）
+        const normalizedPlain = plainTerms.map(p => p.normalize('NFC').toLowerCase());
+        const key = normalizedPlain.slice().sort().join("\u0001");
         if (acCache.has(key)) ac = acCache.get(key);
         else {
             ac = new ACAutomaton();
-            plainTerms.forEach(p => ac.insert(p.toLowerCase()));
+            normalizedPlain.forEach(p => ac.insert(p));
             ac.build();
             acCache.set(key, ac);
         }
@@ -407,12 +432,19 @@ function filterByKeywords(list, filterStr, logMode="info") {
         try {
             if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
             const title = item._normalizedTitle || "";
-            let excluded = ac && ac.match(title).size ? true : false;
-            if (!excluded) for (const r of regexTerms) { const re = getRegex(r); if (re?.test(title)) { excluded = true; break; } }
+            let excluded = false;
+            if (ac && ac.match(title).size) excluded = true;
+            if (!excluded) {
+                for (const r of regexTerms) {
+                    const re = getRegex(r);
+                    if (re?.test(title)) { excluded = true; break; }
+                }
+            }
             if (excluded && logMode === "debug") filteredOut.push(item);
             return !excluded;
-        } catch(err) {
-            return true; // 异常安全
+        } catch (err) {
+            // 过滤异常安全：出现异常则不过滤该项
+            return true;
         }
     });
 
@@ -462,9 +494,12 @@ async function loadPersonWorks(params) {
             if (params.type && params.type !== "all") {
                 logger.info(`阶段[上映状态过滤]开始，类型=${params.type}`);
                 const nowDate = new Date();
-                works = works.filter(i => i.releaseDate ?
-                    (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
-                    : false);
+                works = works.filter(i => {
+                    if (!i.releaseDate) return false;
+                    const t = Date.parse(i.releaseDate);
+                    if (isNaN(t)) return false;
+                    return (params.type === "released") ? (new Date(t) <= nowDate) : (new Date(t) > nowDate);
+                });
                 logger.info(`阶段[上映状态过滤]完成，共 ${works.length} 部作品`);
             }
 
