@@ -409,8 +409,8 @@ async function loadPersonWorks(params) {
             const credits = await fetchCredits(personId, params.language, params.logMode);
             let works = [...credits.cast, ...credits.crew];
 
-            if (params.logMode === "debug") {
-                logger.debug("抓取到的原始作品数量:", works.length, works.map(i => i?.title || i?.name));
+            if (params.logMode === "debug" || params.logMode === "info") {
+                logger.info("抓取到的原始作品数量:", works.length, works.map(i => i?.title || i?.name));
             }
 
             // 第4步：标准化每条作品
@@ -424,6 +424,12 @@ async function loadPersonWorks(params) {
                 }
                 return normalized;
             });
+
+            // info 日志显示所有标准化作品标题
+            if (params.logMode === "info" || params.logMode === "debug") {
+                const allTitles = works.map(i => i.title || "未知");
+                logger.info("所有标准化作品列表:", allTitles);
+            }
 
             // 第5步：按上映状态过滤
             if (params.type && params.type !== "all") {
@@ -474,12 +480,18 @@ async function loadPersonWorks(params) {
 }
 
 // -----------------------------
-// 安全包装
+// 安全包装 + info 日志显示最终返回作品
 async function loadSharedWorksSafe(params) {
+    const logger = createLogger(params?.logMode || "info");
     try {
-        return await loadPersonWorks(params);
+        const works = await loadPersonWorks(params);
+        // 集中 info 输出最终标准化作品标题
+        if (params.logMode === "info" || params.logMode === "debug") {
+            const titles = works.map(i => i.title || "未知");
+            logger.info("最终返回的标准化作品列表:", titles);
+        }
+        return works;
     } catch (err) {
-        const logger = createLogger(params?.logMode || "info");
         logger.warning("loadSharedWorksSafe 捕获异常:", err);
         return formatOutput([]);
     }
@@ -488,8 +500,12 @@ async function loadSharedWorksSafe(params) {
 // -----------------------------
 // 模块接口保持不变
 async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
-async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
-async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j => /director/i.test(j))); }
+async function getActorWorks(params) { 
+    return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); 
+}
+async function getDirectorWorks(params) { 
+    return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j => /director/i.test(j))); 
+}
 async function getOtherWorks(params) {
     return (await loadSharedWorksSafe(params)).filter(i => !(i.characters.length) && !(i.jobs.some(j => /director/i.test(j))));
 }
