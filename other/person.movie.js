@@ -174,9 +174,7 @@ async function resolvePersonIdSafe(personInput, language = "zh-CN", logMode = "d
     const cacheKey = `${s}_${language}`;
     if (personIdCache.has(cacheKey)) return await personIdCache.get(cacheKey);
 
-    if (resolvePersonIdPending.has(cacheKey)) {
-        return await resolvePersonIdPending.get(cacheKey);
-    }
+    if (resolvePersonIdPending.has(cacheKey)) return await resolvePersonIdPending.get(cacheKey);
 
     const promise = (async () => {
         try {
@@ -232,7 +230,11 @@ async function fetchCredits(personId, language = "zh-CN", logMode = "debug") {
 // -----------------------------
 // normalizeItem
 function normalizeItem(item) {
-    if (!item || typeof item !== "object") return { id:null,title:"未知",overview:"",posterPath:"",backdropPath:"",mediaType:"movie",releaseDate:"",popularity:0,rating:0,jobs:[],characters:[],genre_ids:[],_normalizedTitle:"",_genreTitleCache:{} };
+    if (!item || typeof item !== "object") return { 
+        id:null,title:"未知",overview:"",posterPath:"",backdropPath:"",
+        mediaType:"movie",releaseDate:"",popularity:0,rating:0,
+        jobs:[],characters:[],genre_ids:[],_normalizedTitle:"",_genreTitleCache:{} 
+    };
     const title = item.title || item.name || "未知";
     const mediaType = item.media_type || (item.release_date ? "movie" : (item.first_air_date ? "tv" : "movie"));
     return {
@@ -299,6 +301,8 @@ function filterByKeywords(list,filterStr,logMode="info"){if(!filterStr?.trim()||
 
 // -----------------------------
 // loadPersonWorks（使用 resolvePersonIdSafe）
+// -----------------------------
+// loadPersonWorks
 async function loadPersonWorks(params) {
     const logger = createLogger(params.logMode);
     if (!params.personId) { logger.warning("没有输入人物ID"); return []; }
