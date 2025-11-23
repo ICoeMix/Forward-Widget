@@ -180,18 +180,69 @@ async function fetchCreditsCached(personId, language="zh-CN", logMode="debug"){
 }
 
 // -----------------------------
-// 内部规范化
+// 规范化处理
 function normalizeItem(item){
-    if(!item || typeof item!=="object") return { id:null, type:"tmdb", title:"未知", overview:"", posterPath:"", backdropPath:"", mediaType:"movie", releaseDate:"", popularity:0, rating:0, jobs:[], characters:[], genre_ids:[], _normalizedTitle:"" };
-    const title=item.title||item.name||"未知";
-    const mediaType=item.media_type || (item.release_date?"movie":(item.first_air_date?"tv":"movie"));
-    return { id:item.id||null, type:"tmdb", title, overview:item.overview||"", posterPath:item.poster_path||"", backdropPath:item.backdrop_path||"", mediaType, releaseDate:item.release_date||item.first_air_date||"", popularity:item.popularity||0, rating:item.vote_average||0, jobs:Array.isArray(item.jobs)?item.jobs:(item.job?[item.job]:[]), characters:Array.isArray(item.characters)?item.characters:(item.character?[item.character]:[]), genre_ids:Array.isArray(item.genre_ids)?item.genre_ids:[], _normalizedTitle:title.toLowerCase() };
+    if(!item || typeof item!=="object") return { 
+        id:null, type:"tmdb", title:"未知", overview:"", posterPath:"", backdropPath:"", 
+        mediaType:"movie", releaseDate:"", popularity:0, rating:0, jobs:[], characters:[], genre_ids:[], 
+        _normalizedTitle:"", _releaseTime:0, _popularity:0, _rating:0 
+    };
+
+    const title = item.title || item.name || "未知";
+    const mediaType = item.media_type || (item.release_date ? "movie" : (item.first_air_date ? "tv" : "movie"));
+    const release = item.release_date || item.first_air_date || "";
+
+    return {
+        id: item.id || null,
+        type: "tmdb",
+        title,
+        overview: item.overview || "",
+        posterPath: item.poster_path || "",
+        backdropPath: item.backdrop_path || "",
+        mediaType,
+        releaseDate: release,
+        popularity: Number(item.popularity || 0),
+        rating: Number(item.vote_average || 0),
+        jobs: Array.isArray(item.jobs) ? item.jobs : (item.job ? [item.job] : []),
+        characters: Array.isArray(item.characters) ? item.characters : (item.character ? [item.character] : []),
+        genre_ids: Array.isArray(item.genre_ids) ? item.genre_ids : [],
+        _normalizedTitle: title.toLowerCase(),
+        _releaseTime: release ? new Date(release).getTime() : 0,
+        _popularity: Number(item.popularity || 0),
+        _rating: Number(item.vote_average || 0)
+    };
 }
 
 // -----------------------------
 // 最终输出格式化
-function formatOutput(items){ return items.map(item=>({ id:item.id, title:item.title, type:item.type, mediaType:item.mediaType, releaseDate:item.releaseDate, popularity:item.popularity, rating:item.rating, jobs:item.jobs, characters:item.characters, genre_ids:item.genre_ids, posterPath:item.posterPath, backdropPath:item.backdropPath, overview:item.overview })); }
+function formatOutput(list) {
+    return [...(Array.isArray(list) ? list : [])]
+        .filter(i => i && typeof i === "object")  // ⚠ 过滤 null / undefined
+        .sort((a, b) => new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0))  // ⚠ 按发布日期降序
+        .map(i => {
+            const mediaType = i.mediaType || "movie";
+            const genreMap = tmdbGenresCache[mediaType] || {};
+            const genreTitle = Array.isArray(i.genre_ids)
+                ? i.genre_ids.map(id => genreMap[id] || 未知类型(${id})).join("•")
+                : "";
 
+            return {
+                id: i.id,
+                type: "tmdb",
+                title: i.title || "未知",
+                description: i.overview || "",
+                releaseDate: i.releaseDate || "",
+                rating: i.rating || 0,
+                popularity: i.popularity || 0,
+                posterPath: i.posterPath || "",
+                backdropPath: i.backdropPath || "",
+                mediaType,
+                jobs: i.jobs || [],
+                characters: i.characters || [],
+                genreTitle
+            };
+        });
+}
 // -----------------------------
 // AC自动机 + 正则过滤
 const acCache = new Map();
