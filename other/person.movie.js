@@ -511,3 +511,12 @@ async function loadSharedWorksSafe(params) {
         return formatOutput([]);
     }
 }
+
+// -----------------------------
+// 模块接口
+async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
+async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
+async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j => /director/i.test(j))); }
+async function getOtherWorks(params) {
+    return (await loadSharedWorksSafe(params)).filter(i => !(i.characters.length) && !(i.jobs.some(j => /director/i.test(j))));
+}
