@@ -114,6 +114,20 @@ const Params = [
 ];
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
+
+
+// -----------------------------
+// 日志函数
+// -----------------------------
+function createLogger(mode) {
+    const m = mode || "info";
+    return {
+        debug: (...args) => (["debug"].includes(m)) && console.log("[DEBUG]", ...args),
+        info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
+        warning: (...args) => (["debug","info","warning"].includes(m)) && console.warn("[WARN]", ...args)
+    };
+}
+
 // -----------------------------
 // TMDB 类型缓存
 // -----------------------------
