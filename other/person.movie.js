@@ -215,31 +215,55 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 async function fetchCredits(personId, language = "zh-CN", logMode = "info") {
     const logger = createLogger(logMode);
     logger.info(`开始抓取人物作品 personId=${personId}`);
+
     try {
-        const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
+        const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, {
+            params: { language }
+        });
+
         const cast = Array.isArray(res?.cast) ? res.cast : [];
         const crew = Array.isArray(res?.crew) ? res.crew : [];
-        const allTitles = [...cast, ...crew].map(i => i.title || i.name || "未知");
-        logger.info(`抓取作品完成 personId=${personId}，共 ${allTitles.length} 部作品，前10个标题:`, allTitles.slice(0, 10));
+
+        const allTitles = [...cast, ...crew].map(i => i?.title || i?.name || "未知");
+        logger.info(`抓取作品完成 personId=${personId}，共抓取 ${allTitles.length} 部作品:`, allTitles);
+
         return { cast, crew };
+
     } catch (err) {
         logger.warning("fetchCredits 获取作品失败", err);
-        return { cast: [], crew: [] };
+        return { cast: [], crew: [] };   // ⚠始终返回对象，避免 undefined
     }
 }
 
 // -----------------------------
 // 数据标准化
 function normalizeItem(item) {
+    if (!item || typeof item !== "object") {
+        return {
+            id: null, title: "未知", overview: "",
+            posterPath: "", backdropPath: "",
+            mediaType: "movie", releaseDate: "",
+            popularity: 0, rating: 0,
+            jobs: [], characters: [], genre_ids: [],
+            _normalizedTitle: "", _genreTitleCache: {}
+        };
+    }
+
     try {
         const title = item?.title || item?.name || "未知";
+
+        // ⚠确保 mediaType 一定有默认值，避免后续 genre 访问报错
+        const mediaType =
+            item?.media_type ||
+            (item?.release_date ? "movie" : (item?.first_air_date ? "tv" : "movie"));
+
         return {
             id: item?.id || null,
             title,
             overview: item?.overview || "",
             posterPath: item?.poster_path || "",
             backdropPath: item?.backdrop_path || "",
-            mediaType: item?.media_type || (item?.release_date ? "movie" : (item?.first_air_date ? "tv" : "")),
+            mediaType,
             releaseDate: item?.release_date || item?.first_air_date || "",
             popularity: item?.popularity || 0,
             rating: item?.vote_average || 0,
@@ -249,8 +273,16 @@ function normalizeItem(item) {
             _normalizedTitle: title.toLowerCase(),
             _genreTitleCache: item?._genreTitleCache || {}
         };
-    } catch(err) {
-        return { id:null, title:"未知", overview:"", posterPath:"", backdropPath:"", mediaType:"", releaseDate:"", popularity:0, rating:0, jobs:[], characters:[], genre_ids:[], _normalizedTitle:"", _genreTitleCache:{} };
+
+    } catch (err) {
+        return {
+            id: null, title: "未知", overview: "",
+            posterPath: "", backdropPath: "",
+            mediaType: "movie", releaseDate: "",
+            popularity: 0, rating: 0,
+            jobs: [], characters: [], genre_ids: [],
+            _normalizedTitle: "", _genreTitleCache: {}
+        };
     }
 }
 
@@ -258,22 +290,33 @@ function normalizeItem(item) {
 // 格式化输出
 function formatOutput(list) {
     return [...(Array.isArray(list) ? list : [])]
-        .sort((a,b)=>new Date(b.releaseDate||0)-new Date(a.releaseDate||0))
-        .map(i=>({
-            id: i.id,
-            type: "tmdb",
-            title: i.title || "未知",
-            description: i.overview || "",
-            releaseDate: i.releaseDate || "",
-            rating: i.rating || 0,
-            popularity: i.popularity || 0,
-            posterPath: i.posterPath || "",
-            backdropPath: i.backdropPath || "",
-            mediaType: i.mediaType || "",
-            jobs: i.jobs,
-            characters: i.characters,
-            genreTitle: i.genre_ids.length ? i.genre_ids.map(id => (tmdbGenresCache[i.mediaType]||{})[id] || `未知类型(${id})`).join('•') : ""
-        }));
+        .filter(i => i && typeof i === "object")  // ⚠过滤掉 null / undefined
+        .sort((a, b) => new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0))
+        .map(i => {
+            const mediaType = i.mediaType || "movie";   // ⚠强制默认值
+
+            const genreMap = tmdbGenresCache[mediaType] || {}; // ⚠避免 undefined
+
+            const genreTitle = Array.isArray(i.genre_ids)
+                ? i.genre_ids.map(id => genreMap[id] || `未知类型(${id})`).join("•")
+                : "";
+
+            return {
+                id: i.id,
+                type: "tmdb",
+                title: i.title || "未知",
+                description: i.overview || "",
+                releaseDate: i.releaseDate || "",
+                rating: i.rating || 0,
+                popularity: i.popularity || 0,
+                posterPath: i.posterPath || "",
+                backdropPath: i.backdropPath || "",
+                mediaType,
+                jobs: i.jobs || [],
+                characters: i.characters || [],
+                genreTitle
+            };
+        });
 }
 // -----------------------------
 // AC 自动机 + 正则过滤器（安全）
