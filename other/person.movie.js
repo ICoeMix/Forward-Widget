@@ -376,7 +376,8 @@ function filterByKeywords(list, filterStr, logMode="info") {
 }
 
 // -----------------------------
-// LRU 缓存 + 获取作品
+// LRU 缓存 + 获取作品（稳定版）
+// -----------------------------
 const MAX_CACHE = 200;
 const personWorksCache = new Map();
 
@@ -384,43 +385,54 @@ async function loadPersonWorks(params) {
     const personKey = `${params.personId}_${params.language || "zh-CN"}`;
     const now = Date.now();
 
+    // 如果缓存已有，直接返回固定 Promise
     if (personWorksCache.has(personKey)) {
         const entry = personWorksCache.get(personKey);
-        entry.timestamp = now;
+        entry.timestamp = now; // 更新使用时间
         return await entry.promise;
     }
 
     const promise = (async () => {
+        const logger = createLogger(params?.logMode || "info");
         try {
-            // 核心逻辑不使用防抖
             const personId = await resolvePersonId(params.personId, params.language, params.logMode);
             if (!personId) return [];
 
+            // 初始化类型缓存
             await initTmdbGenres(params.language || "zh-CN", params.logMode);
+
+            // 获取人物作品
             const credits = await fetchCredits(personId, params.language, params.logMode);
             let works = [...credits.cast, ...credits.crew].map(normalizeItem);
 
+            // 按上映状态过滤
             if (params.type && params.type !== "all") {
                 const nowDate = new Date();
                 works = works.filter(i => i.releaseDate ?
                     (params.type === "released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
                     : false);
             }
+
+            // 按关键词过滤
             if (params.filter?.trim()) works = filterByKeywords(works, params.filter, params.logMode);
 
+            // 返回格式化后的静态数组
             return formatOutput(works);
-        } catch(err) {
-            const logger = createLogger(params?.logMode || "info");
+
+        } catch (err) {
             logger.warning("loadPersonWorks 捕获异常:", err);
             return [];
         }
     })();
 
+    // 缓存固定 Promise
     personWorksCache.set(personKey, { promise, timestamp: now });
+
+    // 清理最老缓存
     if (personWorksCache.size > MAX_CACHE) {
         let oldestKey = null, oldestTime = Infinity;
-        for (const [k,v] of personWorksCache.entries()) {
-            if (v.timestamp < oldestTime) { oldestKey=k; oldestTime=v.timestamp; }
+        for (const [k, v] of personWorksCache.entries()) {
+            if (v.timestamp < oldestTime) { oldestKey = k; oldestTime = v.timestamp; }
         }
         if (oldestKey) personWorksCache.delete(oldestKey);
     }
@@ -431,12 +443,12 @@ async function loadPersonWorks(params) {
 // -----------------------------
 // 安全包装
 async function loadSharedWorksSafe(params) {
-    try { 
-        return await loadPersonWorks(params); 
-    } catch(err) { 
-        const logger = createLogger(params?.logMode || "info"); 
-        logger.warning("loadSharedWorksSafe 捕获异常:", err); 
-        return formatOutput([]); 
+    try {
+        return await loadPersonWorks(params);
+    } catch (err) {
+        const logger = createLogger(params?.logMode || "info");
+        logger.warning("loadSharedWorksSafe 捕获异常:", err);
+        return formatOutput([]);
     }
 }
 
@@ -444,7 +456,7 @@ async function loadSharedWorksSafe(params) {
 // 模块接口保持不变
 async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
 async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
-async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j=>/director/i.test(j))); }
-async function getOtherWorks(params) { 
-    return (await loadSharedWorksSafe(params)).filter(i => !(i.characters.length) && !(i.jobs.some(j=>/director/i.test(j)))); 
+async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j => /director/i.test(j))); }
+async function getOtherWorks(params) {
+    return (await loadSharedWorksSafe(params)).filter(i => !(i.characters.length) && !(i.jobs.some(j => /director/i.test(j))));
 }
