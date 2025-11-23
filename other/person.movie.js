@@ -386,7 +386,6 @@ async function loadPersonWorks(params) {
     const now = Date.now();
     const logger = createLogger(params?.logMode || "info");
 
-    // 如果缓存已有，直接返回固定 Promise
     if (personWorksCache.has(personKey)) {
         const entry = personWorksCache.get(personKey);
         entry.timestamp = now;
@@ -395,24 +394,24 @@ async function loadPersonWorks(params) {
 
     const promise = (async () => {
         let finalList = [];
-        try {
-            const infoStages = [];
+        const infoStages = [];
 
+        try {
             // 1. 解析人物ID
             const personId = await resolvePersonId(params.personId, params.language, params.logMode);
-            infoStages.push({ stage: "解析人物ID", data: [personId] });
+            infoStages.push({ stage: "解析人物ID", data: personId ? [personId] : [] });
             if (!personId) return [];
 
             // 2. 初始化TMDB类型缓存
             await initTmdbGenres(params.language || "zh-CN", params.logMode);
-            infoStages.push({ stage: "初始化TMDB类型缓存", data: Object.keys(tmdbGenresCache.movie).slice(0,10) });
+            infoStages.push({ stage: "初始化TMDB类型缓存", data: Object.keys(tmdbGenresCache.movie).slice(0, 10) });
 
             // 3. 抓取原始作品
             const credits = await fetchCredits(personId, params.language, params.logMode);
             let works = [...credits.cast, ...credits.crew];
             infoStages.push({ stage: "抓取原始作品", data: works.map(i => i.title || i.name || "未知") });
 
-            // 4. 标准化
+            // 4. 标准化作品
             works = works.map(i => normalizeItem(i));
             infoStages.push({ stage: "标准化作品", data: works.map(i => i.title) });
 
@@ -425,7 +424,7 @@ async function loadPersonWorks(params) {
                 infoStages.push({ stage: "上映状态过滤后作品", data: works.map(i => i.title) });
             }
 
-            // 6. 关键词/正则过滤
+            // 6. 关键词过滤
             if (params.filter?.trim()) {
                 works = filterByKeywords(works, params.filter, params.logMode);
                 infoStages.push({ stage: "关键词过滤后作品", data: works.map(i => i.title) });
@@ -435,7 +434,7 @@ async function loadPersonWorks(params) {
             finalList = formatOutput(works);
             infoStages.push({ stage: "最终返回作品", data: finalList.map(i => i.title) });
 
-            // 8. 打印 info（每个阶段一次，避免每条作品都打印）
+            // 8. 打印 info
             infoStages.forEach(stage => {
                 console.group(`INFO - ${stage.stage} (${stage.data.length})`);
                 console.table(stage.data.map((title, idx) => ({ "#": idx + 1, title })));
@@ -446,13 +445,11 @@ async function loadPersonWorks(params) {
             logger.warning("loadPersonWorks 捕获异常:", err);
         }
 
-        return finalList; // ✅ 保证最终返回值给 Widget
+        return finalList; // ✅ 最终返回给 Widget
     })();
 
-    // 缓存固定 Promise
+    // 缓存 & LRU
     personWorksCache.set(personKey, { promise, timestamp: now });
-
-    // 清理最老缓存
     if (personWorksCache.size > MAX_CACHE) {
         let oldestKey = null, oldestTime = Infinity;
         for (const [k, v] of personWorksCache.entries()) {
@@ -461,7 +458,7 @@ async function loadPersonWorks(params) {
         if (oldestKey) personWorksCache.delete(oldestKey);
     }
 
-    return await promise; // ✅ 保留返回值
+    return await promise; // ✅ 保证返回值
 }
 
 // -----------------------------
@@ -477,7 +474,7 @@ async function loadSharedWorksSafe(params) {
 }
 
 // -----------------------------
-// 模块接口保持不变
+// 模块接口
 async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
 async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
 async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j => /director/i.test(j))); }
