@@ -18,17 +18,6 @@ WidgetMetadata = {
     ]
 };
 
-// -------------------------------------------------------------
-//  增加Debounce：500ms后延迟触发搜索
-// -------------------------------------------------------------
-function debounce(fn, delay = 500) {
-    let timer = null;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-    };
-}
-
 // -----------------------------
 // 参数模板 Params
 // -----------------------------
@@ -39,11 +28,22 @@ const Params = [
         type: "input",
         description: "输入名字自动获取 TMDB 网站人物的个人 ID，失效请手动输入个人 ID",
         placeholders: [
-            { title: "张艺谋", value: "607" }, { title: "李安", value: "1614" }, { title: "周星驰", value: "57607" }, { title: "成龙", value: "18897" }, { title: "吴京", value: "78871" }, { title: "王家卫", value: "12453" }, { title: "姜文", value: "77301" }, { title: "贾樟柯", value: "24011" }, { title: "陈凯歌", value: "20640" }, { title: "徐峥", value: "118711" },
-            { title: "宁浩", value: "17295" }, { title: "黄渤", value: "128026" }, { title: "葛优", value: "76913" }, { title: "胡歌", value: "1106514" }, { title: "张译", value: "146098" }, { title: "沈腾", value: "1519026" }, { title: "王宝强", value: "71051" }, { title: "赵丽颖", value: "1260868" }, { title: "孙俪", value: "52898" }, { title: "张若昀", value: "1675905" },
-            { title: "秦昊", value: "1016315" }, { title: "易烊千玺", value: "2223265" }, { title: "王倦", value: "2467977" }, { title: "孔笙", value: "1494556" }, { title: "张国立", value: "543178" }, { title: "陈思诚", value: "1065761" }, { title: "徐克", value: "26760" }, { title: "林超贤", value: "81220" }, { title: "郭帆", value: "1100748" }, { title: "史蒂文·斯皮尔伯格", value: "488" },
-            { title: "詹姆斯·卡梅隆", value: "2710" }, { title: "克里斯托弗·诺兰", value: "525" }, { title: "阿尔弗雷德·希区柯克", value: "2636" }, { title: "斯坦利·库布里克", value: "240" }, { title: "黑泽明", value: "5026" }, { title: "莱昂纳多·迪卡普里奥", value: "6193" }, { title: "阿米尔·汗", value: "52763" }, { title: "宫崎骏", value: "608" }, { title: "蒂姆·伯顿", value: "510" }, { title: "杨紫琼", value: "1620" },
-            { title: "凯特·布兰切特", value: "112" }, { title: "丹尼尔·戴·刘易斯", value: "11856" }, { title: "宋康昊", value: "20738" }
+            { title: "张艺谋", value: "607" }, { title: "李安", value: "1614" }, { title: "周星驰", value: "57607" },
+            { title: "成龙", value: "18897" }, { title: "吴京", value: "78871" }, { title: "王家卫", value: "12453" },
+            { title: "姜文", value: "77301" }, { title: "贾樟柯", value: "24011" }, { title: "陈凯歌", value: "20640" },
+            { title: "徐峥", value: "118711" }, { title: "宁浩", value: "17295" }, { title: "黄渤", value: "128026" },
+            { title: "葛优", value: "76913" }, { title: "胡歌", value: "1106514" }, { title: "张译", value: "146098" },
+            { title: "沈腾", value: "1519026" }, { title: "王宝强", value: "71051" }, { title: "赵丽颖", value: "1260868" },
+            { title: "孙俪", value: "52898" }, { title: "张若昀", value: "1675905" }, { title: "秦昊", value: "1016315" },
+            { title: "易烊千玺", value: "2223265" }, { title: "王倦", value: "2467977" }, { title: "孔笙", value: "1494556" },
+            { title: "张国立", value: "543178" }, { title: "陈思诚", value: "1065761" }, { title: "徐克", value: "26760" },
+            { title: "林超贤", value: "81220" }, { title: "郭帆", value: "1100748" }, { title: "史蒂文·斯皮尔伯格", value: "488" },
+            { title: "詹姆斯·卡梅隆", value: "2710" }, { title: "克里斯托弗·诺兰", value: "525" },
+            { title: "阿尔弗雷德·希区柯克", value: "2636" }, { title: "斯坦利·库布里克", value: "240" },
+            { title: "黑泽明", value: "5026" }, { title: "莱昂纳多·迪卡普里奥", value: "6193" },
+            { title: "阿米尔·汗", value: "52763" }, { title: "宫崎骏", value: "608" }, { title: "蒂姆·伯顿", value: "510" },
+            { title: "杨紫琼", value: "1620" }, { title: "凯特·布兰切特", value: "112" }, { title: "丹尼尔·戴·刘易斯", value: "11856" },
+            { title: "宋康昊", value: "20738" }
         ],
         value: ""
     },
@@ -109,12 +109,26 @@ const Params = [
             { title: "调试", value: "debug" },
             { title: "警告", value: "warning" }
         ],
-        value: "info",
+        value: "info"
     }
 ];
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
+// -----------------------------
+// debounce防抖函数（500ms）
+// -----------------------------
+function debounce(fn, wait = 500) {
+    let timer = null;
+    return function(...args) {
+        if (timer) clearTimeout(timer);
+        return new Promise(resolve => {
+            timer = setTimeout(async () => {
+                resolve(await fn.apply(this, args));
+            }, wait);
+        });
+    };
+}
 
 // -----------------------------
 // 日志函数
@@ -122,9 +136,10 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 function createLogger(mode) {
     const m = mode || "info";
     return {
-        debug: (...args) => (["debug"].includes(m)) && console.log("[DEBUG]", ...args),
+        debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
         info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
-        warning: (...args) => (["debug","info","warning"].includes(m)) && console.warn("[WARN]", ...args)
+        warning: (...args) => console.warn("[WARN]", ...args),
+        notify: (...args) => console.info("[NOTIFY]", ...args)
     };
 }
 
@@ -153,9 +168,10 @@ async function initTmdbGenres(language = "zh-CN", logMode = "info") {
 }
 
 // -----------------------------
-// 人物 ID 缓存
+// 人物 ID 缓存 + 防抖
 // -----------------------------
 const personIdCache = new Map();
+
 async function resolvePersonId(personInput, language = "zh-CN", logMode = "info") {
     if (!personInput?.toString().trim()) return null;
     if (!isNaN(personInput)) return Number(personInput);
@@ -176,8 +192,11 @@ async function resolvePersonId(personInput, language = "zh-CN", logMode = "info"
     personIdCache.set(cacheKey, promise);
     return await promise;
 }
+
+const debouncedResolvePersonId = debounce(resolvePersonId, 400);
+
 async function getCachedPersonId(personInput, language, logMode) {
-    return await resolvePersonId(personInput, language, logMode);
+    return await debouncedResolvePersonId(personInput, language, logMode);
 }
 
 // -----------------------------
@@ -254,15 +273,16 @@ function formatOutput(list) {
             genreTitle: i.genre_ids.length ? getTmdbGenreTitles(i) : ""
         }));
 }
-
 // -----------------------------
-// AC + 正则过滤器
+// AC 自动机 + 正则过滤器
 // -----------------------------
 const acCache = new Map();
 const regexCache = new Map();
 const filterUnitCache = new Map();
 
-function normalizeTitleForMatch(s) { return s ? s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase() : ""; }
+function normalizeTitleForMatch(s) { 
+    return s ? s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase() : ""; 
+}
 
 class ACAutomaton {
     constructor() { this.root = { next: Object.create(null), fail: null, output: [] }; }
@@ -277,7 +297,11 @@ class ACAutomaton {
     build() {
         const q = [];
         this.root.fail = this.root;
-        for (const k of Object.keys(this.root.next)) { const n = this.root.next[k]; n.fail = this.root; q.push(n); }
+        for (const k of Object.keys(this.root.next)) {
+            const n = this.root.next[k];
+            n.fail = this.root;
+            q.push(n);
+        }
         while (q.length) {
             const node = q.shift();
             for (const ch of Object.keys(node.next)) {
@@ -304,6 +328,7 @@ class ACAutomaton {
 }
 
 function isPlainText(term) { return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
+
 function getRegex(term) { 
     if (regexCache.has(term)) return regexCache.get(term); 
     let re = null; 
@@ -339,7 +364,8 @@ function buildFilterUnit(filterStr) {
 function filterByKeywords(list, filterStr, logMode="info") {
     if (!filterStr?.trim() || !Array.isArray(list) || !list.length) return list;
     const logger = createLogger(logMode);
-    const unit = buildFilterUnit(filterStr); if (!unit) return list;
+    const unit = buildFilterUnit(filterStr); 
+    if (!unit) return list;
     const { ac, regexTerms } = unit;
     const filteredOut = [];
 
@@ -347,12 +373,18 @@ function filterByKeywords(list, filterStr, logMode="info") {
         if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
         const title = item._normalizedTitle || "";
         let excluded = ac && ac.match(title).size ? true : false;
-        if (!excluded) for (const r of regexTerms) { const re = getRegex(r); if (re?.test(title)) { excluded = true; break; } }
+        if (!excluded) {
+            for (const r of regexTerms) { 
+                const re = getRegex(r); 
+                if (re?.test(title)) { excluded = true; break; } 
+            }
+        }
         if (excluded && logMode === "debug") filteredOut.push(item);
         return !excluded;
     });
 
-    if (logMode === "debug" && filteredOut.length) logger.debug("过滤掉的作品:", filteredOut.map(i => i.title));
+    if (logMode === "debug" && filteredOut.length) 
+        logger.debug("过滤掉的作品:", filteredOut.map(i => i.title));
     return filteredList;
 }
 
@@ -373,7 +405,7 @@ async function loadPersonWorks(params) {
     }
 
     const promise = (async () => {
-        const personId = await getCachedPersonId(params.personId, params.language, params.logMode);
+        const personId = await debouncedResolvePersonId(params.personId, params.language, params.logMode);
         if (!personId) return [];
         await initTmdbGenres(params.language || "zh-CN", params.logMode);
         const credits = await fetchCredits(personId, params.language, params.logMode);
@@ -402,28 +434,21 @@ async function loadPersonWorks(params) {
 }
 
 async function loadSharedWorksSafe(params) {
-    try { return await loadPersonWorks(params); }
-    catch(err) { 
+    try { 
+        return await loadPersonWorks(params); 
+    } catch(err) { 
         const logger = createLogger(params?.logMode || "info"); 
         logger.warning("loadSharedWorksSafe 捕获异常:", err); 
         return formatOutput([], params?.logMode || "info"); 
     }
 }
+
 // -----------------------------
 // 模块接口保持不变
 // -----------------------------
-async function getAllWorks(params) { 
-    return await loadSharedWorksSafe(params); 
-}
-
-async function getActorWorks(params) { 
-    return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); 
-}
-
-async function getDirectorWorks(params) { 
-    return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j=>/director/i.test(j))); 
-}
-
+async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
+async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
+async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j=>/director/i.test(j))); }
 async function getOtherWorks(params) { 
     return (await loadSharedWorksSafe(params)).filter(i => !(i.characters.length) && !(i.jobs.some(j=>/director/i.test(j)))); 
 }
