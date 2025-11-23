@@ -116,10 +116,40 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// 全局缓存
-const MAX_CACHE = 200;
-const personWorksCache = new Map();
-const personIdCache = new Map();
+// 高级缓存管理器
+class CacheManager {
+    constructor(maxSize = 200) {
+        this.maxSize = maxSize;
+        this.cache = new Map();
+    }
+
+    async get(key) {
+        const entry = this.cache.get(key);
+        if (!entry) return null;
+        entry.ts = Date.now();
+        return await entry.value;
+    }
+
+    set(key, value) {
+        const ts = Date.now();
+        this.cache.set(key, { value, ts });
+        this._evictIfNeeded();
+    }
+
+    has(key) { return this.cache.has(key); }
+    delete(key) { this.cache.delete(key); }
+
+    _evictIfNeeded() {
+        if (this.cache.size <= this.maxSize) return;
+        const oldest = [...this.cache.entries()].reduce((acc, [k, v]) => v.ts < acc[1] ? [k, v.ts] : acc, [null, Infinity])[0];
+        if (oldest) this.cache.delete(oldest);
+    }
+}
+
+// -----------------------------
+// 缓存实例
+const personWorksCache = new CacheManager(200);
+const personIdCache = new CacheManager(200);
 const tmdbGenresCache = { movie: {}, tv: {} };
 
 // -----------------------------
@@ -135,81 +165,56 @@ function createLogger(mode) {
 }
 
 // -----------------------------
-// resolvePersonId（调试版）
-async function resolvePersonId(personInput, language = "zh-CN", logMode = "debug") {
-    const logger = createLogger(logMode);
+// resolvePersonId 防抖 + 请求复用
+const resolvePersonIdDebounceMap = new Map();
 
-    if (!personInput) {
-        logger.warning("输入为空，无法解析人物ID");
-        return null;
-    }
+async function resolvePersonIdDebounced(personInput, language = "zh-CN", logMode = "debug", delay = 250) {
+    const logger = createLogger(logMode);
+    if (!personInput?.toString().trim()) { logger.warning("输入为空或仅空白，无法解析人物ID"); return null; }
 
     const s = personInput.toString().trim();
-    if (!s) {
-        logger.warning("输入字符串为空，无法解析人物ID");
-        return null;
-    }
-
-    if (!isNaN(s)) {
-        logger.debug(`输入为数字，直接返回ID: ${s}`);
-        return Number(s);
-    }
+    if (!isNaN(s)) return Number(s);
 
     const cacheKey = `${s}_${language}`;
-    if (personIdCache.has(cacheKey)) {
-        const cached = await personIdCache.get(cacheKey);
-        if (cached) {
-            logger.debug(`缓存命中: ${s} -> ${cached}`);
-            return cached;
-        } else {
-            personIdCache.delete(cacheKey); // 清理失败缓存
+    if (personIdCache.has(cacheKey)) return await personIdCache.get(cacheKey);
+
+    if (resolvePersonIdDebounceMap.has(cacheKey)) return resolvePersonIdDebounceMap.get(cacheKey).promise;
+
+    let resolver;
+    const promise = new Promise((resolve) => { resolver = resolve; });
+
+    const timer = setTimeout(async () => {
+        try {
+            logger.info(`搜索人物ID: "${s}"`);
+            const res = await Widget.tmdb.get("search/person", { params: { query: s, language } });
+            const id = res?.results?.[0]?.id || null;
+            if (id) personIdCache.set(cacheKey, Promise.resolve(id));
+            resolver(id);
+        } catch (err) {
+            logger.warning("resolvePersonId 请求失败", err);
+            resolver(null);
+        } finally {
+            resolvePersonIdDebounceMap.delete(cacheKey);
         }
-    }
+    }, delay);
 
-    logger.info(`开始搜索人物ID: "${s}" (language=${language})`);
-    try {
-        logger.debug("TMDB 请求参数:", { query: s, language });
-
-        const res = await Widget.tmdb.get("search/person", {
-            params: { query: s, language }
-        });
-
-        logger.debug("TMDB 返回结果:", res);
-
-        if (!res || !Array.isArray(res.results) || !res.results.length) {
-            logger.warning(`未找到人物ID: "${s}"`);
-            return null;
-        }
-
-        const id = res.results[0].id;
-        personIdCache.set(cacheKey, Promise.resolve(id));
-        logger.info(`搜索人物ID完成: "${s}" -> ${id}`);
-        return id;
-    } catch (err) {
-        logger.warning("resolvePersonId 请求失败", err);
-        return null;
-    }
+    resolvePersonIdDebounceMap.set(cacheKey, { timer, promise });
+    return promise;
 }
 
 // -----------------------------
 // initTmdbGenres
 async function initTmdbGenres(language = "zh-CN", logMode = "debug") {
     const logger = createLogger(logMode);
-    if (tmdbGenresCache.movie && tmdbGenresCache.tv &&
-        Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
-        logger.info("TMDB类型缓存已存在，跳过初始化");
-        return;
-    }
+    if (Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) return;
 
-    logger.info("初始化TMDB类型缓存...");
     try {
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list", { params: { language } }),
             Widget.tmdb.get("genre/tv/list", { params: { language } })
         ]);
-        tmdbGenresCache.movie = (movieGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {});
-        tmdbGenresCache.tv = (tvGenres?.genres || []).reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {});
-        logger.info(`TMDB类型缓存完成: movie(${Object.keys(tmdbGenresCache.movie).length}), tv(${Object.keys(tmdbGenresCache.tv).length})`);
+        tmdbGenresCache.movie = Object.fromEntries((movieGenres?.genres || []).map(g => [g.id, g.name]));
+        tmdbGenresCache.tv = Object.fromEntries((tvGenres?.genres || []).map(g => [g.id, g.name]));
     } catch (err) {
         logger.warning("初始化TMDB类型失败", err);
         tmdbGenresCache.movie = {};
@@ -220,24 +225,11 @@ async function initTmdbGenres(language = "zh-CN", logMode = "debug") {
 // -----------------------------
 // fetchCredits
 async function fetchCredits(personId, language = "zh-CN", logMode = "debug") {
-    const logger = createLogger(logMode);
-    logger.info(`开始抓取人物作品 personId=${personId}`);
-
     try {
-        const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, {
-            params: { language }
-        });
-
-        const cast = Array.isArray(res?.cast) ? res.cast : [];
-        const crew = Array.isArray(res?.crew) ? res.crew : [];
-
-        const allTitles = [...cast, ...crew].map(i => i?.title || i?.name || "未知");
-        logger.info(`抓取作品完成 personId=${personId}，共抓取 ${allTitles.length} 部作品:`, allTitles);
-
-        return { cast, crew };
-
+        const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
+        return { cast: res?.cast || [], crew: res?.crew || [] };
     } catch (err) {
-        logger.warning("fetchCredits 获取作品失败", err);
+        createLogger(logMode).warning("fetchCredits 获取作品失败", err);
         return { cast: [], crew: [] };
     }
 }
@@ -245,80 +237,53 @@ async function fetchCredits(personId, language = "zh-CN", logMode = "debug") {
 // -----------------------------
 // normalizeItem
 function normalizeItem(item) {
-    if (!item || typeof item !== "object") return {
-        id: null, title: "未知", overview: "", posterPath: "", backdropPath: "",
-        mediaType: "movie", releaseDate: "", popularity: 0, rating: 0,
-        jobs: [], characters: [], genre_ids: [], _normalizedTitle: "", _genreTitleCache: {}
+    if (!item || typeof item !== "object") return { id:null,title:"未知",overview:"",posterPath:"",backdropPath:"",mediaType:"movie",releaseDate:"",popularity:0,rating:0,jobs:[],characters:[],genre_ids:[],_normalizedTitle:"",_genreTitleCache:{} };
+    const title = item.title || item.name || "未知";
+    const mediaType = item.media_type || (item.release_date ? "movie" : (item.first_air_date ? "tv" : "movie"));
+    return {
+        id: item.id || null,
+        title,
+        overview: item.overview || "",
+        posterPath: item.poster_path || "",
+        backdropPath: item.backdrop_path || "",
+        mediaType,
+        releaseDate: item.release_date || item.first_air_date || "",
+        popularity: item.popularity || 0,
+        rating: item.vote_average || 0,
+        jobs: Array.isArray(item.jobs) ? item.jobs : (item.job ? [item.job] : []),
+        characters: Array.isArray(item.characters) ? item.characters : (item.character ? [item.character] : []),
+        genre_ids: Array.isArray(item.genre_ids) ? item.genre_ids : [],
+        _normalizedTitle: title.toLowerCase(),
+        _genreTitleCache: item._genreTitleCache || {}
     };
-
-    try {
-        const title = item?.title || item?.name || "未知";
-        const mediaType =
-            item?.media_type ||
-            (item?.release_date ? "movie" : (item?.first_air_date ? "tv" : "movie"));
-
-        return {
-            id: item?.id || null,
-            title,
-            overview: item?.overview || "",
-            posterPath: item?.poster_path || "",
-            backdropPath: item?.backdrop_path || "",
-            mediaType,
-            releaseDate: item?.release_date || item?.first_air_date || "",
-            popularity: item?.popularity || 0,
-            rating: item?.vote_average || 0,
-            jobs: Array.isArray(item?.jobs) ? item.jobs : (item?.job ? [item.job] : []),
-            characters: Array.isArray(item?.characters) ? item.characters : (item?.character ? [item.character] : []),
-            genre_ids: Array.isArray(item?.genre_ids) ? item.genre_ids : [],
-            _normalizedTitle: title.toLowerCase(),
-            _genreTitleCache: item?._genreTitleCache || {}
-        };
-
-    } catch (err) {
-        return {
-            id: null, title: "未知", overview: "", posterPath: "", backdropPath: "",
-            mediaType: "movie", releaseDate: "", popularity: 0, rating: 0,
-            jobs: [], characters: [], genre_ids: [], _normalizedTitle: "", _genreTitleCache: {}
-        };
-    }
 }
 
 // -----------------------------
 // formatOutput
 function formatOutput(list) {
-    function safeTime(s) {
-        const t = Date.parse(s || "");
-        return isNaN(t) ? 0 : t;
-    }
-
-    return [...(Array.isArray(list) ? list : [])]
-        .filter(i => i && typeof i === "object")
-        .sort((a, b) => safeTime(b.releaseDate) - safeTime(a.releaseDate))
-        .map(i => {
+    const safeTime = s => { const t = Date.parse(s||""); return isNaN(t)?0:t; };
+    return (Array.isArray(list)?list:[]).filter(Boolean)
+        .sort((a,b)=>safeTime(b.releaseDate)-safeTime(a.releaseDate))
+        .map(i=>{
             const mediaType = i.mediaType || "movie";
             const genreMap = tmdbGenresCache[mediaType] || {};
-            const genreTitle = Array.isArray(i.genre_ids)
-                ? i.genre_ids.map(id => genreMap[id] || `未知类型(${id})`).join("•")
-                : "";
-
             return {
-                id: i.id,
-                type: "tmdb",
-                title: i.title || "未知",
-                description: i.overview || "",
-                releaseDate: i.releaseDate || "",
-                rating: i.rating || 0,
-                popularity: i.popularity || 0,
-                posterPath: i.posterPath || "",
-                backdropPath: i.backdropPath || "",
+                id:i.id,
+                type:"tmdb",
+                title:i.title||"未知",
+                description:i.overview||"",
+                releaseDate:i.releaseDate||"",
+                rating:i.rating||0,
+                popularity:i.popularity||0,
+                posterPath:i.posterPath||"",
+                backdropPath:i.backdropPath||"",
                 mediaType,
-                jobs: i.jobs || [],
-                characters: i.characters || [],
-                genreTitle
+                jobs:i.jobs||[],
+                characters:i.characters||[],
+                genreTitle:Array.isArray(i.genre_ids)?i.genre_ids.map(id=>genreMap[id]||`未知类型(${id})`).join("•"):""
             };
         });
 }
-
 
 // -----------------------------
 // AC 自动机 + 正则过滤器
@@ -326,190 +291,57 @@ const acCache = new Map();
 const regexCache = new Map();
 const filterUnitCache = new Map();
 function normalizeTitleForMatch(s) { return s ? s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase() : ""; }
-
 class ACAutomaton {
     constructor() { this.root = { next: Object.create(null), fail: null, output: [] }; }
-    insert(word) {
-        let node = this.root;
-        for (const ch of word) {
-            if (!node.next[ch]) node.next[ch] = { next: Object.create(null), fail: null, output: [] };
-            node = node.next[ch];
-        }
-        node.output.push(word);
-    }
-    build() {
-        const q = [];
-        this.root.fail = this.root;
-        for (const k of Object.keys(this.root.next)) {
-            const n = this.root.next[k];
-            n.fail = this.root;
-            q.push(n);
-        }
-        while (q.length) {
-            const node = q.shift();
-            for (const ch of Object.keys(node.next)) {
-                const child = node.next[ch];
-                let f = node.fail;
-                while (f !== this.root && !f.next[ch]) f = f.fail;
-                child.fail = f.next[ch] || this.root;
-                child.output = child.output.concat(child.fail.output);
-                q.push(child);
-            }
-        }
-    }
-    match(text) {
-        const found = new Set();
-        if (!text) return found;
-        let node = this.root;
-        for (const ch of text) {
-            while (node !== this.root && !node.next[ch]) node = node.fail;
-            node = node.next[ch] || this.root;
-            node.output.forEach(w => found.add(w));
-        }
-        return found;
-    }
+    insert(word) { let node = this.root; for (const ch of word) { if (!node.next[ch]) node.next[ch] = { next: Object.create(null), fail: null, output: [] }; node = node.next[ch]; } node.output.push(word); }
+    build() { const q=[]; this.root.fail=this.root; for(const k of Object.keys(this.root.next)){const n=this.root.next[k]; n.fail=this.root; q.push(n);} while(q.length){const node=q.shift(); for(const ch of Object.keys(node.next)){const child=node.next[ch]; let f=node.fail; while(f!==this.root&&!f.next[ch])f=f.fail; child.fail=f.next[ch]||this.root; child.output=child.output.concat(child.fail.output); q.push(child);}} }
+    match(text){const found=new Set(); if(!text) return found; let node=this.root; for(const ch of text){while(node!==this.root&&!node.next[ch]) node=node.fail; node=node.next[ch]||this.root; node.output.forEach(w=>found.add(w)); } return found; }
 }
-function isPlainText(term) { return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
-function getRegex(term) {
-    if (regexCache.has(term)) return regexCache.get(term);
-    let re = null;
-    try { re = new RegExp(term, 'i'); } catch (e) { re = null; }
-    regexCache.set(term, re);
-    return re;
-}
-function buildFilterUnit(filterStr) {
-    if (!filterStr?.trim()) return null;
-    if (filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr);
-    const terms = filterStr.split(/\s*\|\|?\s*/).map(t => t.trim()).filter(Boolean);
-    const plainTerms = [], regexTerms = [];
-    for (const t of terms) { if (isPlainText(t)) plainTerms.push(t); else regexTerms.push(t); }
-    let ac = null;
-    if (plainTerms.length) {
-        const normalizedPlain = plainTerms.map(p => p.normalize('NFC').toLowerCase());
-        const key = normalizedPlain.slice().sort().join("\u0001");
-        if (acCache.has(key)) ac = acCache.get(key);
-        else {
-            ac = new ACAutomaton();
-            normalizedPlain.forEach(p => ac.insert(p));
-            ac.build();
-            acCache.set(key, ac);
-        }
-    }
-    const unit = { ac, regexTerms };
-    filterUnitCache.set(filterStr, unit);
-    return unit;
-}
-function filterByKeywords(list, filterStr, logMode="info") {
-    if (!filterStr?.trim() || !Array.isArray(list) || !list.length) return list;
-    const logger = createLogger(logMode);
-    const unit = buildFilterUnit(filterStr); if (!unit) return list;
-    const { ac, regexTerms } = unit;
-    const filteredOut = [];
-    const filteredList = list.filter(item => {
-        try {
-            if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
-            const title = item._normalizedTitle || "";
-            let excluded = false;
-            if (ac && ac.match(title).size) excluded = true;
-            if (!excluded) {
-                for (const r of regexTerms) {
-                    const re = getRegex(r);
-                    if (re?.test(title)) { excluded = true; break; }
-                }
-            }
-            if (excluded && logMode === "debug") filteredOut.push(item);
-            return !excluded;
-        } catch (err) { return true; }
-    });
-    if (logMode === "debug" && filteredOut.length) logger.debug("过滤掉的作品:", filteredOut.map(i => i.title));
-    return filteredList;
-}
+function isPlainText(term){ return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); }
+function getRegex(term){ if(regexCache.has(term)) return regexCache.get(term); let re=null; try{re=new RegExp(term,'i');}catch(e){re=null;} regexCache.set(term,re); return re; }
+function buildFilterUnit(filterStr){ if(!filterStr?.trim()) return null; if(filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr); const terms=filterStr.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean); const plainTerms=[],regexTerms=[]; for(const t of terms){isPlainText(t)?plainTerms.push(t):regexTerms.push(t);} let ac=null; if(plainTerms.length){const normalizedPlain=plainTerms.map(p=>p.normalize('NFC').toLowerCase()); const key=normalizedPlain.slice().sort().join("\u0001"); if(acCache.has(key)) ac=acCache.get(key); else{ac=new ACAutomaton(); normalizedPlain.forEach(p=>ac.insert(p)); ac.build(); acCache.set(key,ac);}} const unit={ac,regexTerms}; filterUnitCache.set(filterStr,unit); return unit;}
+function filterByKeywords(list,filterStr,logMode="info"){if(!filterStr?.trim()||!Array.isArray(list)||!list.length)return list; const logger=createLogger(logMode); const unit=buildFilterUnit(filterStr); if(!unit)return list; const {ac,regexTerms}=unit; const filteredOut=[]; const filteredList=list.filter(item=>{try{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||""); const title=item._normalizedTitle; let excluded=false; if(ac&&ac.match(title).size) excluded=true; if(!excluded){for(const r of regexTerms){const re=getRegex(r); if(re?.test(title)){excluded=true; break;}}} if(excluded&&logMode==="debug") filteredOut.push(item); return !excluded;}catch(err){return true;}}); if(logMode==="debug"&&filteredOut.length) logger.debug("过滤掉的作品:",filteredOut.map(i=>i.title)); return filteredList;}
 
+// -----------------------------
 // loadPersonWorks
 async function loadPersonWorks(params) {
-    const logger = createLogger(params?.logMode || "debug");
-    const personKey = `${params.personId}_${params.language || "zh-CN"}`;
-    const now = Date.now();
+    const logger = createLogger(params.logMode);
+    if (!params.personId) { logger.warning("没有输入人物ID"); return []; }
 
-    if (personWorksCache.has(personKey)) {
-        const entry = personWorksCache.get(personKey);
-        entry.timestamp = now;
-        logger.info(`作品缓存命中: ${personKey}`);
-        return await entry.promise;
+    await initTmdbGenres(params.language, params.logMode);
+    logger.info("阶段[解析人物ID]开始...");
+    const personId = await resolvePersonIdDebounced(params.personId, params.language, params.logMode);
+    if (!personId) return [];
+    logger.info(`阶段[解析人物ID]完成: personId=${personId}`);
+
+    if (personWorksCache.has(personId)) {
+        logger.info("命中人物作品缓存");
+        return personWorksCache.get(personId);
     }
 
-    const promise = (async () => {
-        let finalList = [];
-        try {
-            logger.info("阶段[解析人物ID]开始...");
-            const personId = await resolvePersonId(params.personId, params.language, params.logMode);
-            if (!personId) {
-                logger.info("未解析出人物ID，返回空数组");
-                return [];
-            }
-            logger.info(`阶段[解析人物ID]完成: personId=${personId}`);
+    logger.info("阶段[获取人物作品]开始...");
+    const { cast, crew } = await fetchCredits(personId, params.language, params.logMode);
+    const allWorks = [...cast.map(i => normalizeItem(i)), ...crew.map(i => normalizeItem(i))];
 
-            logger.info("阶段[初始化类型缓存]开始...");
-            await initTmdbGenres(params.language || "zh-CN", params.logMode);
-            logger.info("阶段[初始化类型缓存]完成");
+    const filteredWorks = filterByKeywords(allWorks, params.filter, params.logMode);
+    personWorksCache.set(personId, Promise.resolve(filteredWorks));
+    logger.info("阶段[获取人物作品]完成");
 
-            logger.info("阶段[抓取作品]开始...");
-            const credits = await fetchCredits(personId, params.language, params.logMode);
-            let works = [...credits.cast, ...credits.crew].map(normalizeItem);
-            logger.info(`阶段[标准化作品]完成，共 ${works.length} 部作品`);
-
-            if (params.type && params.type !== "all") {
-                logger.info(`阶段[上映状态过滤]开始，类型=${params.type}`);
-                const nowDate = new Date();
-                works = works.filter(i => {
-                    if (!i.releaseDate) return false;
-                    const t = Date.parse(i.releaseDate);
-                    if (isNaN(t)) return false;
-                    return (params.type === "released") ? (new Date(t) <= nowDate) : (new Date(t) > nowDate);
-                });
-                logger.info(`阶段[上映状态过滤]完成，共 ${works.length} 部作品`);
-            }
-
-            // AC+关键词过滤可以保留或略去
-            // if (params.filter?.trim()) works = filterByKeywords(works, params.filter, params.logMode);
-
-            finalList = formatOutput(works);
-            logger.info(`阶段[最终返回作品]完成，共 ${finalList.length} 部作品`);
-
-        } catch (err) {
-            logger.warning("loadPersonWorks 捕获异常:", err);
-        }
-        return finalList;
-    })();
-
-    personWorksCache.set(personKey, { promise, timestamp: now });
-
-    if (personWorksCache.size > MAX_CACHE) {
-        let oldestKey = null, oldestTime = Infinity;
-        for (const [k, v] of personWorksCache.entries()) {
-            if (v.timestamp < oldestTime) { oldestKey = k; oldestTime = v.timestamp; }
-        }
-        if (oldestKey) personWorksCache.delete(oldestKey);
-    }
-
-    return await promise;
+    return filteredWorks;
 }
 
 // -----------------------------
-// 安全包装
-async function loadSharedWorksSafe(params) {
-    try {
-        return await loadPersonWorks(params);
-    } catch (err) {
-        const logger = createLogger(params?.logMode || "debug");
-        logger.warning("loadSharedWorksSafe 捕获异常:", err);
-        return formatOutput([]);
-    }
+// 导出接口
+async function getAllWorks(params) { return loadPersonWorks(params); }
+async function getActorWorks(params) {
+    const works = await loadPersonWorks(params);
+    return works.filter(w => w.jobs.length === 0 || w.characters.length > 0);
 }
-
-// -----------------------------
-// 模块接口
-async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
-async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
-async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j => /director/i.test(j))); }
-async function getOtherWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => !(i.characters.length) && !(i.jobs.some(j => /director/i.test(j)))); }
+async function getDirectorWorks(params) {
+    const works = await loadPersonWorks(params);
+    return works.filter(w => w.jobs.includes("Director"));
+}
+async function getOtherWorks(params) {
+    const works = await loadPersonWorks(params);
+    return works.filter(w => w.jobs.length > 0 && !w.jobs.includes("Director"));
+}
