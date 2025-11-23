@@ -18,6 +18,17 @@ WidgetMetadata = {
     ]
 };
 
+// -------------------------------------------------------------
+//  增加Debounce：500ms后延迟触发搜索
+// -------------------------------------------------------------
+function debounce(fn, delay = 500) {
+    let timer = null;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
+}
+
 // -----------------------------
 // 参数模板 Params
 // -----------------------------
@@ -103,24 +114,6 @@ const Params = [
 ];
 
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
-// -----------------------------
-// Widget Metadata & Params
-// -----------------------------
-WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
-
-// -----------------------------
-// 日志函数
-// -----------------------------
-function createLogger(mode) {
-    const m = mode || "info";
-    return {
-        debug: (...args) => (m === "debug") && console.log("[DEBUG]", ...args),
-        info: (...args) => (["debug","info"].includes(m)) && console.log("[INFO]", ...args),
-        warning: (...args) => console.warn("[WARN]", ...args),
-        notify: (...args) => console.info("[NOTIFY]", ...args)
-    };
-}
-
 // -----------------------------
 // TMDB 类型缓存
 // -----------------------------
@@ -402,13 +395,21 @@ async function loadSharedWorksSafe(params) {
         return formatOutput([], params?.logMode || "info"); 
     }
 }
-
 // -----------------------------
 // 模块接口保持不变
 // -----------------------------
-async function getAllWorks(params) { return await loadSharedWorksSafe(params); }
-async function getActorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); }
-async function getDirectorWorks(params) { return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j=>/director/i.test(j))); }
+async function getAllWorks(params) { 
+    return await loadSharedWorksSafe(params); 
+}
+
+async function getActorWorks(params) { 
+    return (await loadSharedWorksSafe(params)).filter(i => i.characters.length); 
+}
+
+async function getDirectorWorks(params) { 
+    return (await loadSharedWorksSafe(params)).filter(i => i.jobs.some(j=>/director/i.test(j))); 
+}
+
 async function getOtherWorks(params) { 
     return (await loadSharedWorksSafe(params)).filter(i => !(i.characters.length) && !(i.jobs.some(j=>/director/i.test(j)))); 
 }
