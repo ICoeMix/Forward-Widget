@@ -159,9 +159,9 @@ function createLogger(mode) {
 }
 
 // -----------------------------
-// resolvePersonId 防抖 + 请求复用
-const resolvePersonIdDebounceMap = new Map();
-async function resolvePersonIdDebounced(personInput, language = "zh-CN", logMode = "debug", delay = 250) {
+// resolvePersonId 安全版本（替代防抖）
+const resolvePersonIdPending = new Map();
+async function resolvePersonIdSafe(personInput, language = "zh-CN", logMode = "debug") {
     const logger = createLogger(logMode);
     if (!personInput?.toString().trim()) { 
         logger.warning("输入为空或仅空白，无法解析人物ID"); 
@@ -174,30 +174,27 @@ async function resolvePersonIdDebounced(personInput, language = "zh-CN", logMode
     const cacheKey = `${s}_${language}`;
     if (personIdCache.has(cacheKey)) return await personIdCache.get(cacheKey);
 
-    if (resolvePersonIdDebounceMap.has(cacheKey)) {
-        return resolvePersonIdDebounceMap.get(cacheKey).promise;
+    if (resolvePersonIdPending.has(cacheKey)) {
+        return await resolvePersonIdPending.get(cacheKey);
     }
 
-    let resolver;
-    const promise = new Promise((resolve) => { resolver = resolve; });
-
-    const timer = setTimeout(async () => {
+    const promise = (async () => {
         try {
             logger.info(`搜索人物ID: "${s}"`);
             const res = await Widget.tmdb.get("search/person", { params: { query: s, language } });
             const id = res?.results?.[0]?.id || null;
             if (id) personIdCache.set(cacheKey, Promise.resolve(id));
-            resolver(id);
+            return id;
         } catch (err) {
             logger.warning("resolvePersonId 请求失败", err);
-            resolver(null);
+            return null;
         } finally {
-            resolvePersonIdDebounceMap.delete(cacheKey);
+            resolvePersonIdPending.delete(cacheKey);
         }
-    }, delay);
+    })();
 
-    resolvePersonIdDebounceMap.set(cacheKey, { timer, promise });
-    return promise;
+    resolvePersonIdPending.set(cacheKey, promise);
+    return await promise;
 }
 
 // -----------------------------
@@ -301,14 +298,14 @@ function buildFilterUnit(filterStr){ if(!filterStr?.trim()) return null; if(filt
 function filterByKeywords(list,filterStr,logMode="info"){if(!filterStr?.trim()||!Array.isArray(list)||!list.length)return list; const logger=createLogger(logMode); const unit=buildFilterUnit(filterStr); if(!unit)return list; const {ac,regexTerms}=unit; const filteredOut=[]; const filteredList=list.filter(item=>{try{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||""); const title=item._normalizedTitle; let excluded=false; if(ac&&ac.match(title).size) excluded=true; if(!excluded){for(const r of regexTerms){const re=getRegex(r); if(re?.test(title)){excluded=true; break;}}} if(excluded&&logMode==="debug") filteredOut.push(item); return !excluded;}catch(err){return true;}}); if(logMode==="debug"&&filteredOut.length) logger.debug("过滤掉的作品:",filteredOut.map(i=>i.title)); return filteredList;}
 
 // -----------------------------
-// loadPersonWorks（修复 await + 防抖）
+// loadPersonWorks（使用 resolvePersonIdSafe）
 async function loadPersonWorks(params) {
     const logger = createLogger(params.logMode);
     if (!params.personId) { logger.warning("没有输入人物ID"); return []; }
 
     await initTmdbGenres(params.language, params.logMode);
     logger.info("阶段[解析人物ID]开始...");
-    const personId = await resolvePersonIdDebounced(params.personId, params.language, params.logMode);
+    const personId = await resolvePersonIdSafe(params.personId, params.language, params.logMode);
     if (!personId) return [];
     logger.info(`阶段[解析人物ID]完成: personId=${personId}`);
 
