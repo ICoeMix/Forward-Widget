@@ -401,96 +401,20 @@ async function loadPersonWorks(params) {
 }
 
 // -----------------------------
-// loadSharedWorksSafe
-// -----------------------------
-async function loadSharedWorksSafe(params) {
-    setLoggerMode(params.logMode);
-    try {
-        const r = await loadPersonWorks({ ...params });
-        return Array.isArray(r) ? r : [];
-    } catch (err) {
-        logger.warn("loadSharedWorksSafe 捕获异常:", err);
-        return [];
-    }
-}
-
-
-// -----------------------------
-// getWorks（单行紧凑，可用）
-const getWorks = (params, filterFn) => 
-    loadSharedWorksSafe({...params}).then(r => Array.isArray(r) ? r.filter(i => i && filterFn(i)) : []);
-
-// -----------------------------
-// 独立防抖 getAllWorks
-let lastController = null; // 保存上一次请求的控制器
-async function getAllWorks(params) {
-    // 如果上一次请求还在，提前取消
-    if (lastController) lastController.abort();
-
-    // 创建新的控制器
-    const controller = new AbortController();
-    lastController = controller;
-
-    // 把 signal 传入 params，保证 loadPersonWorks 可以取消
-    const p = {...params, signal: controller.signal};
-
-    try {
-        const result = await getWorks(p, () => true);
-        // 请求完成后清空控制器
-        if (lastController === controller) lastController = null;
-        return result;
-    } catch (err) {
-        if (err.name === "AbortError") return []; // 请求被取消返回空数组
-        throw err;
+// 安全包装
+async function loadSharedWorksSafe(params){
+    try{
+        return await loadPersonWorks(params);
+    }catch(err){
+        const logger = createLogger(params?.logMode || "info");
+        logger.warning("loadSharedWorksSafe 捕获异常:", err);
+        return formatOutput([]);
     }
 }
 
 // -----------------------------
-// 其他接口也同理
-let lastActorController = null;
-async function getActorWorks(params) {
-    if (lastActorController) lastActorController.abort();
-    const controller = new AbortController();
-    lastActorController = controller;
-    const p = {...params, signal: controller.signal};
-    try {
-        const result = await getWorks(p, w => w.characters.length);
-        if (lastActorController === controller) lastActorController = null;
-        return result;
-    } catch (err) {
-        if (err.name === "AbortError") return [];
-        throw err;
-    }
-}
-
-let lastDirectorController = null;
-async function getDirectorWorks(params) {
-    if (lastDirectorController) lastDirectorController.abort();
-    const controller = new AbortController();
-    lastDirectorController = controller;
-    const p = {...params, signal: controller.signal};
-    try {
-        const result = await getWorks(p, w => w.jobs.some(j => /director/i.test(j)));
-        if (lastDirectorController === controller) lastDirectorController = null;
-        return result;
-    } catch (err) {
-        if (err.name === "AbortError") return [];
-        throw err;
-    }
-}
-
-let lastOtherController = null;
-async function getOtherWorks(params) {
-    if (lastOtherController) lastOtherController.abort();
-    const controller = new AbortController();
-    lastOtherController = controller;
-    const p = {...params, signal: controller.signal};
-    try {
-        const result = await getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j)));
-        if (lastOtherController === controller) lastOtherController = null;
-        return result;
-    } catch (err) {
-        if (err.name === "AbortError") return [];
-        throw err;
-    }
-}
+// 模块接口
+async function getAllWorks(params){ return await loadSharedWorksSafe(params); }
+async function getActorWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>i.characters.length); }
+async function getDirectorWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>i.jobs.some(j=>/director/i.test(j))); }
+async function getOtherWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>!(i.characters.length) && !(i.jobs.some(j=>/director/i.test(j)))); }
