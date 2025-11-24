@@ -492,6 +492,8 @@ const DynamicDataProcessor = (() => {
             return score;
         }
 
+        await initTmdbGenres(); // 在任何 TMDB 查询之前
+        
         // ==================== TMDB 查询 ====================
         static async searchTmdb(originalTitle, chineseTitle, year) {
             const cacheKey = `${originalTitle || ''}-${chineseTitle || ''}-${year || ''}`;
