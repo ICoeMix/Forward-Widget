@@ -418,9 +418,40 @@ async function loadSharedWorksSafe(params) {
 // getWorks（单行紧凑，但可用）
 const getWorks = (params, filterFn) => 
     loadSharedWorksSafe({...params}).then(r => Array.isArray(r) ? r.filter(i => i && filterFn(i)) : []);
+// -----------------------------
+// 最优防抖 + 自动取消（可用）
+const createDebounced = (fn, delay = 500) => {
+    let timer = null, controller = null;
+    return (...args) => new Promise((resolve, reject) => {
+        const params = args[0] || {};
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(async () => {
+            if (controller) controller.abort(); // 取消上一次请求
+            controller = new AbortController();
+            params.signal = controller.signal;
+            try {
+                const result = await fn(params);
+                resolve(result);
+            } catch (err) {
+                if (err.name === "AbortError") resolve([]); // 请求取消返回空数组
+                else reject(err);
+            }
+        }, delay);
+    });
+};
 
+// -----------------------------
+// 原有四个接口保持不变
 async function getAllWorks(params) { return getWorks(params, () => true); }
 async function getActorWorks(params) { return getWorks(params, w => w.characters.length); }
 async function getDirectorWorks(params) { return getWorks(params, w => w.jobs.some(j => /director/i.test(j))); }
 async function getOtherWorks(params) { return getWorks(params, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))); }
+
+// -----------------------------
+// 防抖接口版本（UI 调用这个）
+const debouncedGetAllWorks = createDebounced(getAllWorks, 500);
+const debouncedGetActorWorks = createDebounced(getActorWorks, 500);
+const debouncedGetDirectorWorks = createDebounced(getDirectorWorks, 500);
+const debouncedGetOtherWorks = createDebounced(getOtherWorks, 500);
+
 
