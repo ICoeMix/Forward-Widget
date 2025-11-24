@@ -389,18 +389,18 @@ async function loadPersonWorks(params){
     // -----------------------------
     // debug 输出
     if(debugMode){
-        logger.debug("===== 调用条件 =====");
         logger.debug("上映状态 type:", type);
         logger.debug("关键词 filter:", filter);
         logger.debug("排序 sort_by:", sort_by);
         if(debugInfo.filteredOutTitles.length){
             logger.debug("被过滤掉的作品:", [...new Set(debugInfo.filteredOutTitles)]);
         }
-        // 打印每条作品的 mediaType / genre_ids / genreTitle
-        finalList.forEach(i=>{
-            logger.debug(`[作品] title: ${i.title}, mediaType: ${i.mediaType}, genre_ids: ${i.genre_ids}, genreTitle: ${i.genreTitle}`);
-        });
-    
+        const isCacheEmpty = !Object.keys(tmdbGenresCache.movie || {}).length && !Object.keys(tmdbGenresCache.tv || {}).length;
+        if(isCacheEmpty){
+        console.warn("[WARN] tmdbGenresCache 为空，可能没有正确初始化！");
+    }
+        console.warn("[WARN] 当前 tmdbGenresCache:");
+        console.log(JSON.stringify(tmdbGenresCache, null, 2));
         logger.debug("最终返回数据:", finalList.map(i=>i.title));
     }
 
