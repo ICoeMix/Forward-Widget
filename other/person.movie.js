@@ -8,7 +8,7 @@ WidgetMetadata = {
     requiredVersion: "0.0.1",
     description: "获取 TMDB 人物作品",
     author: "ICoeMix (Optimized by ChatGPT)",
-    site: "https://github.com/ICoeMix/ForwardWidgets",
+    site: "https://github.com/ICoeMix/Forward-Widget",
     cacheDuration: 172800,
     modules: [
         { id: "allWorks", title: "全部作品", functionName: "getAllWorks", cacheDuration: 172800 },
