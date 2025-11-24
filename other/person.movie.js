@@ -422,18 +422,27 @@ async function loadSharedWorksSafe(params){
 
 
 
-// -----------------------------
-// -----------------------------
-// getWorks 统一接口
-async function getWorks(params, filterFn){ setLoggerMode(params.logMode); return (await loadSharedWorksSafe(params)).filter(filterFn); }
+// -------------------------------------------------------------
+// getWorks（单行紧凑）
+// -------------------------------------------------------------
+const getWorks=(p,f)=>{setLoggerMode(p.logMode);return loadSharedWorksSafe(p).then(r=>r.filter(f));};
 
-// -----------------------------
-// 最优防抖 + 自动取消（紧凑单行）
-const createDebounced=(fn,d=300000)=>{let t=null,c=null,l;return (...a)=>new Promise((r,j)=>{l=a[0];if(t)clearTimeout(t);t=setTimeout(async()=>{if(c)c.abort();c=new AbortController();l.signal=c.signal;try{r(await fn(l))}catch(e){e.name==="AbortError"?r([]):j(e)}},d)})};
+// -------------------------------------------------------------
+// createSmartDebounce（最优防抖 + 自动取消 + 紧凑单行）
+// -------------------------------------------------------------
+const createSmartDebounce=(fn,d=500)=>{let t=null,c=null;const run=(p,i)=>new Promise((r,j)=>{if(i){if(c)c.abort();c=new AbortController();p.signal=c.signal;fn(p).then(r).catch(j);return;}if(t)clearTimeout(t);t=setTimeout(()=>{if(c)c.abort();c=new AbortController();p.signal=c.signal;fn(p).then(r).catch(j);},d)});return{manual:p=>run(p,0),choice:p=>run(p,1)}};
 
-// -----------------------------
-// 防抖模块接口（UI 直接调用）
-const debouncedGetAllWorks = createDebounced(params=>getWorks(params, ()=>true),300000);
-const debouncedGetActorWorks = createDebounced(params=>getWorks(params, i=>i.characters.length),3000000);
-const debouncedGetDirectorWorks = createDebounced(params=>getWorks(params, i=>i.jobs.some(j=>/director/i.test(j))),3000000);
-const debouncedGetOtherWorks = createDebounced(params=>getWorks(params, i=>!i.characters.length && !i.jobs.some(j=>/director/i.test(j))),3000000);
+// -------------------------------------------------------------
+// 四类防抖接口（全部单行紧凑）
+// -------------------------------------------------------------
+const debounced={
+    all:createSmartDebounce(p=>getWorks(p,()=>true)),
+    actor:createSmartDebounce(p=>getWorks(p,i=>i.characters.length)),
+    director:createSmartDebounce(p=>getWorks(p,i=>i.jobs.some(j=>/director/i.test(j)))),
+    other:createSmartDebounce(p=>getWorks(p,i=>!i.characters.length&&!i.jobs.some(j=>/director/i.test(j))))
+};
+
+// -------------------------------------------------------------
+// 模块导出接口（单行）
+// -------------------------------------------------------------
+const getDebouncedWorks=t=>debounced[t];
