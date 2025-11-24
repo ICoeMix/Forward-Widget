@@ -116,7 +116,7 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// logger
+// Logger 安全实例
 const LoggerLevels = { debug: 0, info: 1, warn: 2, notify: 3 };
 const logger = {
     level: LoggerLevels.info,
@@ -129,6 +129,8 @@ const logger = {
     notify(...args) { if (this.level <= LoggerLevels.notify) console.info("[NOTIFY]", ...args); }
 };
 
+// -----------------------------
+// 根据 logMode 设置全局 logger
 function setLoggerMode(logMode) {
     switch(logMode){
         case "debug": logger.setLevel("debug"); break;
@@ -309,16 +311,19 @@ const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.le
 // -----------------------------
 // 核心加载流程
 async function loadPersonWorks(params){
+    setLoggerMode(params.logMode);
+
     const language = params.language || "zh-CN";
     const type = params.type || "all";
     const filter = params.filter || "";
     const sort_by = params.sort_by || "";
-    const debugMode = params.logMode === "debug";
+    const debugMode = logger.level === LoggerLevels.debug;
     const debugInfo = { filteredOutTitles: [] };
     const personKey = `${params.personId}_${language}`;
 
+    // 获取缓存或请求
     let works = await personWorksCache.getOrSet(personKey, async ()=>{
-        const personId = await resolvePersonIdSafe(params.personId, language, params.logMode);
+        const personId = await resolvePersonIdSafe(params.personId, language);
         if(!personId) return [];
 
         await initTmdbGenres(language);
@@ -328,6 +333,7 @@ async function loadPersonWorks(params){
         return credits;
     });
 
+    // 上映状态过滤
     const nowDate = new Date();
     works = filterWithDebug(works, w => {
         if(type === "all") return true;
@@ -335,12 +341,14 @@ async function loadPersonWorks(params){
         return type === "released" ? isReleased : !isReleased;
     }, debugInfo);
 
+    // 关键词过滤
     if(filter.trim()){
         const { filtered, filteredOut } = filterByKeywords(works, filter);
         works = filtered;
         if(debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
     }
 
+    // 排序
     if(sort_by){
         const [field, order] = sort_by.split('.');
         works.sort((a,b)=>{
@@ -351,8 +359,10 @@ async function loadPersonWorks(params){
         if(debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
     }
 
+    // 格式化输出
     const finalList = formatOutput(works);
 
+    // debug 输出
     if(debugMode){
         logger.debug("===== 调用条件 =====");
         logger.debug("上映状态 type:", type);
@@ -381,11 +391,14 @@ async function loadSharedWorksSafe(params){
 }
 
 // -----------------------------
-// 模块接口
+// getWorks 统一接口
 async function getWorks(params, filterFn){ 
     setLoggerMode(params.logMode);
     return (await loadSharedWorksSafe(params)).filter(filterFn);
 }
+
+// -----------------------------
+// 模块接口
 async function getAllWorks(params){ return await getWorks(params, ()=>true); }
 getActorWorks = params => getWorks(params, i => i.characters.length);
 getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
