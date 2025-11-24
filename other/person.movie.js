@@ -414,41 +414,48 @@ async function loadSharedWorksSafe(params) {
     }
 }
 
-
 // -----------------------------
-// getWorks（内部使用，过滤函数可选）
-// -----------------------------
+// getWorks（内部使用）
 const getWorks = (params, filterFn) =>
     loadSharedWorksSafe({ ...params }).then(r => Array.isArray(r) ? r.filter(i => i && filterFn(i)) : []);
 
 // -----------------------------
-// 最优防抖 + 自动取消
-// -----------------------------
-const createDebounced = (fn, delay = 500) => {
+// 防抖工具函数（内部使用）
+const createDebouncedFn = (fn, delay = 500) => {
     let timer = null, controller = null;
-    return (params = {}) => new Promise((resolve, reject) => {
+    return async function(params) {
         if (timer) clearTimeout(timer);
-        timer = setTimeout(async () => {
-            if (controller) controller.abort();
-            controller = new AbortController();
-            params.signal = controller.signal;
-            try {
-                const result = await fn(params);
-                resolve(result);
-            } catch (err) {
-                if (err.name === "AbortError") resolve([]);
-                else reject(err);
-            }
-        }, delay);
-    });
+        return new Promise((resolve, reject) => {
+            timer = setTimeout(async () => {
+                if (controller) controller.abort();
+                controller = new AbortController();
+                params.signal = controller.signal;
+                try {
+                    const result = await fn(params);
+                    resolve(result);
+                } catch (err) {
+                    if (err.name === "AbortError") resolve([]);
+                    else reject(err);
+                }
+            }, delay);
+        });
+    };
 };
 
 // -----------------------------
-// 防抖接口（UI 调用这个即可）
-// -----------------------------
-const debouncedGetAllWorks = createDebounced(p => getWorks(p, () => true), 500);
-const debouncedGetActorWorks = createDebounced(p => getWorks(p, w => w.characters.length), 500);
-const debouncedGetDirectorWorks = createDebounced(p => getWorks(p, w => w.jobs.some(j => /director/i.test(j))), 500);
-const debouncedGetOtherWorks = createDebounced(p => getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))), 500);
+// 四个接口（UI 调用的形式必须是 async function）
+async function getAllWorks(params) { 
+    return await createDebouncedFn(p => getWorks(p, () => true))(params);
+}
 
+async function getActorWorks(params) { 
+    return await createDebouncedFn(p => getWorks(p, w => w.characters.length))(params);
+}
 
+async function getDirectorWorks(params) { 
+    return await createDebouncedFn(p => getWorks(p, w => w.jobs.some(j => /director/i.test(j))))(params);
+}
+
+async function getOtherWorks(params) { 
+    return await createDebouncedFn(p => getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))))(params);
+}
