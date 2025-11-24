@@ -436,8 +436,15 @@ getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.
 
 // 防抖机制
 
-function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) {
+function initWidgetInputsSmart(inputsConfig, baseParams = {}, debounceMs = 3000) {
     const inputStates = {};
+
+    // 判断当前值是否使用了 placeholders
+    function isUsingPlaceholder(inputName, value) {
+        const cfg = inputsConfig.find(c => c.inputName === inputName);
+        if (!cfg || !cfg.placeholders) return false;
+        return cfg.placeholders.some(p => p.value === value);
+    }
 
     function batchRender() {
         inputsConfig.forEach(({ inputName, renderFn }) => {
@@ -448,17 +455,16 @@ function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) 
         });
     }
 
-    async function handleInputChange(inputName, value, triggerLinked = true) {
-        const state = inputStates[inputName] || (inputStates[inputName] = { 
-            controller: null, 
-            timer: null, 
-            latestResults: null, 
-            value: null, 
-            lastRequestId: 0 
+    async function handleInputChange(inputName, value, { triggerLinked = true, immediate = false } = {}) {
+        const state = inputStates[inputName] || (inputStates[inputName] = {
+            controller: null, timer: null, latestResults: null, value: null, lastRequestId: 0
         });
 
-        // 清理防抖定时器
-        clearTimeout(state.timer);
+        // 清理旧定时器
+        if (state.timer) {
+            clearTimeout(state.timer);
+            state.timer = null;
+        }
 
         // personId 改变时取消 filter 定时器和请求
         if (inputName === "personId") {
@@ -470,8 +476,7 @@ function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) 
             }
         }
 
-        // 设置防抖定时器
-        state.timer = setTimeout(async () => {
+        const runSearch = async () => {
             state.lastRequestId++;
             const requestId = state.lastRequestId;
 
@@ -484,7 +489,6 @@ function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) 
                 let debugFilteredOut = [];
 
                 if (inputName === "filter") {
-                    // filter 异步处理
                     const personState = inputStates["personId"];
                     const baseResults = personState?.latestResults || [];
                     const { filtered, filteredOut } = filterByKeywords(baseResults, value);
@@ -507,7 +511,7 @@ function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) 
 
                     // debug 输出
                     if (baseParams.logMode === "debug" && debugFilteredOut.length) {
-                        console.debug(`[DEBUG] [${inputName}] 被过滤的作品:`, debugFilteredOut);
+                        console.debug(`[DEBUG] [${inputName}] 被过滤作品:`, debugFilteredOut);
                     }
 
                     // 联动更新
@@ -516,7 +520,7 @@ function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) 
                         if (cfg?.linkedInputs?.length) {
                             cfg.linkedInputs.forEach(linkName => {
                                 const linkedEl = document.querySelector(inputsConfig.find(c => c.inputName === linkName)?.selector);
-                                if (linkedEl) handleInputChange(linkName, linkedEl.value ?? "", false);
+                                if (linkedEl) handleInputChange(linkName, linkedEl.value ?? "", { triggerLinked: false });
                             });
                         }
                     }
@@ -524,7 +528,11 @@ function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) 
             } catch (e) {
                 if (e.name !== "AbortError") console.error(`[${inputName}] 请求失败:`, e);
             }
-        }, debounceMs);
+        };
+
+        // 根据 immediate 决定是否防抖
+        if (immediate) runSearch();
+        else state.timer = setTimeout(runSearch, debounceMs);
     }
 
     function bindInputs() {
@@ -532,12 +540,18 @@ function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) 
             const el = document.querySelector(selector);
             if (!el) return;
 
-            el.addEventListener("input", e => handleInputChange(inputName, e.target.value));
+            // 用户手动输入 → 防抖触发
+            el.addEventListener("input", e => {
+                const usingPlaceholder = isUsingPlaceholder(inputName, e.target.value);
+                handleInputChange(inputName, e.target.value, { immediate: usingPlaceholder });
+            });
 
+            // 初始化默认值 / placeholder → 立即触发
             const initValue = defaultValue ?? el.value ?? "";
             if (initValue) {
                 el.value = initValue;
-                handleInputChange(inputName, initValue);
+                const immediate = isUsingPlaceholder(inputName, initValue);
+                handleInputChange(inputName, initValue, { immediate });
             }
         });
     }
