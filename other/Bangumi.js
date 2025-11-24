@@ -267,21 +267,14 @@ async function fetchRecentHot(params = {}) {
         if (pages[p - 1]) resultList = resultList.concat(pages[p - 1]);
     }
 
-    // --- 异步更新 TMDB 详情并保证核心字段不为 nil ---
+    // --- 异步更新 TMDB 详情并统一字段 ---
     resultList.forEach(item => {
-        // 确保 Swift 接收到 title / releaseDate / posterPath 不为 nil
-        item.title = item.title || "(未知标题)";
-        item.releaseDate = item.releaseDate || "";
-        item.posterPath = item.posterPath || "";
-
         if (item.type === "link") {
-            // 异步填充 TMDB 数据，不阻塞性能
             (async () => {
                 await DynamicDataProcessor.fillTmdbInfo(item, "tv");
             })();
         } else if (item.type === "tmdb") {
-            // 已经是 tmdb 类型，确保 genre_names 填充
-            if(item.genre_ids && !item.genre_names){
+            if (item.genre_ids && !item.genre_names) {
                 item.genre_names = item.genre_ids.map(id => tmdbGenresCache.tv[id] || "未知");
             }
         }
@@ -297,9 +290,11 @@ async function fetchRecentHot(params = {}) {
 
     // --- 关键词过滤 ---
     const keywordFilter = params.keywordFilter || "";
-    resultList = filterByKeywords(resultList, keywordFilter);
+    const filteredResult = filterByKeywords(resultList, keywordFilter);
+    // ⚠ 最小改动：确保返回数组，不返回对象
+    resultList = Array.isArray(filteredResult.filtered) ? filteredResult.filtered : [];
 
-    return resultList;
+    return resultList; // ✅ 返回数组，Swift 不会报 typeMismatch
 }
 
 /* ==================== 优化后的 fetchAirtimeRanking（统一 genre） ==================== */
