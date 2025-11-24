@@ -11,7 +11,7 @@ for (let year = currentYear; year >= 1940; year--) {
 }
 
 var WidgetMetadata = {
-    id: "bangumi-tmdb_v3",
+    id: "bangumi_charts_tmdb_v3",
     title: "Bangumi 热门榜单",
     description: "获取Bangumi近期热门、每日放送数据，支持榜单筛选。",
     version: "3.0.0",
@@ -210,9 +210,6 @@ async function fetchAndCacheGlobalData() {
     return await dataFetchPromise;
 }
 
-// -----------------------------
-// 高性能 AC + 完全正则过滤器（忽略大小写）
-// -----------------------------
 const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map(); 
 const normalizeTitleForMatch=s=>!s?"":s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().normalize("NFC").toLowerCase(); 
 class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(word){let n=this.root;for(const c of word){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(word)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const ch of Object.keys(node.next)){const child=node.next[ch];let f=node.fail;while(f!==this.root&&!f.next[ch])f=f.fail;child.fail=f.next[ch]||this.root;child.output=child.output.concat(child.fail.output);q.push(child)}}};match(text){const found=new Set();if(!text)return found;let node=this.root;for(const ch of text){while(node!==this.root&&!node.next[ch])node=node.fail;node=node.next[ch]||this.root;node.output.forEach(w=>found.add(w))}return found}} 
@@ -235,7 +232,6 @@ async function fetchRecentHot(params = {}) {
         pageList.push(parseInt(pageInput, 10));
     }
 
-    // --- 收集结果 ---
     const pages = globalData.recentHot?.[category] || [];
     let resultList = [];
     for (const p of pageList) {
@@ -250,12 +246,9 @@ async function fetchRecentHot(params = {}) {
         resultList.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
-    / --- 关键词过滤 ---
+    // --- 关键词过滤 ---
     const keywordFilter = params.keywordFilter || "";
-    if (keywordFilter.trim()) {
-        const { filtered } = filterByKeywords(resultList, keywordFilter);
-        resultList = filtered;
-    }
+    resultList = filterByKeywords(resultList, keywordFilter);
 
     return resultList;
 }
@@ -325,11 +318,10 @@ async function fetchAirtimeRanking(params = {}) {
             })();
         }
     });
-    
+
     globalData.dynamic[dynamicKey] = listItems;
     return listItems;
 }
-
 /* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
@@ -393,8 +385,9 @@ async function fetchDailyCalendarApi(params = {}) {
             return 0;
         });
     }
-    // 关键词过滤
-   const finalResults = filterByKeywords(sortedResults, keywordFilter);
+
+    // 关键词过滤（保持原来的 AC + 正则逻辑）
+    const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
     // 异步更新 TMDB 详情
     finalResults.forEach(item => {
