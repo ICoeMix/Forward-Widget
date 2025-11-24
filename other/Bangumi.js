@@ -267,12 +267,17 @@ async function fetchRecentHot(params = {}) {
         if (pages[p - 1]) resultList = resultList.concat(pages[p - 1]);
     }
 
-    // --- 异步更新 TMDB 详情并统一字段 ---
+    // --- 异步更新 TMDB 详情并保证核心字段不为 nil ---
     resultList.forEach(item => {
+        // 确保 Swift 接收到 title / releaseDate / posterPath 不为 nil
+        item.title = item.title || "(未知标题)";
+        item.releaseDate = item.releaseDate || "";
+        item.posterPath = item.posterPath || "";
+
         if (item.type === "link") {
+            // 异步填充 TMDB 数据，不阻塞性能
             (async () => {
-                const tmdbResult = await DynamicDataProcessor.fillTmdbInfo(item, "tv");
-                // fillTmdbInfo 会自动填充 id/type/title/posterPath/releaseDate/rating/description/link/tmdb_id/tmdb_origin_countries/genre_ids/genre_names
+                await DynamicDataProcessor.fillTmdbInfo(item, "tv");
             })();
         } else if (item.type === "tmdb") {
             // 已经是 tmdb 类型，确保 genre_names 填充
@@ -292,7 +297,7 @@ async function fetchRecentHot(params = {}) {
 
     // --- 关键词过滤 ---
     const keywordFilter = params.keywordFilter || "";
-    resultList = filterByKeywords(resultList, keywordFilter).filtered;
+    resultList = filterByKeywords(resultList, keywordFilter);
 
     return resultList;
 }
