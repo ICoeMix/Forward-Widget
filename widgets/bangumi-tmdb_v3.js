@@ -116,41 +116,49 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// LRU 异步缓存
-class LRUCache{
-    constructor(maxSize=200){ this.maxSize=maxSize; this.cache=new Map(); this.head=null; this.tail=null; }
-    _removeNode(node){ if(!node) return; if(node.prev) node.prev.next=node.next; else this.head=node.next; if(node.next) node.next.prev=node.prev; else this.tail=node.prev; }
-    _addNodeToHead(node){ node.next=this.head; node.prev=null; if(this.head) this.head.prev=node; this.head=node; if(!this.tail) this.tail=node; }
-    async get(key){ const node=this.cache.get(key); if(!node) return null; this._removeNode(node); this._addNodeToHead(node); return node.value; }
-    set(key,value){ let node=this.cache.get(key); if(node){ node.value=value; this._removeNode(node); this._addNodeToHead(node); } else{ node={key,value,prev:null,next:null}; this.cache.set(key,node); this._addNodeToHead(node); if(this.cache.size>this.maxSize){ this.cache.delete(this.tail.key); this._removeNode(this.tail); } } }
-    has(key){ return this.cache.has(key); }
-    delete(key){ const node=this.cache.get(key); if(node){ this._removeNode(node); this.cache.delete(key); } }
-    async getOrSet(key,fetcher){
-        if(this.has(key)) return await this.get(key);
-        try{
-            const result = await fetcher();
-            this.set(key,result); // 只缓存最终结果
-            return result;
-        } catch(e){
-            this.delete(key);
-            throw e;
-        }
+// Logger 安全实例
+const LoggerLevels = { debug: 0, info: 1, warn: 2, notify: 3 };
+const logger = {
+    level: LoggerLevels.info,
+    setLevel(level) {
+        if (level in LoggerLevels) this.level = LoggerLevels[level];
+    },
+    debug(...args) { if (this.level <= LoggerLevels.debug) console.log("[DEBUG]", ...args); },
+    info(...args) { if (this.level <= LoggerLevels.info) console.log("[INFO]", ...args); },
+    warn(...args) { if (this.level <= LoggerLevels.warn) console.warn("[WARN]", ...args); },
+    notify(...args) { if (this.level <= LoggerLevels.notify) console.info("[NOTIFY]", ...args); }
+};
+
+// -----------------------------
+// 根据 logMode 设置全局 logger
+function setLoggerMode(logMode) {
+    switch(logMode){
+        case "debug": logger.setLevel("debug"); break;
+        case "info": logger.setLevel("info"); break;
+        case "warning": logger.setLevel("warn"); break;
+        default: logger.setLevel("info");
     }
 }
 
 // -----------------------------
-// Logger
-const loggersCache = new Map();
-function createLogger(mode="info"){
-    if(loggersCache.has(mode)) return loggersCache.get(mode);
-    const logger={
-        debug:(...args)=>mode==="debug" && console.log("[DEBUG]",...args),
-        info:(...args)=>["debug","info"].includes(mode) && console.log("[INFO]",...args),
-        warning:(...args)=>["debug","info","warning"].includes(mode) && console.warn("[WARN]",...args),
-        notify:(...args)=>["debug","info","warning"].includes(mode) && console.info("[NOTIFY]",...args)
-    };
-    loggersCache.set(mode,logger);
-    return logger;
+// LRU 异步缓存
+class LRUCache {
+    constructor(maxSize = 200) { this.maxSize = maxSize; this.cache = new Map(); this.head = null; this.tail = null; }
+    _removeNode(n) { if (!n) return; if (n.prev) n.prev.next = n.next; else this.head = n.next; if (n.next) n.next.prev = n.prev; else this.tail = n.prev; }
+    _addNodeToHead(n) { n.next = this.head; n.prev = null; if (this.head) this.head.prev = n; this.head = n; if (!this.tail) this.tail = n; }
+    _touchNode(n) { this._removeNode(n); this._addNodeToHead(n); }
+    _evictIfNeeded() { while (this.cache.size > this.maxSize) { const k = this.tail?.key; if (!k) break; this._removeNode(this.tail); this.cache.delete(k); } }
+
+    async get(key) { const n = this.cache.get(key); if (!n) return null; this._touchNode(n); return n.value; }
+    set(key, value) { let n = this.cache.get(key); if (n) { n.value = value; this._touchNode(n); } else { n = { key, value, prev: null, next: null }; this.cache.set(key, n); this._addNodeToHead(n); } this._evictIfNeeded(); }
+    has(key) { return this.cache.has(key); }
+    delete(key) { const n = this.cache.get(key); if (n) { this._removeNode(n); this.cache.delete(key); } }
+
+    async getOrSet(key, fetcher) {
+        if (this.has(key)) return await this.get(key);
+        try { const r = await fetcher(); this.set(key, r); return r; } 
+        catch (e) { this.delete(key); logger.warn("缓存 fetcher 异常:", e); throw e; }
+    }
 }
 
 // -----------------------------
@@ -161,19 +169,26 @@ const tmdbGenresCache = { movie:{}, tv:{} };
 
 // -----------------------------
 // 安全获取人物ID
-async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug"){
-    const logger = createLogger(logMode);
-    const s = personInput?.toString().trim();
-    if(!s){ logger.warning("输入为空"); return null; }
-    if(/^\d+$/.test(s)) return Number(s);
+async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug") {
+    let s = personInput?.toString().trim();
+
+    // 输入为空时，默认搜索“张艺谋”
+    if (!s) {
+        s = "张艺谋";
+        logger.info(`输入为空，使用默认搜索人物: "${s}"`);
+    }
+
+    // 如果输入的是数字，直接返回
+    if (/^\d+$/.test(s)) return Number(s);
+
     const cacheKey = `${s}_${language}`;
-    return await personIdCache.getOrSet(cacheKey, async()=>{
+    return await personIdCache.getOrSet(cacheKey, async () => {
         logger.info(`搜索人物ID: "${s}"`);
-        try{
-            const res = await Widget.tmdb.get("search/person",{params:{query:s,language}});
-            return res?.results?.[0]?.id || null;
-        } catch(e){
-            logger.warning("resolvePersonId失败", e);
+        try {
+            const res = await Widget.tmdb.get("search/person", { params: { query: s, language } });
+            return res?.results?.[0]?.id || null;  // 找不到就返回 null
+        } catch (e) {
+            logger.warn("resolvePersonId失败", e);
             return null;
         }
     });
@@ -181,35 +196,48 @@ async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug
 
 // -----------------------------
 // 初始化 TMDB 类型
-async function initTmdbGenres(language="zh-CN", logMode="debug"){
-    const logger = createLogger(logMode);
-    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) return;
-    try{
-        const [movieGenres, tvGenres] = await Promise.all([
+async function initTmdbGenres(language="zh-CN"){
+    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
+        console.log("[DEBUG] tmdbGenresCache 已初始化，无需重复请求");
+        return;
+    }
+
+    try {
+        const [movieResp, tvResp] = await Promise.all([
             Widget.tmdb.get("genre/movie/list",{params:{language}}),
             Widget.tmdb.get("genre/tv/list",{params:{language}})
         ]);
-        tmdbGenresCache.movie = Object.fromEntries((movieGenres?.genres||[]).map(g=>[g.id,g.name]));
-        tmdbGenresCache.tv = Object.fromEntries((tvGenres?.genres||[]).map(g=>[g.id,g.name]));
-    } catch(e){
-        logger.warning("初始化TMDB类型失败", e);
-        tmdbGenresCache.movie={}; tmdbGenresCache.tv={};
+
+        const movieGenres = movieResp?.genres || [];
+        const tvGenres = tvResp?.genres || [];
+
+        // 保证原对象引用不变并填充数据
+        Object.assign(tmdbGenresCache.movie, Object.fromEntries(movieGenres.map(g => [g.id, g.name])));
+        Object.assign(tmdbGenresCache.tv, Object.fromEntries(tvGenres.map(g => [g.id, g.name])));
+
+        console.log("[DEBUG] tmdbGenresCache 初始化完成",
+            { movie: tmdbGenresCache.movie, tv: tmdbGenresCache.tv, movieCount: movieGenres.length, tvCount: tvGenres.length }
+        );
+
+    } catch(e) {
+        logger.warn("初始化 TMDB 类型失败", e);
+        tmdbGenresCache.movie = {};
+        tmdbGenresCache.tv = {};
     }
 }
 
 // -----------------------------
-// 获取人物作品（缓存 + 内部规范化）
-async function fetchCreditsCached(personId, language="zh-CN", logMode="debug"){
+// 获取人物作品
+async function fetchCreditsCached(personId, language="zh-CN"){
     const cacheKey = `credits_${personId}_${language}`;
-    return await personWorksCache.getOrSet(cacheKey, async()=>{
-        const logger = createLogger(logMode);
+    return await personWorksCache.getOrSet(cacheKey, async ()=>{
         try{
-            const res = await Widget.tmdb.get(`person/${personId}/combined_credits`,{params:{language}});
-            const cast = (res?.cast||[]).map(normalizeItem);
-            const crew = (res?.crew||[]).map(normalizeItem);
-            return [...cast,...crew];
+            const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
+            const cast = normalizeItems(res?.cast || []);
+            const crew = normalizeItems(res?.crew || []);
+            return [...cast, ...crew];
         } catch(e){
-            logger.warning("fetchCredits 获取作品失败", e);
+            logger.warn("fetchCredits 获取作品失败", e);
             return [];
         }
     });
@@ -247,8 +275,10 @@ function normalizeItem(item){
     };
 }
 
+function normalizeItems(list){ return Array.isArray(list)?list.map(normalizeItem):[]; }
+
 // -----------------------------
-// 最终输出格式化
+// 输出格式化
 function formatOutput(list){
     return [...(Array.isArray(list)?list:[])]
         .filter(i => i && typeof i==="object")
@@ -276,77 +306,95 @@ function formatOutput(list){
 }
 
 // -----------------------------
+// 带 debug 的通用过滤函数
+function filterWithDebug(list, predicate, debugInfo){
+    if(!Array.isArray(list) || !list.length) return [];
+    return list.filter(item => {
+        try {
+            const keep = predicate(item);
+            if(!keep && debugInfo) debugInfo.filteredOutTitles.push(item.title || "(no title)");
+            return keep;
+        } catch(e){ return true; }
+    });
+}
+
+// -----------------------------
 // AC 自动机 + 正则过滤
 const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map();
 class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(w){let n=this.root;for(const c of w){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(w)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const c of Object.keys(node.next)){const ch=node.next[c];let f=node.fail;while(f!==this.root&&!f.next[c])f=f.fail;ch.fail=f.next[c]||this.root;ch.output=ch.output.concat(ch.fail.output);q.push(ch)}}};matchAny(text){if(!text)return false;let n=this.root;for(const c of text){while(n!==this.root&&!n.next[c])n=n.fail;n=n.next[c]||this.root;if(n.output.length)return true}return false}}
-function isPlainText(t){return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t)}
-function getRegex(t){if(regexCache.has(t))return regexCache.get(t);let r=null;try{r=new RegExp(t,'i')}catch(e){r=null}regexCache.set(t,r);return r}
-function buildFilterUnit(s){if(!s?.trim())return null;if(filterUnitCache.has(s))return filterUnitCache.get(s);const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}};const unit={ac,regexTerms:regex,bigRegex};filterUnitCache.set(s,unit);return unit}
-function normalizeTitleForMatch(s){return s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():""}
-function filterByKeywords(list, s) { return !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const unit=buildFilterUnit(s); if(!unit) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=unit, filteredOut=[]; const filtered=list.filter(item=>{ try{ if(!item._normalizedTitle) item._normalizedTitle=normalizeTitleForMatch(item.title||""); const t=item._normalizedTitle; let f=false; if(ac&&ac.matchAny(t)) f=true; if(!f&&bigRegex&&bigRegex.test(t)) f=true; if(f) filteredOut.push(item.title||"(no title)"); return !f } catch(e){return true} }); return {filtered, filteredOut}; })(); }
+const normalizeTitleForMatch = s => s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():"";
+const isPlainText = t => !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t);
+const getRegex = t => regexCache.has(t)?regexCache.get(t):(regexCache.set(t,(r=>{try{return new RegExp(t,'i')}catch(e){return null}})()),regexCache.get(t));
+const buildFilterUnit = s => !s?.trim()?null:filterUnitCache.has(s)?filterUnitCache.get(s):(filterUnitCache.set(s,(()=>{const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}}const unit={ac,regexTerms:regex,bigRegex};return unit})()),filterUnitCache.get(s));
+const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const u=buildFilterUnit(s); if(!u) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=u,fo=[]; const f=list.filter(i=>{try{i._normalizedTitle||(i._normalizedTitle=normalizeTitleForMatch(i.title||"")); const t=i._normalizedTitle; let hit=false; if(ac&&ac.matchAny(t)) hit=true; if(!hit&&bigRegex&&bigRegex.test(t)) hit=true; if(hit) fo.push(i.title||"(no title)"); return !hit}catch(e){return true}}); return {filtered:f, filteredOut:fo}; })();
 
 // -----------------------------
 // 核心加载流程
-async function loadPersonWorks(params){
-    const logger = createLogger(params?.logMode || "info");
-    const personKey = `${params.personId}_${params.language || "zh-CN"}`;
+// -----------------------------
+async function loadPersonWorks(params) {
+    setLoggerMode(params.logMode);
 
-    // 1️⃣ 获取原始作品列表（缓存原始完整列表）
-    let rawWorks;
-    if(await personWorksCache.has(personKey)){
-        rawWorks = await personWorksCache.get(personKey);
-        logger.info(`作品缓存命中: ${personKey}`);
-    } else {
-        const personId = await resolvePersonIdSafe(params.personId, params.language, params.logMode);
-        if(!personId) return [];
+    const language = params.language || "zh-CN";
+    const type = params.type || "all";
+    const filter = params.filter || "";
+    const sort_by = params.sort_by || "";
+    const debugMode = logger.level === LoggerLevels.debug;
+    const debugInfo = { filteredOutTitles: [] };
+    const personKey = `${params.personId}_${language}`;
 
-        await initTmdbGenres(params.language || "zh-CN", params.logMode);
-        rawWorks = await fetchCreditsCached(personId, params.language, params.logMode);
+    // 支持 signal 取消请求
+    const { signal } = params;
 
-        await personWorksCache.set(personKey, rawWorks);
-    }
+    // 初始化 genre cache
+    await initTmdbGenres(language);
 
-    // 2️⃣ 局部数组处理动态参数
-    let works = [...rawWorks];
-    const filteredOutTitles = [];
+    // 获取缓存或请求作品
+    let works = await personWorksCache.getOrSet(personKey, async () => {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
-    // 3️⃣ 上映状态过滤
-    if(params.type && params.type !== "all"){
-        const nowDate = new Date();
-        const prevLength = works.length;
-        works = works.filter(i => i.releaseDate ?
-            (params.type==="released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
-            : false
-        );
-        if(params.logMode==="debug" && prevLength !== works.length){
-            filteredOutTitles.push(...rawWorks.filter(i => !works.includes(i)).map(i => i.title || "(no title)"));
-        }
-    }
+        const personId = await resolvePersonIdSafe(params.personId, language);
+        if (!personId) return [];
 
-    // 4️⃣ 关键词过滤
-    if(params.filter?.trim()){
-        const { filtered, filteredOut } = filterByKeywords(works, params.filter, params.logMode);
+        const credits = await fetchCreditsCached(personId, language, signal);
+        (credits || []).forEach(w => { if (w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
+        return credits || [];
+    });
+
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+    // 上映状态过滤
+    const nowDate = new Date();
+    works = filterWithDebug(works, w => type === "all" || ((w._releaseDateObj && w._releaseDateObj <= nowDate) === (type === "released")), debugInfo);
+
+    // 关键词过滤
+    if (filter.trim()) {
+        const { filtered, filteredOut } = filterByKeywords(works, filter);
         works = filtered;
-        filteredOutTitles.push(...filteredOut);
+        if (debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
     }
 
-    // 5️⃣ 排序
-    if(params.sort_by){
-        const [field, order] = params.sort_by.split('.');
-        works.sort((a,b)=>{
-            const valA = a[field] ?? 0;
-            const valB = b[field] ?? 0;
-            return order==='desc' ? valB - valA : valA - valB;
-        });
+    // 排序
+    if (sort_by) {
+        const [field, order] = sort_by.split('.');
+        works.sort((a, b) => ((a[field] ?? 0) - (b[field] ?? 0)) * (order === 'desc' ? -1 : 1));
+        if (debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
     }
 
-    // 6️⃣ 格式化最终数据
+    // 格式化输出
     const finalList = formatOutput(works);
 
-    // 7️⃣ debug 输出（统一显示）
-    if(params.logMode==="debug"){
-        if(filteredOutTitles.length) logger.debug("被过滤掉的作品:", [...new Set(filteredOutTitles)]);
-        logger.debug("最终返回数据:", finalList.map(i => i.title));
+    // debug 输出
+    if (debugMode) {
+        const isCacheEmpty = !Object.keys(tmdbGenresCache.movie).length || !Object.keys(tmdbGenresCache.tv).length;
+        logger.debug("loadPersonWorks Debug Info:", {
+            type,
+            filter,
+            sort_by,
+            filteredOutTitles: debugInfo.filteredOutTitles.length ? [...new Set(debugInfo.filteredOutTitles)] : null,
+            tmdbGenresCacheStatus: isCacheEmpty ? "EMPTY" : "OK",
+            tmdbGenresCache
+        });
+        if (isCacheEmpty) logger.warn("tmdbGenresCache 为空，可能没有正确初始化！");
     }
 
     return finalList;
