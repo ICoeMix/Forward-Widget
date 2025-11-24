@@ -16,7 +16,7 @@ var WidgetMetadata = {
     description: "获取Bangumi近期热门、每日放送数据，支持榜单筛选。",
     version: "3.0.0",
     author: "ICoeMix(Optimized by ChatGPT) ",
-    site: "https://github.com/opix-maker/Forward",
+    site: "https://github.com/ICoeMix/Forward-Widget",
     requiredVersion: "0.0.1",
     detailCacheDuration: 6000,
     modules: [
