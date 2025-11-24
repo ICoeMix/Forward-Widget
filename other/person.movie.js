@@ -117,41 +117,29 @@ WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)
 
 // -----------------------------
 // LRU 异步缓存
-class LRUCache{
-    constructor(maxSize=200){ this.maxSize=maxSize; this.cache=new Map(); this.head=null; this.tail=null; }
-    _removeNode(node){ if(!node) return; if(node.prev) node.prev.next=node.next; else this.head=node.next; if(node.next) node.next.prev=node.prev; else this.tail=node.prev; }
-    _addNodeToHead(node){ node.next=this.head; node.prev=null; if(this.head) this.head.prev=node; this.head=node; if(!this.tail) this.tail=node; }
-    async get(key){ const node=this.cache.get(key); if(!node) return null; this._removeNode(node); this._addNodeToHead(node); return node.value; }
-    set(key,value){ let node=this.cache.get(key); if(node){ node.value=value; this._removeNode(node); this._addNodeToHead(node); } else{ node={key,value,prev:null,next:null}; this.cache.set(key,node); this._addNodeToHead(node); if(this.cache.size>this.maxSize){ this.cache.delete(this.tail.key); this._removeNode(this.tail); } } }
-    has(key){ return this.cache.has(key); }
-    delete(key){ const node=this.cache.get(key); if(node){ this._removeNode(node); this.cache.delete(key); } }
-    async getOrSet(key,fetcher){
-        if(this.has(key)) return await this.get(key);
-        try{
-            const result = await fetcher();
-            this.set(key,result); // 只缓存最终结果
-            return result;
-        } catch(e){
-            this.delete(key);
-            throw e;
-        }
+class LRUCache {
+    constructor(maxSize = 200) { this.maxSize = maxSize; this.cache = new Map(); this.head = null; this.tail = null; }
+
+    _removeNode(n) { if (!n) return; if (n.prev) n.prev.next = n.next; else this.head = n.next; if (n.next) n.next.prev = n.prev; else this.tail = n.prev; }
+    _addNodeToHead(n) { n.next = this.head; n.prev = null; if (this.head) this.head.prev = n; this.head = n; if (!this.tail) this.tail = n; }
+    _touchNode(n) { this._removeNode(n); this._addNodeToHead(n); }
+    _evictIfNeeded() { while (this.cache.size > this.maxSize) { const k = this.tail?.key; if (!k) break; this._removeNode(this.tail); this.cache.delete(k); } }
+
+    async get(key) { const n = this.cache.get(key); if (!n) return null; this._touchNode(n); return n.value; }
+    set(key, value) { let n = this.cache.get(key); if (n) { n.value = value; this._touchNode(n); } else { n = { key, value, prev: null, next: null }; this.cache.set(key, n); this._addNodeToHead(n); } this._evictIfNeeded(); }
+    has(key) { return this.cache.has(key); }
+    delete(key) { const n = this.cache.get(key); if (n) { this._removeNode(n); this.cache.delete(key); } }
+
+    async getOrSet(key, fetcher) {
+        if (this.has(key)) return await this.get(key);
+        try { const r = await fetcher(); this.set(key, r); return r; } 
+        catch (e) { this.delete(key); throw e; }
     }
 }
 
 // -----------------------------
-// Logger
-const loggersCache = new Map();
-function createLogger(mode="info"){
-    if(loggersCache.has(mode)) return loggersCache.get(mode);
-    const logger={
-        debug:(...args)=>mode==="debug" && console.log("[DEBUG]",...args),
-        info:(...args)=>["debug","info"].includes(mode) && console.log("[INFO]",...args),
-        warning:(...args)=>["debug","info","warning"].includes(mode) && console.warn("[WARN]",...args),
-        notify:(...args)=>["debug","info","warning"].includes(mode) && console.info("[NOTIFY]",...args)
-    };
-    loggersCache.set(mode,logger);
-    return logger;
-}
+// logger
+const LoggerLevels={debug:0,info:1,warn:2,notify:3},Logger=(l=LoggerLevels.info)=>({setLevel:level=>level in LoggerLevels&&(l=LoggerLevels[level]),debug:(...a)=>l<=LoggerLevels.debug&&console.log("[DEBUG]",...a),info:(...a)=>l<=LoggerLevels.info&&console.log("[INFO]",...a),warn:(...a)=>l<=LoggerLevels.warn&&console.warn("[WARN]",...a),notify:(...a)=>l<=LoggerLevels.notify&&console.info("[NOTIFY]",...a)})();
 
 // -----------------------------
 // 缓存实例
@@ -162,18 +150,18 @@ const tmdbGenresCache = { movie:{}, tv:{} };
 // -----------------------------
 // 安全获取人物ID
 async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug"){
-    const logger = createLogger(logMode);
     const s = personInput?.toString().trim();
-    if(!s){ logger.warning("输入为空"); return null; }
+    if(!s){ Logger.warn("输入为空"); return null; }
     if(/^\d+$/.test(s)) return Number(s);
+
     const cacheKey = `${s}_${language}`;
-    return await personIdCache.getOrSet(cacheKey, async()=>{
-        logger.info(`搜索人物ID: "${s}"`);
+    return await personIdCache.getOrSet(cacheKey, async ()=>{
+        Logger.info(`搜索人物ID: "${s}"`);
         try{
-            const res = await Widget.tmdb.get("search/person",{params:{query:s,language}});
+            const res = await Widget.tmdb.get("search/person",{params:{query:s, language}});
             return res?.results?.[0]?.id || null;
         } catch(e){
-            logger.warning("resolvePersonId失败", e);
+            Logger.warn("resolvePersonId失败", e);
             return null;
         }
     });
@@ -181,35 +169,38 @@ async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug
 
 // -----------------------------
 // 初始化 TMDB 类型
-async function initTmdbGenres(language="zh-CN", logMode="debug"){
-    const logger = createLogger(logMode);
+async function initTmdbGenres(language="zh-CN"){
+    // 如果已有数据就直接返回
     if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) return;
+
     try{
         const [movieGenres, tvGenres] = await Promise.all([
             Widget.tmdb.get("genre/movie/list",{params:{language}}),
             Widget.tmdb.get("genre/tv/list",{params:{language}})
         ]);
-        tmdbGenresCache.movie = Object.fromEntries((movieGenres?.genres||[]).map(g=>[g.id,g.name]));
-        tmdbGenresCache.tv = Object.fromEntries((tvGenres?.genres||[]).map(g=>[g.id,g.name]));
+        // 使用 ||= 优化
+        tmdbGenresCache.movie ||= Object.fromEntries((movieGenres?.genres||[]).map(g=>[g.id,g.name]));
+        tmdbGenresCache.tv ||= Object.fromEntries((tvGenres?.genres||[]).map(g=>[g.id,g.name]));
     } catch(e){
-        logger.warning("初始化TMDB类型失败", e);
-        tmdbGenresCache.movie={}; tmdbGenresCache.tv={};
+        Logger.warn("初始化TMDB类型失败", e);
+        tmdbGenresCache.movie = {}; 
+        tmdbGenresCache.tv = {};
     }
 }
 
 // -----------------------------
-// 获取人物作品（缓存 + 内部规范化）
-async function fetchCreditsCached(personId, language="zh-CN", logMode="debug"){
+// 获取人物作品
+async function fetchCreditsCached(personId, language="zh-CN"){
     const cacheKey = `credits_${personId}_${language}`;
-    return await personWorksCache.getOrSet(cacheKey, async()=>{
-        const logger = createLogger(logMode);
+    return await personWorksCache.getOrSet(cacheKey, async ()=>{
         try{
-            const res = await Widget.tmdb.get(`person/${personId}/combined_credits`,{params:{language}});
-            const cast = (res?.cast||[]).map(normalizeItem);
-            const crew = (res?.crew||[]).map(normalizeItem);
-            return [...cast,...crew];
+            const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
+            // 使用 normalizeItems 批量处理
+            const cast = normalizeItems(res?.cast || []);
+            const crew = normalizeItems(res?.crew || []);
+            return [...cast, ...crew];
         } catch(e){
-            logger.warning("fetchCredits 获取作品失败", e);
+            Logger.warn("fetchCredits 获取作品失败", e);
             return [];
         }
     });
@@ -247,8 +238,14 @@ function normalizeItem(item){
     };
 }
 
+// 批量处理函数
+function normalizeItems(list){
+    if(!Array.isArray(list)) return [];
+    return list.map(normalizeItem);
+}
+
 // -----------------------------
-// 最终输出格式化
+// 输出格式化
 function formatOutput(list){
     return [...(Array.isArray(list)?list:[])]
         .filter(i => i && typeof i==="object")
@@ -276,77 +273,98 @@ function formatOutput(list){
 }
 
 // -----------------------------
+// 带 debug 的通用过滤函数
+function filterWithDebug(list, predicate, debugInfo){
+    if(!Array.isArray(list) || !list.length) return [];
+
+    return list.filter(item => {
+        try {
+            const keep = predicate(item);
+            if(!keep && debugInfo){
+                debugInfo.filteredOutTitles.push(item.title || "(no title)");
+            }
+            return keep;
+        } catch(e){
+            // 出现异常时默认保留
+            return true;
+        }
+    });
+}
+
+// -----------------------------
 // AC 自动机 + 正则过滤
 const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map();
 class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(w){let n=this.root;for(const c of w){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(w)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const c of Object.keys(node.next)){const ch=node.next[c];let f=node.fail;while(f!==this.root&&!f.next[c])f=f.fail;ch.fail=f.next[c]||this.root;ch.output=ch.output.concat(ch.fail.output);q.push(ch)}}};matchAny(text){if(!text)return false;let n=this.root;for(const c of text){while(n!==this.root&&!n.next[c])n=n.fail;n=n.next[c]||this.root;if(n.output.length)return true}return false}}
-function isPlainText(t){return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t)}
-function getRegex(t){if(regexCache.has(t))return regexCache.get(t);let r=null;try{r=new RegExp(t,'i')}catch(e){r=null}regexCache.set(t,r);return r}
-function buildFilterUnit(s){if(!s?.trim())return null;if(filterUnitCache.has(s))return filterUnitCache.get(s);const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}};const unit={ac,regexTerms:regex,bigRegex};filterUnitCache.set(s,unit);return unit}
-function normalizeTitleForMatch(s){return s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():""}
-function filterByKeywords(list, s) { return !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const unit=buildFilterUnit(s); if(!unit) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=unit, filteredOut=[]; const filtered=list.filter(item=>{ try{ if(!item._normalizedTitle) item._normalizedTitle=normalizeTitleForMatch(item.title||""); const t=item._normalizedTitle; let f=false; if(ac&&ac.matchAny(t)) f=true; if(!f&&bigRegex&&bigRegex.test(t)) f=true; if(f) filteredOut.push(item.title||"(no title)"); return !f } catch(e){return true} }); return {filtered, filteredOut}; })(); }
-
+const normalizeTitleForMatch = s => s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():"";
+const isPlainText = t => !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t);
+const getRegex = t => regexCache.has(t)?regexCache.get(t):(regexCache.set(t,(r=>{try{return new RegExp(t,'i')}catch(e){return null}})()),regexCache.get(t));
+const buildFilterUnit = s => !s?.trim()?null:filterUnitCache.has(s)?filterUnitCache.get(s):(filterUnitCache.set(s,(()=>{const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}}const unit={ac,regexTerms:regex,bigRegex};return unit})()),filterUnitCache.get(s));
+const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const u=buildFilterUnit(s); if(!u) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=u,fo=[]; const f=list.filter(i=>{try{i._normalizedTitle||(i._normalizedTitle=normalizeTitleForMatch(i.title||"")); const t=i._normalizedTitle; let hit=false; if(ac&&ac.matchAny(t)) hit=true; if(!hit&&bigRegex&&bigRegex.test(t)) hit=true; if(hit) fo.push(i.title||"(no title)"); return !hit}catch(e){return true}}); return {filtered:f, filteredOut:fo}; })();
 // -----------------------------
 // 核心加载流程
 async function loadPersonWorks(params){
-    const logger = createLogger(params?.logMode || "info");
-    const personKey = `${params.personId}_${params.language || "zh-CN"}`;
+    const language = params.language || "zh-CN";
+    const type = params.type || "all";
+    const filter = params.filter || "";
+    const sort_by = params.sort_by || "";
+    const debugMode = params.logMode === "debug";
+    const debugInfo = { filteredOutTitles: [] };
+    const personKey = `${params.personId}_${language}`;
 
-    // 1️⃣ 获取原始作品列表（缓存原始完整列表）
-    let rawWorks;
-    if(await personWorksCache.has(personKey)){
-        rawWorks = await personWorksCache.get(personKey);
-        logger.info(`作品缓存命中: ${personKey}`);
-    } else {
-        const personId = await resolvePersonIdSafe(params.personId, params.language, params.logMode);
-        if(!personId) return [];
+    // 获取缓存或请求
+    let rawWorks = await personWorksCache.getOrSet(personKey, async ()=>{
+    const personId = await resolvePersonIdSafe(params.personId, language, params.logMode);
+    if(!personId) return [];
 
-        await initTmdbGenres(params.language || "zh-CN", params.logMode);
-        rawWorks = await fetchCreditsCached(personId, params.language, params.logMode);
+    await initTmdbGenres(language, params.logMode);
+    const works = await fetchCreditsCached(personId, language, params.logMode);
 
-        await personWorksCache.set(personKey, rawWorks);
-    }
+    // 统一预处理 _releaseDateObj
+    works.forEach(w => { if(w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
 
-    // 2️⃣ 局部数组处理动态参数
-    let works = [...rawWorks];
-    const filteredOutTitles = [];
+    return works;
+    });
 
-    // 3️⃣ 上映状态过滤
-    if(params.type && params.type !== "all"){
-        const nowDate = new Date();
-        const prevLength = works.length;
-        works = works.filter(i => i.releaseDate ?
-            (params.type==="released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
-            : false
-        );
-        if(params.logMode==="debug" && prevLength !== works.length){
-            filteredOutTitles.push(...rawWorks.filter(i => !works.includes(i)).map(i => i.title || "(no title)"));
-        }
-    }
+    // 上映状态过滤
+    const nowDate = new Date();
+    works = filterWithDebug(works, w => {
+        if(type === "all") return true;
+        const isReleased = w._releaseDateObj && w._releaseDateObj <= nowDate;
+        return type === "released" ? isReleased : !isReleased;
+    }, debugInfo);
 
-    // 4️⃣ 关键词过滤
-    if(params.filter?.trim()){
-        const { filtered, filteredOut } = filterByKeywords(works, params.filter, params.logMode);
+   // 关键词过滤
+    if(filter.trim()){
+        const { filtered, filteredOut } = filterByKeywords(works, filter);
         works = filtered;
-        filteredOutTitles.push(...filteredOut);
+        if(debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
     }
 
-    // 5️⃣ 排序
-    if(params.sort_by){
-        const [field, order] = params.sort_by.split('.');
+    // 排序
+    if(sort_by){
+        const [field, order] = sort_by.split('.');
         works.sort((a,b)=>{
             const valA = a[field] ?? 0;
             const valB = b[field] ?? 0;
-            return order==='desc' ? valB - valA : valA - valB;
+            return order === 'desc' ? valB - valA : valA - valB;
         });
+        if(debugMode) Logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
     }
 
-    // 6️⃣ 格式化最终数据
+    // 格式化输出
     const finalList = formatOutput(works);
 
-    // 7️⃣ debug 输出（统一显示）
-    if(params.logMode==="debug"){
-        if(filteredOutTitles.length) logger.debug("被过滤掉的作品:", [...new Set(filteredOutTitles)]);
-        logger.debug("最终返回数据:", finalList.map(i => i.title));
+    // debug 输出
+    if(debugMode){
+        Logger.debug("===== 调用条件 =====");
+        Logger.debug("上映状态 type:", type);
+        Logger.debug("关键词 filter:", filter);
+        Logger.debug("排序 sort_by:", sort_by);
+        if(debugInfo.filteredOutTitles.length){
+            Logger.debug("被过滤掉的作品:", [...new Set(debugInfo.filteredOutTitles)]);
+        }
+        Logger.debug("最终返回数据:", finalList.map(i=>i.title));
+        Logger.debug("====================");
     }
 
     return finalList;
@@ -358,15 +376,17 @@ async function loadSharedWorksSafe(params){
     try{
         return await loadPersonWorks(params);
     }catch(err){
-        const logger = createLogger(params?.logMode || "info");
-        logger.warning("loadSharedWorksSafe 捕获异常:", err);
+        Logger.warn("loadSharedWorksSafe 捕获异常:", err);
         return formatOutput([]);
     }
 }
 
+async function getWorks(params, filterFn){ 
+    return (await loadSharedWorksSafe(params)).filter(filterFn);
+}
 // -----------------------------
 // 模块接口
 async function getAllWorks(params){ return await loadSharedWorksSafe(params); }
-async function getActorWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>i.characters.length); }
-async function getDirectorWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>i.jobs.some(j=>/director/i.test(j))); }
-async function getOtherWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>!(i.characters.length) && !(i.jobs.some(j=>/director/i.test(j)))); }
+getActorWorks = params => getWorks(params, i => i.characters.length);
+getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
+getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.some(j=>/director/i.test(j)));
