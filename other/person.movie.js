@@ -352,6 +352,18 @@ async function loadPersonWorks(params){
     return finalList;
 }
 
+/ -----------------------------
+// 安全包装
+async function loadSharedWorksSafe(params){
+    try{
+        return await loadPersonWorks(params);
+    }catch(err){
+        const logger = createLogger(params?.logMode || "info");
+        logger.warning("loadSharedWorksSafe 捕获异常:", err);
+        return formatOutput([]);
+    }
+}
+
 // -----------------------------
 // 模块接口
 async function getAllWorks(params){ return await loadSharedWorksSafe(params); }
