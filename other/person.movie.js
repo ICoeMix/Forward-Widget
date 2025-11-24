@@ -341,19 +341,29 @@ async function loadPersonWorks(params){
     const debugInfo = { filteredOutTitles: [] };
     const personKey = `${params.personId}_${language}`;
 
+    // 支持 signal 取消请求
+    const { signal } = params;
+
     // -----------------------------
-    // 初始化 genrecache
+    // 初始化 genre cache
     await initTmdbGenres(language);
 
     // -----------------------------
     // 获取缓存或请求作品
     let works = await personWorksCache.getOrSet(personKey, async ()=>{
+        // 如果 signal 被取消，提前抛出
+        if(signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
         const personId = await resolvePersonIdSafe(params.personId, language);
         if(!personId) return [];
-        const credits = await fetchCreditsCached(personId, language);
+
+        const credits = await fetchCreditsCached(personId, language, signal);
         credits.forEach(w => { if(w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
         return credits;
     });
+
+    // 如果 signal 被取消，提前停止
+    if(signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
     // -----------------------------
     // 上映状态过滤
@@ -390,8 +400,7 @@ async function loadPersonWorks(params){
             sort_by,
             filteredOutTitles: debugInfo.filteredOutTitles.length ? [...new Set(debugInfo.filteredOutTitles)] : null,
             tmdbGenresCacheStatus: isCacheEmpty ? "EMPTY" : "OK",
-            tmdbGenresCache,
-            finalTitles: finalList.map(i => i.title)
+            tmdbGenresCache
         });
         if(isCacheEmpty) logger.warn("tmdbGenresCache 为空，可能没有正确初始化！");
     }
@@ -424,3 +433,120 @@ async function getAllWorks(params){ return await getWorks(params, ()=>true); }
 getActorWorks = params => getWorks(params, i => i.characters.length);
 getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
 getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.some(j=>/director/i.test(j)));
+
+// 防抖机制
+
+function initWidgetInputsDebug(inputsConfig, baseParams = {}, debounceMs = 300) {
+    const inputStates = {};
+
+    function batchRender() {
+        inputsConfig.forEach(({ inputName, renderFn }) => {
+            const state = inputStates[inputName];
+            if (state?.latestResults && typeof renderFn === "function") {
+                renderFn(state.latestResults);
+            }
+        });
+    }
+
+    async function handleInputChange(inputName, value, triggerLinked = true) {
+        const state = inputStates[inputName] || (inputStates[inputName] = { 
+            controller: null, 
+            timer: null, 
+            latestResults: null, 
+            value: null, 
+            lastRequestId: 0 
+        });
+
+        // 清理防抖定时器
+        clearTimeout(state.timer);
+
+        // personId 改变时取消 filter 定时器和请求
+        if (inputName === "personId") {
+            const filterState = inputStates["filter"];
+            if (filterState) {
+                if (filterState.controller) filterState.controller.abort();
+                if (filterState.timer) clearTimeout(filterState.timer);
+                filterState.latestResults = null;
+            }
+        }
+
+        // 设置防抖定时器
+        state.timer = setTimeout(async () => {
+            state.lastRequestId++;
+            const requestId = state.lastRequestId;
+
+            // 取消上一次请求
+            if (state.controller) state.controller.abort();
+            state.controller = new AbortController();
+
+            try {
+                let results;
+                let debugFilteredOut = [];
+
+                if (inputName === "filter") {
+                    // filter 异步处理
+                    const personState = inputStates["personId"];
+                    const baseResults = personState?.latestResults || [];
+                    const { filtered, filteredOut } = filterByKeywords(baseResults, value);
+                    results = filtered;
+                    debugFilteredOut = filteredOut;
+                } else {
+                    results = await loadPersonWorks({
+                        ...baseParams,
+                        [inputName]: value,
+                        signal: state.controller.signal,
+                        ...(inputStates["filter"]?.value ? { filter: inputStates["filter"].value } : {})
+                    });
+                }
+
+                // 只接受最新请求结果
+                if (requestId === state.lastRequestId) {
+                    state.latestResults = results;
+                    state.value = value;
+                    batchRender();
+
+                    // debug 输出
+                    if (baseParams.logMode === "debug" && debugFilteredOut.length) {
+                        console.debug(`[DEBUG] [${inputName}] 被过滤的作品:`, debugFilteredOut);
+                    }
+
+                    // 联动更新
+                    if (triggerLinked) {
+                        const cfg = inputsConfig.find(c => c.inputName === inputName);
+                        if (cfg?.linkedInputs?.length) {
+                            cfg.linkedInputs.forEach(linkName => {
+                                const linkedEl = document.querySelector(inputsConfig.find(c => c.inputName === linkName)?.selector);
+                                if (linkedEl) handleInputChange(linkName, linkedEl.value ?? "", false);
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                if (e.name !== "AbortError") console.error(`[${inputName}] 请求失败:`, e);
+            }
+        }, debounceMs);
+    }
+
+    function bindInputs() {
+        inputsConfig.forEach(({ inputName, selector, defaultValue }) => {
+            const el = document.querySelector(selector);
+            if (!el) return;
+
+            el.addEventListener("input", e => handleInputChange(inputName, e.target.value));
+
+            const initValue = defaultValue ?? el.value ?? "";
+            if (initValue) {
+                el.value = initValue;
+                handleInputChange(inputName, initValue);
+            }
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindInputs);
+    } else {
+        bindInputs();
+    }
+
+    return { handleInputChange, inputStates };
+}
