@@ -250,11 +250,14 @@ async function fetchRecentHot(params = {}) {
         resultList.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
-    // --- 关键词过滤 ---
+    / --- 关键词过滤 ---
     const keywordFilter = params.keywordFilter || "";
-    const { filtered, filteredOut } = filterByKeywords(resultList, keywordFilter);
+    if (keywordFilter.trim()) {
+        const { filtered } = filterByKeywords(resultList, keywordFilter);
+        resultList = filtered;
+    }
 
-    return { filtered, filteredOut };
+    return resultList;
 }
 
 /* ==================== 优化后的 fetchAirtimeRanking ==================== */
@@ -323,12 +326,10 @@ async function fetchAirtimeRanking(params = {}) {
         }
     });
     
-    const keywordFilter = params.keywordFilter || "";
-    const { filtered, filteredOut } = filterByKeywords(listItems, keywordFilter);
-    
-    globalData.dynamic[dynamicKey] = filtered;
-    return { filtered, filteredOut };
+    globalData.dynamic[dynamicKey] = listItems;
+    return listItems;
 }
+
 /* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
@@ -393,9 +394,7 @@ async function fetchDailyCalendarApi(params = {}) {
         });
     }
     // 关键词过滤
-    const keywordFilter = params.keywordFilter || "";
-    const { filtered, filteredOut } = filterByKeywords(sortedResults, keywordFilter);
-    const finalResults = filtered;
+   const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
     // 异步更新 TMDB 详情
     finalResults.forEach(item => {
