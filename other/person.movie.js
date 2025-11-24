@@ -416,54 +416,81 @@ async function loadSharedWorksSafe(params) {
 
 
 // -----------------------------
-// 内部防抖控制对象
-const debounceQueues = {
-    all: { promise: null, lastParams: null },
-    actor: { promise: null, lastParams: null },
-    director: { promise: null, lastParams: null },
-    other: { promise: null, lastParams: null },
-};
-const DEBOUNCE_DELAY = 500;
-
-// 延迟函数（替代 setTimeout）
-function delay(ms) {
-    return new Promise(resolve => {
-        const start = Date.now();
-        (function wait() {
-            if (Date.now() - start >= ms) resolve();
-            else Widget.schedule(wait, 10); // Widget 提供的 schedule 或 requestAnimationFrame 模拟
-        })();
-    });
-}
+// getWorks（单行紧凑，可用）
+const getWorks = (params, filterFn) => 
+    loadSharedWorksSafe({...params}).then(r => Array.isArray(r) ? r.filter(i => i && filterFn(i)) : []);
 
 // -----------------------------
-// 通用防抖执行
-async function runDebounced(type, fn, params) {
-    const queue = debounceQueues[type];
-    queue.lastParams = params;
-    if (queue.promise) return queue.promise;
-
-    queue.promise = (async () => {
-        await delay(DEBOUNCE_DELAY);
-        const result = await fn(queue.lastParams);
-        queue.promise = null;
-        return result;
-    })();
-
-    return queue.promise;
-}
-
-// -----------------------------
-// async 接口
+// 独立防抖 getAllWorks
+let lastController = null; // 保存上一次请求的控制器
 async function getAllWorks(params) {
-    return runDebounced("all", p => getWorks(p, () => true), params);
+    // 如果上一次请求还在，提前取消
+    if (lastController) lastController.abort();
+
+    // 创建新的控制器
+    const controller = new AbortController();
+    lastController = controller;
+
+    // 把 signal 传入 params，保证 loadPersonWorks 可以取消
+    const p = {...params, signal: controller.signal};
+
+    try {
+        const result = await getWorks(p, () => true);
+        // 请求完成后清空控制器
+        if (lastController === controller) lastController = null;
+        return result;
+    } catch (err) {
+        if (err.name === "AbortError") return []; // 请求被取消返回空数组
+        throw err;
+    }
 }
+
+// -----------------------------
+// 其他接口也同理
+let lastActorController = null;
 async function getActorWorks(params) {
-    return runDebounced("actor", p => getWorks(p, w => w.characters.length), params);
+    if (lastActorController) lastActorController.abort();
+    const controller = new AbortController();
+    lastActorController = controller;
+    const p = {...params, signal: controller.signal};
+    try {
+        const result = await getWorks(p, w => w.characters.length);
+        if (lastActorController === controller) lastActorController = null;
+        return result;
+    } catch (err) {
+        if (err.name === "AbortError") return [];
+        throw err;
+    }
 }
+
+let lastDirectorController = null;
 async function getDirectorWorks(params) {
-    return runDebounced("director", p => getWorks(p, w => w.jobs.some(j => /director/i.test(j))), params);
+    if (lastDirectorController) lastDirectorController.abort();
+    const controller = new AbortController();
+    lastDirectorController = controller;
+    const p = {...params, signal: controller.signal};
+    try {
+        const result = await getWorks(p, w => w.jobs.some(j => /director/i.test(j)));
+        if (lastDirectorController === controller) lastDirectorController = null;
+        return result;
+    } catch (err) {
+        if (err.name === "AbortError") return [];
+        throw err;
+    }
 }
+
+let lastOtherController = null;
 async function getOtherWorks(params) {
-    return runDebounced("other", p => getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))), params);
+    if (lastOtherController) lastOtherController.abort();
+    const controller = new AbortController();
+    lastOtherController = controller;
+    const p = {...params, signal: controller.signal};
+    try {
+        const result = await getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j)));
+        if (lastOtherController === controller) lastOtherController = null;
+        return result;
+    } catch (err) {
+        if (err.name === "AbortError") return [];
+        throw err;
+    }
 }
