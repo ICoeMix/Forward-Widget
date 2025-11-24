@@ -330,69 +330,60 @@ const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.le
 
 // -----------------------------
 // 核心加载流程
-async function loadPersonWorks(params){
-    setLoggerMode(params.logMode);
+async function loadPersonWorks(p) {
+    setLoggerMode(p.logMode);
 
-    const language = params.language || "zh-CN";
-    const type = params.type || "all";
-    const filter = params.filter || "";
-    const sort_by = params.sort_by || "";
+    const language = p.language || "zh-CN";
+    const type = p.type || "all";
+    const filter = p.filter || "";
+    const sort_by = p.sort_by || "";
     const debugMode = logger.level === LoggerLevels.debug;
     const debugInfo = { filteredOutTitles: [] };
-    const personKey = `${params.personId}_${language}`;
+    const personKey = `${p.personId}_${language}`;
+    const { signal } = p;
 
-    // 支持 signal 取消请求
-    const { signal } = params;
-
-    // -----------------------------
     // 初始化 genre cache
     await initTmdbGenres(language);
 
-    // -----------------------------
     // 获取缓存或请求作品
-    let works = await personWorksCache.getOrSet(personKey, async ()=>{
-        // 如果 signal 被取消，提前抛出
-        if(signal?.aborted) throw new DOMException("Aborted", "AbortError");
-
-        const personId = await resolvePersonIdSafe(params.personId, language);
-        if(!personId) return [];
-
+    let works = await personWorksCache.getOrSet(personKey, async () => {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        const personId = await resolvePersonIdSafe(p.personId, language);
+        if (!personId) return [];
         const credits = await fetchCreditsCached(personId, language, signal);
-        credits.forEach(w => { if(w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
+        credits.forEach(w => { if (w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
         return credits;
     });
 
-    // 如果 signal 被取消，提前停止
-    if(signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
-    // -----------------------------
     // 上映状态过滤
     const nowDate = new Date();
-    works = filterWithDebug(works, w => type === "all" || ((w._releaseDateObj && w._releaseDateObj <= nowDate) === (type === "released")), debugInfo);
+    works = filterWithDebug(
+        works,
+        w => type === "all" || ((w._releaseDateObj && w._releaseDateObj <= nowDate) === (type === "released")),
+        debugInfo
+    );
 
-    // -----------------------------
     // 关键词过滤
-    if(filter.trim()){
+    if (filter.trim()) {
         const { filtered, filteredOut } = filterByKeywords(works, filter);
         works = filtered;
-        if(debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
+        if (debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
     }
 
-    // -----------------------------
     // 排序
-    if(sort_by){
+    if (sort_by) {
         const [field, order] = sort_by.split('.');
-        works.sort((a,b)=> ((a[field] ?? 0) - (b[field] ?? 0)) * (order === 'desc' ? -1 : 1));
-        if(debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
+        works.sort((a, b) => ((a[field] ?? 0) - (b[field] ?? 0)) * (order === 'desc' ? -1 : 1));
+        if (debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
     }
 
-    // -----------------------------
     // 格式化输出
     const finalList = formatOutput(works);
 
-    // -----------------------------
     // debug 输出
-    if(debugMode){
+    if (debugMode) {
         const isCacheEmpty = !Object.keys(tmdbGenresCache.movie).length || !Object.keys(tmdbGenresCache.tv).length;
         logger.debug("loadPersonWorks Debug Info:", {
             type,
@@ -402,47 +393,33 @@ async function loadPersonWorks(params){
             tmdbGenresCacheStatus: isCacheEmpty ? "EMPTY" : "OK",
             tmdbGenresCache
         });
-        if(isCacheEmpty) logger.warn("tmdbGenresCache 为空，可能没有正确初始化！");
+        if (isCacheEmpty) logger.warn("tmdbGenresCache 为空，可能没有正确初始化！");
     }
 
     return finalList;
 }
 
 // -----------------------------
-// 安全包装
-async function loadSharedWorksSafe(params){
-    setLoggerMode(params.logMode);
-    try{
-        return await loadPersonWorks(params);
-    }catch(err){
-        logger.warn("loadSharedWorksSafe 捕获异常:", err);
-        return formatOutput([]);
-    }
-}
+// 安全包装（单行紧凑）
+async function loadSharedWorksSafe(p){setLoggerMode(p.logMode);try{return await loadPersonWorks({...p})}catch(err){logger.warn("loadSharedWorksSafe 捕获异常:",err);return formatOutput([])}}
 
+// -----------------------------
+// getWorks（统一接口，单行紧凑）
+const getWorks=(p,f)=>loadSharedWorksSafe({...p}).then(r=>r.filter(f));
 
+// -----------------------------
+// createSafeDebounce（最优防抖 + 自动取消 + 单行紧凑）
+const createSafeDebounce=(fn,d=500)=>{let t=null,c=null,lastArgs;return(...a)=>new Promise((res,reject)=>{lastArgs=a[0];if(t)clearTimeout(t);t=setTimeout(async()=>{if(c)c.abort();c=new AbortController();const safeArgs={...lastArgs,signal:c.signal};try{res(await fn(safeArgs))}catch(e){e.name==="AbortError"?res([]):reject(e)}},d)})};
 
-// -------------------------------------------------------------
-// getWorks（单行紧凑）
-// -------------------------------------------------------------
-const getWorks=(p,f)=>{setLoggerMode(p.logMode);return loadSharedWorksSafe(p).then(r=>r.filter(f));};
-
-// -------------------------------------------------------------
-// createSmartDebounce（最优防抖 + 自动取消 + 紧凑单行）
-// -------------------------------------------------------------
-const createSmartDebounce=(fn,d=500)=>{let t=null,c=null;const run=(p,i)=>new Promise((r,j)=>{if(i){if(c)c.abort();c=new AbortController();p.signal=c.signal;fn(p).then(r).catch(j);return;}if(t)clearTimeout(t);t=setTimeout(()=>{if(c)c.abort();c=new AbortController();p.signal=c.signal;fn(p).then(r).catch(j);},d)});return{manual:p=>run(p,0),choice:p=>run(p,1)}};
-
-// -------------------------------------------------------------
-// 四类防抖接口（全部单行紧凑）
-// -------------------------------------------------------------
+// -----------------------------
+// 四类防抖接口（UI 直接调用，单行紧凑）
 const debounced={
-    all:createSmartDebounce(p=>getWorks(p,()=>true)),
-    actor:createSmartDebounce(p=>getWorks(p,i=>i.characters.length)),
-    director:createSmartDebounce(p=>getWorks(p,i=>i.jobs.some(j=>/director/i.test(j)))),
-    other:createSmartDebounce(p=>getWorks(p,i=>!i.characters.length&&!i.jobs.some(j=>/director/i.test(j))))
+ all:createSafeDebounce(p=>getWorks(p,()=>true)),
+ actor:createSafeDebounce(p=>getWorks(p,i=>i.characters.length)),
+ director:createSafeDebounce(p=>getWorks(p,i=>i.jobs.some(j=>/director/i.test(j)))),
+ other:createSafeDebounce(p=>getWorks(p,i=>!i.characters.length&&!i.jobs.some(j=>/director/i.test(j))))
 };
 
-// -------------------------------------------------------------
+// -----------------------------
 // 模块导出接口（单行）
-// -------------------------------------------------------------
 const getDebouncedWorks=t=>debounced[t];
