@@ -1,420 +1,609 @@
-// -----------------------------
-// Widget Metadata
-// -----------------------------
-WidgetMetadata = {
-    id: "tmdb.person.movie",
-    title: "TMDB人物影视作品",
-    version: "2.3.9",
+// --- 核心配置 ---
+const BASE_DATA_URL = "https://raw.githubusercontent.com/opix-maker/Forward/main";
+const RECENT_DATA_URL = `${BASE_DATA_URL}/recent_data.json`;
+
+// --- 动态年份生成 ---
+const currentYear = new Date().getFullYear();
+const startYear = 2025; 
+const yearOptions = [];
+for (let year = currentYear; year >= 1940; year--) { 
+    yearOptions.push({ title: `${year}`, value: `${year}` });
+}
+
+var WidgetMetadata = {
+    id: "bangumi-tmdb_v3",
+    title: "Bangumi 热门榜单",
+    description: "获取Bangumi近期热门、每日放送数据，支持榜单筛选。",
+    version: "3.0.0",
+    author: "ICoeMix(Optimized by ChatGPT) ",
+    site: "https://github.com/opix-maker/Forward",
     requiredVersion: "0.0.1",
-    description: "获取 TMDB 人物作品",
-    author: "ICoeMix (Optimized by ChatGPT)",
-    site: "https://github.com/ICoeMix/ForwardWidgets",
-    cacheDuration: 172800,
+    detailCacheDuration: 6000,
     modules: [
-        { id: "allWorks", title: "全部作品", functionName: "getAllWorks", cacheDuration: 172800 },
-        { id: "actorWorks", title: "演员作品", functionName: "getActorWorks", cacheDuration: 172800 },
-        { id: "directorWorks", title: "导演作品", functionName: "getDirectorWorks", cacheDuration: 172800 },
-        { id: "otherWorks", title: "其他作品", functionName: "getOtherWorks", cacheDuration: 172800 }
+        {
+            title: "近期热门",
+            description: "按作品类型浏览近期热门内容 (固定按热度 trends 排序)",
+            requiresWebView: false,
+            functionName: "fetchRecentHot",
+            cacheDuration: 500000,
+            params: [
+                { name: "category", title: "分类", type: "enumeration", value: "anime", enumOptions: [ { title: "动画", value: "anime" } ] },
+               { 
+                    name: "pages", 
+                    title: "页码范围", 
+                    type: "input", 
+                    value: "1", 
+                    description: "可输入单页数字或多页范围，如 1 或 1-3" 
+                },
+                {
+                    name: "sort",
+                    title: "排序方式",
+                    type: "enumeration",
+                    value: "default", // 默认值
+                    enumOptions: [
+                        { title: "默认", value: "default" },
+                        { title: "发行时间", value: "date" },
+                        { title: "评分", value: "score" }
+                    ]
+                },
+                {
+                    name: "keywordFilter",
+                    title: "关键词过滤",
+                    type: "input",
+                    description: "过滤标题中包含指定关键词的作品",
+                    placeholders: [
+                        { title: "关键词过滤", value: "A" },
+                        { title: "完全匹配 A", value: "^A$" },
+                        { title: "以 A 开头", value: "^A.*" },
+                        { title: "以 B 结尾", value: ".*B$" },
+                        { title: "包含 A 或 B", value: "A|B" },
+                        { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
+                        { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
+                        { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" }
+                    ],
+                    value: ""
+                }
+            ]
+        },
+        {
+            title: "年度/季度榜单",
+            description: "按年份、季度/全年及作品类型浏览排行",
+            requiresWebView: false,
+            functionName: "fetchAirtimeRanking",
+            cacheDuration: 1000000,
+            params: [
+                { name: "category", title: "分类", type: "enumeration", value: "anime", enumOptions: [ { title: "动画", value: "anime" }, { title: "三次元", value: "real" } ] },
+                { 
+                    name: "year", 
+                    title: "年份", 
+                    type: "enumeration",
+                    description: "选择一个年份进行浏览。", 
+                    value: `${currentYear}`, // 默认值依然是当前年份
+                    enumOptions: yearOptions // 使用新的年份列表
+                },
+                { name: "month", title: "月份/季度", type: "enumeration", value: "all", description: "选择全年或特定季度对应的月份。留空则为全年。", enumOptions: [ { title: "全年", value: "all" }, { title: "冬季 (1月)", value: "1" }, { title: "春季 (4月)", value: "4" }, { title: "夏季 (7月)", value: "7" }, { title: "秋季 (10月)", value: "10" } ] },
+                { name: "sort", title: "排序方式", type: "enumeration", value: "collects", enumOptions: [ { title: "排名", value: "rank" }, { title: "热度", value: "trends" }, { title: "收藏数", value: "collects" }, { title: "发售日期", value: "date" }, { title: "名称", "value": "title" } ] },
+                { name: "page", title: "页码", type: "page", value: "1" },
+                {
+                    name: "keywordFilter",
+                    title: "关键词过滤",
+                    type: "input",
+                    description: "过滤标题中包含指定关键词的作品",
+                    placeholders: [
+                        { title: "关键词过滤", value: "A" },
+                        { title: "完全匹配 A", value: "^A$" },
+                        { title: "以 A 开头", value: "^A.*" },
+                        { title: "以 B 结尾", value: ".*B$" },
+                        { title: "包含 A 或 B", value: "A|B" },
+                        { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
+                        { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
+                        { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" }
+                    ],
+                    value: ""
+                }
+            ]
+        },
+        
+        {
+            title: "每日放送",
+            description: "查看指定范围的放送（数据来自Bangumi API）",
+            requiresWebView: false,
+            functionName: "fetchDailyCalendarApi",
+            cacheDuration: 20000,
+            params: [
+                {
+                    name: "filterType",
+                    title: "筛选范围",
+                    type: "enumeration",
+                    value: "today",
+                    enumOptions: [
+                        { title: "今日放送", value: "today" },
+                        { title: "指定单日", value: "specific_day" },
+                        { title: "本周一至四", value: "mon_thu" },
+                        { title: "本周五至日", value: "fri_sun" },
+                        { title: "整周放送", value: "all_week" }
+                    ]
+                },
+                {
+                    name: "specificWeekday",
+                    title: "选择星期",
+                    type: "enumeration",
+                    value: "1",
+                    description: "仅当筛选范围为“指定单日”时有效。",
+                    enumOptions: [
+                        { title: "星期一", value: "1" }, { title: "星期二", value: "2" },
+                        { title: "星期三", value: "3" }, { title: "星期四", value: "4" },
+                        { title: "星期五", value: "5" }, { title: "星期六", value: "6" },
+                        { title: "星期日", value: "7" }
+                    ],
+                    belongTo: { paramName: "filterType", value: ["specific_day"] }
+                },
+                {
+                    name: "dailySortOrder", title: "排序方式", type: "enumeration",
+                    value: "popularity_rat_bgm",
+                    description: "对每日放送结果进行排序",
+                    enumOptions: [
+                        { title: "热度(评分人数)", value: "popularity_rat_bgm" },
+                        { title: "评分", value: "score_bgm_desc" },
+                        { title: "放送日(更新日期)", value: "airdate_desc" },
+                        { title: "默认", value: "default" }
+                    ]
+                },
+                {
+                    name: "dailyRegionFilter", title: "地区筛选", type: "enumeration", value: "all",
+                    description: "筛选特定地区的放送内容 (主要依赖TMDB数据)",
+                    enumOptions: [
+                        { title: "全部地区", value: "all" },
+                        { title: "日本", value: "JP" },
+                        { title: "中国大陆", value: "CN" },
+                        { title: "欧美", value: "US_EU" },
+                        { title: "其他/未知", value: "OTHER" }
+                    ]
+                },
+                {
+                    name: "keywordFilter",
+                    title: "关键词过滤",
+                    type: "input",
+                    description: "过滤标题中包含指定关键词的作品",
+                    placeholders: [
+                        { title: "关键词过滤", value: "A" },
+                        { title: "完全匹配 A", value: "^A$" },
+                        { title: "以 A 开头", value: "^A.*" },
+                        { title: "以 B 结尾", value: ".*B$" },
+                        { title: "包含 A 或 B", value: "A|B" },
+                        { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
+                        { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
+                        { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" }
+                    ],
+                    value: ""
+                }
+            ]
+        }
     ]
 };
 
-// -----------------------------
-// 参数模板 Params
-// -----------------------------
-const Params = [
-    {
-        name: "personId",
-        title: "人物搜索",
-        type: "input",
-        description: "输入名字自动获取 TMDB 网站人物的个人 ID，失效请手动输入个人 ID",
-        placeholders: [
-            { title: "张艺谋", value: "607" }, { title: "李安", value: "1614" }, { title: "周星驰", value: "57607" },
-            { title: "成龙", value: "18897" }, { title: "吴京", value: "78871" }, { title: "王家卫", value: "12453" },
-            { title: "姜文", value: "77301" }, { title: "贾樟柯", value: "24011" }, { title: "陈凯歌", value: "20640" },
-            { title: "徐峥", value: "118711" }, { title: "宁浩", value: "17295" }, { title: "黄渤", value: "128026" },
-            { title: "葛优", value: "76913" }, { title: "胡歌", value: "1106514" }, { title: "张译", value: "146098" },
-            { title: "沈腾", value: "1519026" }, { title: "王宝强", value: "71051" }, { title: "赵丽颖", value: "1260868" },
-            { title: "孙俪", value: "52898" }, { title: "张若昀", value: "1675905" }, { title: "秦昊", value: "1016315" },
-            { title: "易烊千玺", value: "2223265" }, { title: "王倦", value: "2467977" }, { title: "孔笙", value: "1494556" },
-            { title: "张国立", value: "543178" }, { title: "陈思诚", value: "1065761" }, { title: "徐克", value: "26760" },
-            { title: "林超贤", value: "81220" }, { title: "郭帆", value: "1100748" }, { title: "史蒂文·斯皮尔伯格", value: "488" },
-            { title: "詹姆斯·卡梅隆", value: "2710" }, { title: "克里斯托弗·诺兰", value: "525" },
-            { title: "阿尔弗雷德·希区柯克", value: "2636" }, { title: "斯坦利·库布里克", value: "240" },
-            { title: "黑泽明", value: "5026" }, { title: "莱昂纳多·迪卡普里奥", value: "6193" },
-            { title: "阿米尔·汗", value: "52763" }, { title: "宫崎骏", value: "608" }, { title: "蒂姆·伯顿", value: "510" },
-            { title: "杨紫琼", value: "1620" }, { title: "凯特·布兰切特", value: "112" }, { title: "丹尼尔·戴·刘易斯", value: "11856" },
-            { title: "宋康昊", value: "20738" }
-        ],
-        value: ""
-    },
-    {
-        name: "language",
-        title: "语言",
-        type: "enumeration",
-        enumOptions: [
-            { title: "中文", value: "zh-CN" },
-            { title: "英文", value: "en-US" },
-            { title: "日文", value: "ja-JP" },
-            { title: "韩文", value: "ko-KR" },
-            { title: "法文", value: "fr-FR" }
-        ],
-        value: "zh-CN"
-    },
-    {
-        name: "type",
-        title: "上映状态",
-        type: "enumeration",
-        enumOptions: [
-            { title: "全部作品", value: "all" },
-            { title: "已上映", value: "released" },
-            { title: "即将上映", value: "upcoming" }
-        ],
-        value: "all"
-    },
-    {
-        name: "filter",
-        title: "关键词过滤",
-        type: "input",
-        description: "过滤标题中包含指定关键词的作品",
-        placeholders: [
-            { title: "默认（不过滤）", value: "" },
-            { title: "关键词过滤", value: "A" },
-            { title: "完全匹配 A", value: "^A$" },
-            { title: "以 A 开头", value: "^A.*" },
-            { title: "以 B 结尾", value: ".*B$" },
-            { title: "包含 A 或 B", value: "A|B" },
-            { title: "包含 A 和 B", value: "^(?=.*A)(?=.*B).*$" },
-            { title: "不包含 A 但包含 B", value: "^(?:(?!A).)*B.*$" },
-            { title: "以 A 开头，任意字符，B 结尾", value: "^A.*B$" }
-        ],
-        value: ""
-    },
-    {
-        name: "sort_by",
-        title: "排序方式",
-        type: "enumeration",
-        value: "release_date.desc",
-        enumOptions: [
-            { title: "发行日期降序", value: "release_date.desc" },
-            { title: "评分降序", value: "vote_average.desc" },
-            { title: "热门降序", value: "popularity.desc" }
-        ]
-    },
-    {
-        name: "logMode",
-        title: "日志模式",
-        type: "enumeration",
-        enumOptions: [
-            { title: "信息", value: "info" },
-            { title: "调试", value: "debug" },
-            { title: "警告", value: "warning" }
-        ],
-        value: "info"
-    }
-];
+// ... (所有后续函数，如 fetchAndCacheGlobalData, fetchAirtimeRanking 等，保持不变)
+// --- 全局数据管理 ---
+let globalData = null;
+let dataFetchPromise = null;
+const archiveFetchPromises = {};
 
-WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
+async function fetchAndCacheGlobalData() {
+    if (globalData) return globalData;
+    if (dataFetchPromise) return await dataFetchPromise;
 
-// -----------------------------
-// Logger 安全实例
-const LoggerLevels = { debug: 0, info: 1, warn: 2, notify: 3 };
-const logger = {
-    level: LoggerLevels.info,
-    setLevel(level) {
-        if (level in LoggerLevels) this.level = LoggerLevels[level];
-    },
-    debug(...args) { if (this.level <= LoggerLevels.debug) console.log("[DEBUG]", ...args); },
-    info(...args) { if (this.level <= LoggerLevels.info) console.log("[INFO]", ...args); },
-    warn(...args) { if (this.level <= LoggerLevels.warn) console.warn("[WARN]", ...args); },
-    notify(...args) { if (this.level <= LoggerLevels.notify) console.info("[NOTIFY]", ...args); }
-};
-
-// -----------------------------
-// 根据 logMode 设置全局 logger
-function setLoggerMode(logMode) {
-    switch(logMode){
-        case "debug": logger.setLevel("debug"); break;
-        case "info": logger.setLevel("info"); break;
-        case "warning": logger.setLevel("warn"); break;
-        default: logger.setLevel("info");
-    }
-}
-
-// -----------------------------
-// LRU 异步缓存
-class LRUCache {
-    constructor(maxSize = 200) { this.maxSize = maxSize; this.cache = new Map(); this.head = null; this.tail = null; }
-    _removeNode(n) { if (!n) return; if (n.prev) n.prev.next = n.next; else this.head = n.next; if (n.next) n.next.prev = n.prev; else this.tail = n.prev; }
-    _addNodeToHead(n) { n.next = this.head; n.prev = null; if (this.head) this.head.prev = n; this.head = n; if (!this.tail) this.tail = n; }
-    _touchNode(n) { this._removeNode(n); this._addNodeToHead(n); }
-    _evictIfNeeded() { while (this.cache.size > this.maxSize) { const k = this.tail?.key; if (!k) break; this._removeNode(this.tail); this.cache.delete(k); } }
-
-    async get(key) { const n = this.cache.get(key); if (!n) return null; this._touchNode(n); return n.value; }
-    set(key, value) { let n = this.cache.get(key); if (n) { n.value = value; this._touchNode(n); } else { n = { key, value, prev: null, next: null }; this.cache.set(key, n); this._addNodeToHead(n); } this._evictIfNeeded(); }
-    has(key) { return this.cache.has(key); }
-    delete(key) { const n = this.cache.get(key); if (n) { this._removeNode(n); this.cache.delete(key); } }
-
-    async getOrSet(key, fetcher) {
-        if (this.has(key)) return await this.get(key);
-        try { const r = await fetcher(); this.set(key, r); return r; } 
-        catch (e) { this.delete(key); logger.warn("缓存 fetcher 异常:", e); throw e; }
-    }
-}
-
-// -----------------------------
-// 缓存实例
-const personIdCache = new LRUCache(200);
-const personWorksCache = new LRUCache(200);
-const tmdbGenresCache = { movie:{}, tv:{} };
-
-// -----------------------------
-// 安全获取人物ID
-async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug") {
-    let s = personInput?.toString().trim();
-
-    // 输入为空时，默认搜索“张艺谋”
-    if (!s) {
-        s = "张艺谋";
-        logger.info(`输入为空，使用默认搜索人物: "${s}"`);
-    }
-
-    // 如果输入的是数字，直接返回
-    if (/^\d+$/.test(s)) return Number(s);
-
-    const cacheKey = `${s}_${language}`;
-    return await personIdCache.getOrSet(cacheKey, async () => {
-        logger.info(`搜索人物ID: "${s}"`);
+    dataFetchPromise = (async () => {
+        console.log(`[BGM Widget v10.4] 开始获取近期数据...`);
         try {
-            const res = await Widget.tmdb.get("search/person", { params: { query: s, language } });
-            return res?.results?.[0]?.id || null;  // 找不到就返回 null
+            const response = await Widget.http.get(RECENT_DATA_URL, { headers: { 'Cache-Control': 'no-cache' } });
+            globalData = response.data;
+            globalData.dynamic = {};
+            console.log(`[BGM Widget v10.4] 近期数据初始化完成。`);
+            return globalData;
         } catch (e) {
-            logger.warn("resolvePersonId失败", e);
-            return null;
+            console.error("[BGM Widget v10.4] 获取近期数据失败! 将完全回退到动态模式。", e.message);
+            globalData = { airtimeRanking: {}, recentHot: {}, dailyCalendar: {}, dynamic: {} };
+            return globalData;
         }
-    });
+    })();
+
+    return await dataFetchPromise;
 }
 
-// -----------------------------
-// 初始化 TMDB 类型
-async function initTmdbGenres(language="zh-CN"){
-    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
-        console.log("[DEBUG] tmdbGenresCache 已初始化，无需重复请求");
-        return;
+const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map(); 
+const normalizeTitleForMatch=s=>!s?"":s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().normalize("NFC").toLowerCase(); 
+class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(word){let n=this.root;for(const c of word){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(word)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const ch of Object.keys(node.next)){const child=node.next[ch];let f=node.fail;while(f!==this.root&&!f.next[ch])f=f.fail;child.fail=f.next[ch]||this.root;child.output=child.output.concat(child.fail.output);q.push(child)}}};match(text){const found=new Set();if(!text)return found;let node=this.root;for(const ch of text){while(node!==this.root&&!node.next[ch])node=node.fail;node=node.next[ch]||this.root;node.output.forEach(w=>found.add(w))}return found}} 
+const isPlainText=term=>!/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); 
+const getRegex=term=>regexCache.has(term)?regexCache.get(term):(regexCache.set(term,(()=>{try{return new RegExp(term,"i")}catch(e){return null}})()),regexCache.get(term)); 
+const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;if(filterUnitCache.has(filterStr))return filterUnitCache.get(filterStr);const terms=filterStr.split(/\s*\|\|\s*/).map(t=>t.trim()).filter(Boolean),plainTerms=[],regexTerms=[];for(const t of terms)(isPlainText(t)?plainTerms:regexTerms).push(t);let ac=null;if(plainTerms.length){const key=plainTerms.slice().sort().join("\u0001");if(acCache.has(key))ac=acCache.get(key);else{ac=new ACAutomaton();plainTerms.forEach(p=>ac.insert(p.toLowerCase()));ac.build();acCache.set(key,ac)}}const unit={ac,regexTerms};filterUnitCache.set(filterStr,unit);return unit}; 
+const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
+
+async function fetchRecentHot(params = {}) {
+    await fetchAndCacheGlobalData();
+    const category = params.category || "anime";
+
+    // --- 解析多页输入 ---
+    let pageList = [];
+    const pageInput = params.pages || "1";
+    if (pageInput.includes("-")) {
+        const [start, end] = pageInput.split("-").map(n => parseInt(n, 10));
+        for (let i = start; i <= end; i++) pageList.push(i);
+    } else {
+        pageList.push(parseInt(pageInput, 10));
     }
 
+    const pages = globalData.recentHot?.[category] || [];
+    let resultList = [];
+    for (const p of pageList) {
+        if (pages[p - 1]) resultList = resultList.concat(pages[p - 1]);
+    }
+
+    // --- 排序 ---
+    const sort = params.sort || "default";
+    if (sort === "date") {
+        resultList.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
+    } else if (sort === "score") {
+        resultList.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+
+    // --- 关键词过滤 ---
+    const keywordFilter = params.keywordFilter || "";
+    resultList = filterByKeywords(resultList, keywordFilter);
+
+    return resultList;
+}
+
+/* ==================== 优化后的 fetchAirtimeRanking ==================== */
+async function fetchAirtimeRanking(params = {}) {
+    await fetchAndCacheGlobalData();
+    const category = params.category || "anime";
+    const year = params.year || `${new Date().getFullYear()}`;
+    const month = params.month || "all";
+    const sort = params.sort || "collects";
+    const page = parseInt(params.page || "1", 10);
+
+    // 先从已有缓存读取，减少重复请求
+    if (!globalData.airtimeRanking[category]?.[year]) {
+    if (!archiveFetchPromises[`${category}-${year}`]) {
+        archiveFetchPromises[`${category}-${year}`] = (async () => {
+            try {
+                const archiveUrl = `${BASE_DATA_URL}/archive/${year}.json`;
+                const response = await Widget.http.get(archiveUrl, { headers: { 'Cache-Control': 'no-cache' } });
+                if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
+                globalData.airtimeRanking[category][year] = response.data.airtimeRanking[category][year] || {};
+            } catch (e) {
+                console.warn(`加载存档 ${year} 失败: ${e.message}`);
+                if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
+                globalData.airtimeRanking[category][year] = {}; // 避免使用字符串
+            }
+        })();
+    }
+    await archiveFetchPromises[`${category}-${year}`];
+}
+
+    // 命中已有数据
     try {
-        const [movieResp, tvResp] = await Promise.all([
-            Widget.tmdb.get("genre/movie/list",{params:{language}}),
-            Widget.tmdb.get("genre/tv/list",{params:{language}})
-        ]);
+        const pages = globalData.airtimeRanking[category][year][month]?.[sort];
+        if (pages && pages[page - 1]) {
+            console.log(`[BGM Widget vOptimized] 命中预构建数据: ${year}-${sort}-p${page}`);
+            return pages[page - 1];
+        }
+    } catch (e) {}
 
-        const movieGenres = movieResp?.genres || [];
-        const tvGenres = tvResp?.genres || [];
+    // 动态抓取
+    const dynamicKey = `airtime-${category}-${year}-${month}-${sort}-${page}`;
+    if (globalData.dynamic[dynamicKey]) return globalData.dynamic[dynamicKey];
 
-        // 保证原对象引用不变并填充数据
-        Object.assign(tmdbGenresCache.movie, Object.fromEntries(movieGenres.map(g => [g.id, g.name])));
-        Object.assign(tmdbGenresCache.tv, Object.fromEntries(tvGenres.map(g => [g.id, g.name])));
+    console.log(`[BGM Widget vOptimized] 动态获取: ${year}-${sort}-p${page}`);
+    const url = `https://bgm.tv/${category}/browser/airtime/${year}/${month}?sort=${sort}&page=${page}`;
+    const listItems = await DynamicDataProcessor.processBangumiPage(url, category);
 
-        console.log("[DEBUG] tmdbGenresCache 初始化完成",
-            { movie: tmdbGenresCache.movie, tv: tmdbGenresCache.tv, movieCount: movieGenres.length, tvCount: tvGenres.length }
-        );
-
-    } catch(e) {
-        logger.warn("初始化 TMDB 类型失败", e);
-        tmdbGenresCache.movie = {};
-        tmdbGenresCache.tv = {};
-    }
-}
-
-// -----------------------------
-// 获取人物作品
-async function fetchCreditsCached(personId, language="zh-CN"){
-    const cacheKey = `credits_${personId}_${language}`;
-    return await personWorksCache.getOrSet(cacheKey, async ()=>{
-        try{
-            const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
-            const cast = normalizeItems(res?.cast || []);
-            const crew = normalizeItems(res?.crew || []);
-            return [...cast, ...crew];
-        } catch(e){
-            logger.warn("fetchCredits 获取作品失败", e);
-            return [];
+    // 异步更新 TMDB 详情
+    listItems.forEach(item => {
+        if (item.type === "link") {
+            // 异步 fetch TMDB，不阻塞主流程
+            (async () => {
+                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
+                if (tmdbResult) {
+                    item.id = String(tmdbResult.id);
+                    item.type = "tmdb";
+                    item.title = tmdbResult.name || tmdbResult.title || item.title;
+                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
+                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
+                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
+                    item.description = tmdbResult.overview || item.description;
+                    item.tmdb_id = String(tmdbResult.id);
+                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                }
+            })();
         }
     });
+
+    globalData.dynamic[dynamicKey] = listItems;
+    return listItems;
 }
+/* ==================== 优化后的 fetchDailyCalendarApi ==================== */
+async function fetchDailyCalendarApi(params = {}) {
+    await fetchAndCacheGlobalData();
 
-// -----------------------------
-// 规范化处理
-function normalizeItem(item){
-    if(!item || typeof item!=="object") return { 
-        id:null, type:"tmdb", title:"未知", overview:"", posterPath:"", backdropPath:"", 
-        mediaType:"movie", releaseDate:"", popularity:0, rating:0, jobs:[], characters:[], genre_ids:[], 
-        _normalizedTitle:"", _releaseTime:0, _popularity:0, _rating:0 
-    };
-    const title = item.title || item.name || "未知";
-    const mediaType = item.media_type || (item.release_date ? "movie" : (item.first_air_date ? "tv" : "movie"));
-    const release = item.release_date || item.first_air_date || "";
-    return {
-        id: item.id || null,
-        type: "tmdb",
-        title,
-        overview: item.overview || "",
-        posterPath: item.poster_path || "",
-        backdropPath: item.backdrop_path || "",
-        mediaType,
-        releaseDate: release,
-        popularity: Number(item.popularity || 0),
-        rating: Number(item.vote_average || 0),
-        jobs: Array.isArray(item.jobs) ? item.jobs : (item.job ? [item.job] : []),
-        characters: Array.isArray(item.characters) ? item.characters : (item.character ? [item.character] : []),
-        genre_ids: Array.isArray(item.genre_ids) ? item.genre_ids : [],
-        _normalizedTitle: title.toLowerCase(),
-        _releaseTime: release ? new Date(release).getTime() : 0,
-        _popularity: Number(item.popularity || 0),
-        _rating: Number(item.vote_average || 0)
-    };
-}
-
-function normalizeItems(list){ return Array.isArray(list)?list.map(normalizeItem):[]; }
-
-// -----------------------------
-// 输出格式化
-function formatOutput(list){
-    return [...(Array.isArray(list)?list:[])]
-        .filter(i => i && typeof i==="object")
-        .sort((a,b)=>new Date(b.releaseDate||0) - new Date(a.releaseDate||0))
-        .map(i=>{
-            const mediaType = i.mediaType || "movie";
-            const genreMap = tmdbGenresCache[mediaType] || {};
-            const genreTitle = Array.isArray(i.genre_ids) ? i.genre_ids.map(id=>genreMap[id] || `未知类型(${id})`).join("•") : "";
-            return {
-                id: i.id,
-                type: "tmdb",
-                title: i.title || "未知",
-                description: i.overview || "",
-                releaseDate: i.releaseDate || "",
-                rating: i.rating || 0,
-                popularity: i.popularity || 0,
-                posterPath: i.posterPath || "",
-                backdropPath: i.backdropPath || "",
-                mediaType,
-                jobs: i.jobs || [],
-                characters: i.characters || [],
-                genreTitle
-            };
-        });
-}
-
-// -----------------------------
-// 带 debug 的通用过滤函数
-function filterWithDebug(list, predicate, debugInfo){
-    if(!Array.isArray(list) || !list.length) return [];
-    return list.filter(item => {
-        try {
-            const keep = predicate(item);
-            if(!keep && debugInfo) debugInfo.filteredOutTitles.push(item.title || "(no title)");
-            return keep;
-        } catch(e){ return true; }
-    });
-}
-
-// -----------------------------
-// AC 自动机 + 正则过滤
-const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map();
-class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(w){let n=this.root;for(const c of w){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(w)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const c of Object.keys(node.next)){const ch=node.next[c];let f=node.fail;while(f!==this.root&&!f.next[c])f=f.fail;ch.fail=f.next[c]||this.root;ch.output=ch.output.concat(ch.fail.output);q.push(ch)}}};matchAny(text){if(!text)return false;let n=this.root;for(const c of text){while(n!==this.root&&!n.next[c])n=n.fail;n=n.next[c]||this.root;if(n.output.length)return true}return false}}
-const normalizeTitleForMatch = s => s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():"";
-const isPlainText = t => !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t);
-const getRegex = t => regexCache.has(t)?regexCache.get(t):(regexCache.set(t,(r=>{try{return new RegExp(t,'i')}catch(e){return null}})()),regexCache.get(t));
-const buildFilterUnit = s => !s?.trim()?null:filterUnitCache.has(s)?filterUnitCache.get(s):(filterUnitCache.set(s,(()=>{const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}}const unit={ac,regexTerms:regex,bigRegex};return unit})()),filterUnitCache.get(s));
-const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const u=buildFilterUnit(s); if(!u) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=u,fo=[]; const f=list.filter(i=>{try{i._normalizedTitle||(i._normalizedTitle=normalizeTitleForMatch(i.title||"")); const t=i._normalizedTitle; let hit=false; if(ac&&ac.matchAny(t)) hit=true; if(!hit&&bigRegex&&bigRegex.test(t)) hit=true; if(hit) fo.push(i.title||"(no title)"); return !hit}catch(e){return true}}); return {filtered:f, filteredOut:fo}; })();
-
-// -----------------------------
-// 核心加载流程
-// -----------------------------
-async function loadPersonWorks(params) {
-    setLoggerMode(params.logMode);
-
-    const language = params.language || "zh-CN";
-    const type = params.type || "all";
-    const filter = params.filter || "";
-    const sort_by = params.sort_by || "";
-    const debugMode = logger.level === LoggerLevels.debug;
-    const debugInfo = { filteredOutTitles: [] };
-    const personKey = `${params.personId}_${language}`;
-
-    // 支持 signal 取消请求
-    const { signal } = params;
-
-    // 初始化 genre cache
-    await initTmdbGenres(language);
-
-    // 获取缓存或请求作品
-    let works = await personWorksCache.getOrSet(personKey, async () => {
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-
-        const personId = await resolvePersonIdSafe(params.personId, language);
-        if (!personId) return [];
-
-        const credits = await fetchCreditsCached(personId, language, signal);
-        (credits || []).forEach(w => { if (w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
-        return credits || [];
-    });
-
-    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-
-    // 上映状态过滤
-    const nowDate = new Date();
-    works = filterWithDebug(works, w => type === "all" || ((w._releaseDateObj && w._releaseDateObj <= nowDate) === (type === "released")), debugInfo);
-
-    // 关键词过滤
-    if (filter.trim()) {
-        const { filtered, filteredOut } = filterByKeywords(works, filter);
-        works = filtered;
-        if (debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
+    let items = globalData.dailyCalendar?.all_week || [];
+    if (!items.length && !archiveFetchPromises['daily']) {
+        console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
+        archiveFetchPromises['daily'] = (async () => {
+            const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
+            if (!globalData.dailyCalendar) globalData.dailyCalendar = {};
+            globalData.dailyCalendar.all_week = dynamicItems;
+        })();
     }
+    if (archiveFetchPromises['daily']) await archiveFetchPromises['daily'];
+
+    items = globalData.dailyCalendar?.all_week || [];
+
+    const { filterType = "today", specificWeekday = "1", dailySortOrder = "popularity_rat_bgm", dailyRegionFilter = "all", keywordFilter = "" } = params;
+
+    const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
+    const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
+
+    let filteredByDay = [];
+    if (filterType === "all_week") filteredByDay = items;
+    else {
+        const today = new Date();
+        const currentJsDay = today.getDay();
+        const targetBgmIds = new Set();
+        switch (filterType) {
+            case "today": targetBgmIds.add(JS_DAY_TO_BGM_API_ID[currentJsDay]); break;
+            case "specific_day": targetBgmIds.add(parseInt(specificWeekday,10)); break;
+            case "mon_thu": [1,2,3,4].forEach(id=>targetBgmIds.add(id)); break;
+            case "fri_sun": [5,6,7].forEach(id=>targetBgmIds.add(id)); break;
+        }
+        filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
+    }
+
+    // 地区过滤
+    let filteredByRegion = filteredByDay.filter(item => {
+        if (dailyRegionFilter === "all") return true;
+        if (item.type !== "tmdb" || !item.tmdb_id) return dailyRegionFilter === "OTHER";
+        const countries = item.tmdb_origin_countries || [];
+        if (!countries.length) return dailyRegionFilter === "OTHER";
+        if (dailyRegionFilter === "JP") return countries.includes("JP");
+        if (dailyRegionFilter === "CN") return countries.includes("CN");
+        if (dailyRegionFilter === "US_EU") return countries.some(c => REGION_FILTER_US_EU_COUNTRIES.includes(c));
+        if (dailyRegionFilter === "OTHER") return !countries.includes("JP") && !countries.includes("CN") && !countries.some(c=>REGION_FILTER_US_EU_COUNTRIES.includes(c));
+        return false;
+    });
 
     // 排序
-    if (sort_by) {
-        const [field, order] = sort_by.split('.');
-        works.sort((a, b) => ((a[field] ?? 0) - (b[field] ?? 0)) * (order === 'desc' ? -1 : 1));
-        if (debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
-    }
-
-    // 格式化输出
-    const finalList = formatOutput(works);
-
-    // debug 输出
-    if (debugMode) {
-        const isCacheEmpty = !Object.keys(tmdbGenresCache.movie).length || !Object.keys(tmdbGenresCache.tv).length;
-        logger.debug("loadPersonWorks Debug Info:", {
-            type,
-            filter,
-            sort_by,
-            filteredOutTitles: debugInfo.filteredOutTitles.length ? [...new Set(debugInfo.filteredOutTitles)] : null,
-            tmdbGenresCacheStatus: isCacheEmpty ? "EMPTY" : "OK",
-            tmdbGenresCache
+    let sortedResults = [...filteredByRegion];
+    if (dailySortOrder !== "default") {
+        sortedResults.sort((a,b)=>{
+            if (dailySortOrder==="popularity_rat_bgm") return (b.bgm_rating_total||0)-(a.bgm_rating_total||0);
+            if (dailySortOrder==="score_bgm_desc") return (b.bgm_score||0)-(a.bgm_score||0);
+            if (dailySortOrder==="airdate_desc"){
+                const dateA=a.releaseDate||0,dateB=b.releaseDate||0;
+                return new Date(dateB).getTime()-new Date(dateA).getTime();
+            }
+            return 0;
         });
-        if (isCacheEmpty) logger.warn("tmdbGenresCache 为空，可能没有正确初始化！");
     }
 
-    return finalList;
+    // 关键词过滤（保持原来的 AC + 正则逻辑）
+    const finalResults = filterByKeywords(sortedResults, keywordFilter);
+
+    // 异步更新 TMDB 详情
+    finalResults.forEach(item => {
+        if (item.type === "link") {
+            (async ()=>{
+                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
+                if (tmdbResult) {
+                    item.id = String(tmdbResult.id);
+                    item.type = "tmdb";
+                    item.title = tmdbResult.name || tmdbResult.title || item.title;
+                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
+                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
+                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
+                    item.description = tmdbResult.overview || item.description;
+                    item.tmdb_id = String(tmdbResult.id);
+                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                }
+            })();
+        }
+    });
+
+    return finalResults;
 }
 
-// -----------------------------
-// 安全包装
-async function loadSharedWorksSafe(params){
-    try{
-        return await loadPersonWorks(params);
-    }catch(err){
-        const logger = createLogger(params?.logMode || "info");
-        logger.warning("loadSharedWorksSafe 捕获异常:", err);
-        return formatOutput([]);
+const DynamicDataProcessor = (() => {
+
+    class Processor {
+        // ==================== 静态常量 ====================
+        static BGM_BASE_URL = "https://bgm.tv";
+        static TMDB_ANIMATION_GENRE_ID = 16; // 动画类别
+        static MAX_CONCURRENT_DETAILS_FETCH = 8; // 并发限制
+        static tmdbCache = new Map(); // TMDB 查询缓存
+
+        // ==================== 工具方法 ====================
+        static normalizeTmdbQuery(query) { 
+            if (!query || typeof query !== 'string') return ""; 
+            return query.toLowerCase().trim()
+                .replace(/[\[\]【】（）()「」『』:：\-－_,\.・]/g, ' ')
+                .replace(/\s+/g, ' ').trim();
+        }
+
+        static parseDate(dateStr) { 
+            if (!dateStr || typeof dateStr !== 'string') return ''; 
+            dateStr = dateStr.trim(); 
+            let match; 
+            match = dateStr.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日/); 
+            if (match) return `${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`; 
+            match = dateStr.match(/^(\d{4})年(\d{1,2})月(?!日)/); 
+            if (match) return `${match[1]}-${String(match[2]).padStart(2, '0')}-01`; 
+            match = dateStr.match(/^(\d{4})$/); 
+            if (match) return `${match[1]}-01-01`; 
+            return '';
+        }
+
+        static scoreTmdbResult(result, query, validYear) {
+            let score = 0;
+            const resultTitle = Processor.normalizeTmdbQuery(result.title || result.name);
+            const queryLower = Processor.normalizeTmdbQuery(query);
+            if (resultTitle === queryLower) score += 15;
+            else if (resultTitle.includes(queryLower)) score += 7;
+            if (validYear) {
+                const resDate = result.release_date || result.first_air_date;
+                if (resDate && resDate.startsWith(validYear)) score += 6;
+            }
+            score += Math.log10((result.popularity || 0) + 1) * 2.2;
+            return score;
+        }
+
+        // ==================== TMDB 查询 ====================
+        static async searchTmdb(originalTitle, chineseTitle, year) {
+            const cacheKey = `${originalTitle || ''}-${chineseTitle || ''}-${year || ''}`;
+            if (Processor.tmdbCache.has(cacheKey)) return Processor.tmdbCache.get(cacheKey);
+
+            let bestMatch = null;
+            let maxScore = -1;
+            const searchMediaType = 'tv';
+            const query = chineseTitle || originalTitle;
+            try {
+                const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
+                    params: { query, language: "zh-CN", include_adult: false, year: year } 
+                });
+                const results = response?.results || [];
+                for (const result of results) {
+                    if (!(result.genre_ids && result.genre_ids.includes(Processor.TMDB_ANIMATION_GENRE_ID))) continue;
+                    const score = Processor.scoreTmdbResult(result, query, year);
+                    if (score > maxScore) {
+                        maxScore = score;
+                        bestMatch = result;
+                    }
+                }
+            } catch (err) {
+                console.error(`[TMDB] searchTmdb error: ${err.message}`);
+            }
+
+            Processor.tmdbCache.set(cacheKey, bestMatch);
+            return bestMatch;
+        }
+
+        // ==================== Bangumi 页面解析 ====================
+        static parseBangumiListItems(htmlContent) {
+            const $ = Widget.html.load(htmlContent);
+            const items = [];
+            $('ul#browserItemList li.item').each((_, element) => {
+                const $item = $(element);
+                const id = $item.attr('id')?.substring(5);
+                if (!id) return;
+                const title = $item.find('h3 a.l').text().trim();
+                let cover = $item.find('a.subjectCover img.cover').attr('src');
+                if (cover?.startsWith('//')) cover = 'https:' + cover;
+                const info = $item.find('p.info.tip').text().trim();
+                const rating = $item.find('small.fade').text().trim();
+                items.push({ id, title, cover, info, rating });
+            });
+            return items;
+        }
+
+        static async fetchItemDetails(item, category) {
+            const yearMatch = item.info.match(/(\d{4})/);
+            const year = yearMatch ? yearMatch[1] : '';
+            const baseItem = {
+                id: item.id, type: "link", title: item.title,
+                posterPath: item.cover, releaseDate: Processor.parseDate(item.info),
+                mediaType: category, rating: item.rating,
+                description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`
+            };
+            const tmdbResult = await Processor.searchTmdb(item.title, null, year);
+            if (tmdbResult) {
+                baseItem.id = String(tmdbResult.id);
+                baseItem.type = "tmdb";
+                baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
+                baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
+                baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
+                baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
+                baseItem.description = tmdbResult.overview || baseItem.description;
+                baseItem.link = null;
+                baseItem.tmdb_id = String(tmdbResult.id);
+                baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+            }
+            return baseItem;
+        }
+
+        static async processBangumiPage(url, category) {
+            try {
+                const listHtmlResp = await Widget.http.get(url);
+                const pendingItems = Processor.parseBangumiListItems(listHtmlResp.data);
+                const results = [];
+                for (let i = 0; i < pendingItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
+                    const batch = pendingItems.slice(i, i + Processor.MAX_CONCURRENT_DETAILS_FETCH);
+                    const promises = batch.map(item => Processor.fetchItemDetails(item, category));
+                    const settled = await Promise.allSettled(promises);
+                    settled.forEach(res => {
+                        if (res.status === 'fulfilled' && res.value) results.push(res.value);
+                    });
+                }
+                return results;
+            } catch (error) {
+                console.error(`[BGM Widget] processBangumiPage error (${url}): ${error.message}`);
+                return [];
+            }
+        }
+
+        // ==================== 每日放送 ====================
+        static async processDailyCalendar() {
+            try {
+                const apiResponse = await Widget.http.get("https://api.bgm.tv/calendar");
+                const allItems = [];
+                apiResponse.data.forEach(dayData => {
+                    if (dayData.items) {
+                        dayData.items.forEach(item => {
+                            item.bgm_weekday_id = dayData.weekday?.id;
+                            allItems.push(item);
+                        });
+                    }
+                });
+                const enhancedItems = [];
+                for (let i = 0; i < allItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
+                    const batch = allItems.slice(i, i + Processor.MAX_CONCURRENT_DETAILS_FETCH);
+                    const promises = batch.map(async (item) => {
+                        const baseItem = {
+                            id: String(item.id), type: "link", title: item.name_cn || item.name,
+                            posterPath: item.images?.large?.startsWith('//') ? 'https:' + item.images.large : item.images?.large,
+                            releaseDate: item.air_date, mediaType: 'anime', rating: item.rating?.score?.toFixed(1) || "N/A",
+                            description: `[${item.weekday?.cn || ''}] ${item.summary || ''}`.trim(),
+                            link: item.url, bgm_id: String(item.id), bgm_score: item.rating?.score || 0,
+                            bgm_rating_total: item.rating?.total || 0, bgm_weekday_id: item.bgm_weekday_id
+                        };
+                        const tmdbResult = await Processor.searchTmdb(item.name, item.name_cn, item.air_date?.substring(0, 4));
+                        if (tmdbResult) {
+                            baseItem.id = String(tmdbResult.id);
+                            baseItem.type = "tmdb";
+                            baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
+                            baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
+                            baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
+                            baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
+                            baseItem.description = tmdbResult.overview || baseItem.description;
+                            baseItem.link = null;
+                            baseItem.tmdb_id = String(tmdbResult.id);
+                            baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+                        }
+                        return baseItem;
+                    });
+                    const settled = await Promise.allSettled(promises);
+                    settled.forEach(res => {
+                        if (res.status === 'fulfilled' && res.value) enhancedItems.push(res.value);
+                    });
+                }
+                return enhancedItems;
+            } catch (error) {
+                console.error(`[BGM Widget] processDailyCalendar error: ${error.message}`);
+                return [];
+            }
+        }
     }
-}
 
-// -----------------------------
-// 模块接口
-async function getAllWorks(params){ return await loadSharedWorksSafe(params); }
-async function getActorWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>i.characters.length); }
-async function getDirectorWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>i.jobs.some(j=>/director/i.test(j))); }
-async function getOtherWorks(params){ return (await loadSharedWorksSafe(params)).filter(i=>!(i.characters.length) && !(i.jobs.some(j=>/director/i.test(j)))); }
+    return {
+        processBangumiPage: Processor.processBangumiPage,
+        processDailyCalendar: Processor.processDailyCalendar
+    };
+})();
