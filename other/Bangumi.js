@@ -574,6 +574,9 @@ const DynamicDataProcessor = (() => {
                 baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
                 baseItem.genre_ids = tmdbResult.genre_ids || [];
                 baseItem.genre_titles = tmdbResult.genre_titles || [];
+        
+                // ✅ 新增：统一 genreTitle
+                baseItem.genreTitle = baseItem.genre_titles.join(', ');
             }
             return baseItem;
         }
@@ -637,6 +640,9 @@ const DynamicDataProcessor = (() => {
                             baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
                             baseItem.genre_ids = tmdbResult.genre_ids || [];
                             baseItem.genre_titles = tmdbResult.genre_titles || [];
+                        
+                            // ✅ 新增
+                            baseItem.genreTitle = baseItem.genre_titles.join(', ');
                         }
                         return baseItem;
                     });
