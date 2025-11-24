@@ -187,6 +187,37 @@ var WidgetMetadata = {
 let globalData = null;
 let dataFetchPromise = null;
 const archiveFetchPromises = {};
+const tmdbGenresCache = { movie:{}, tv:{} };
+
+async function initTmdbGenres(language="zh-CN"){
+    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
+        console.log("[DEBUG] tmdbGenresCache 已初始化，无需重复请求");
+        return;
+    }
+
+    try {
+        const [movieResp, tvResp] = await Promise.all([
+            Widget.tmdb.get("genre/movie/list",{params:{language}}),
+            Widget.tmdb.get("genre/tv/list",{params:{language}})
+        ]);
+
+        const movieGenres = movieResp?.genres || [];
+        const tvGenres = tvResp?.genres || [];
+
+        // 保证原对象引用不变并填充数据
+        Object.assign(tmdbGenresCache.movie, Object.fromEntries(movieGenres.map(g => [g.id, g.name])));
+        Object.assign(tmdbGenresCache.tv, Object.fromEntries(tvGenres.map(g => [g.id, g.name])));
+
+        console.log("[DEBUG] tmdbGenresCache 初始化完成",
+            { movie: tmdbGenresCache.movie, tv: tmdbGenresCache.tv, movieCount: movieGenres.length, tvCount: tvGenres.length }
+        );
+
+    } catch(e) {
+        logger.warn("初始化 TMDB 类型失败", e);
+        tmdbGenresCache.movie = {};
+        tmdbGenresCache.tv = {};
+    }
+}
 
 async function fetchAndCacheGlobalData() {
     if (globalData) return globalData;
@@ -317,6 +348,7 @@ async function fetchAirtimeRanking(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                    baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
                 }
             })();
         }
@@ -407,6 +439,7 @@ async function fetchDailyCalendarApi(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                    baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
                 }
             })();
         }
@@ -528,6 +561,7 @@ const DynamicDataProcessor = (() => {
                 baseItem.link = null;
                 baseItem.tmdb_id = String(tmdbResult.id);
                 baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+                baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
             }
             return baseItem;
         }
@@ -589,6 +623,7 @@ const DynamicDataProcessor = (() => {
                             baseItem.link = null;
                             baseItem.tmdb_id = String(tmdbResult.id);
                             baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+                            baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
                         }
                         return baseItem;
                     });
