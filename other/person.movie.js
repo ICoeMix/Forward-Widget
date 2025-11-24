@@ -420,6 +420,8 @@ async function loadSharedWorksSafe(params){
     }
 }
 
+
+
 // -----------------------------
 // getWorks 统一接口
 async function getWorks(params, filterFn){ 
@@ -427,142 +429,20 @@ async function getWorks(params, filterFn){
     return (await loadSharedWorksSafe(params)).filter(filterFn);
 }
 
-// 防抖机制
-
-function initWidgetInputsSmart(inputsConfig, baseParams = {}, debounceMs = 3000) {
-    const inputStates = {};
-
-    // 判断当前值是否使用了 placeholders
-    function isUsingPlaceholder(inputName, value) {
-        const cfg = inputsConfig.find(c => c.inputName === inputName);
-        if (!cfg || !cfg.placeholders) return false;
-        return cfg.placeholders.some(p => p.value === value);
-    }
-
-    function batchRender() {
-        inputsConfig.forEach(({ inputName, renderFn }) => {
-            const state = inputStates[inputName];
-            if (state?.latestResults && typeof renderFn === "function") {
-                renderFn(state.latestResults);
-            }
-        });
-    }
-
-    async function handleInputChange(inputName, value, { triggerLinked = true, immediate = false } = {}) {
-        const state = inputStates[inputName] || (inputStates[inputName] = {
-            controller: null, timer: null, latestResults: null, value: null, lastRequestId: 0
-        });
-
-        // 清理旧定时器
-        if (state.timer) {
-            clearTimeout(state.timer);
-            state.timer = null;
-        }
-
-        // personId 改变时取消 filter 定时器和请求
-        if (inputName === "personId") {
-            const filterState = inputStates["filter"];
-            if (filterState) {
-                if (filterState.controller) filterState.controller.abort();
-                if (filterState.timer) clearTimeout(filterState.timer);
-                filterState.latestResults = null;
-            }
-        }
-
-        const runSearch = async () => {
-            state.lastRequestId++;
-            const requestId = state.lastRequestId;
-
-            // 取消上一次请求
-            if (state.controller) state.controller.abort();
-            state.controller = new AbortController();
-
-            try {
-                let results;
-                let debugFilteredOut = [];
-
-                if (inputName === "filter") {
-                    const personState = inputStates["personId"];
-                    const baseResults = personState?.latestResults || [];
-                    const { filtered, filteredOut } = filterByKeywords(baseResults, value);
-                    results = filtered;
-                    debugFilteredOut = filteredOut;
-                } else {
-                    results = await loadPersonWorks({
-                        ...baseParams,
-                        [inputName]: value,
-                        signal: state.controller.signal,
-                        ...(inputStates["filter"]?.value ? { filter: inputStates["filter"].value } : {})
-                    });
-                }
-
-                // 只接受最新请求结果
-                if (requestId === state.lastRequestId) {
-                    state.latestResults = results;
-                    state.value = value;
-                    batchRender();
-
-                    // debug 输出
-                    if (baseParams.logMode === "debug" && debugFilteredOut.length) {
-                        console.debug(`[DEBUG] [${inputName}] 被过滤作品:`, debugFilteredOut);
-                    }
-
-                    // 联动更新
-                    if (triggerLinked) {
-                        const cfg = inputsConfig.find(c => c.inputName === inputName);
-                        if (cfg?.linkedInputs?.length) {
-                            cfg.linkedInputs.forEach(linkName => {
-                                const linkedEl = document.querySelector(inputsConfig.find(c => c.inputName === linkName)?.selector);
-                                if (linkedEl) handleInputChange(linkName, linkedEl.value ?? "", { triggerLinked: false });
-                            });
-                        }
-                    }
-                }
-            } catch (e) {
-                if (e.name !== "AbortError") console.error(`[${inputName}] 请求失败:`, e);
-            }
-        };
-
-        // 根据 immediate 决定是否防抖
-        if (immediate) runSearch();
-        else state.timer = setTimeout(runSearch, debounceMs);
-    }
-
-    function bindInputs() {
-        inputsConfig.forEach(({ inputName, selector, defaultValue }) => {
-            const el = document.querySelector(selector);
-            if (!el) return;
-
-            // 用户手动输入 → 防抖触发
-            el.addEventListener("input", e => {
-                const usingPlaceholder = isUsingPlaceholder(inputName, e.target.value);
-                handleInputChange(inputName, e.target.value, { immediate: usingPlaceholder });
-            });
-
-            // 初始化默认值 / placeholder → 立即触发
-            const initValue = defaultValue ?? el.value ?? "";
-            if (initValue) {
-                el.value = initValue;
-                const immediate = isUsingPlaceholder(inputName, initValue);
-                handleInputChange(inputName, initValue, { immediate });
-            }
-        });
-    }
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", bindInputs);
-    } else {
-        bindInputs();
-    }
-
-    return { handleInputChange, inputStates };
-}
-
 // -----------------------------
 // 模块接口
 async function getAllWorks(params){ return await getWorks(params, ()=>true); }
-getActorWorks = params => getWorks(params, i => i.characters.length);
-getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
-getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.some(j=>/director/i.test(j)));
+const getActorWorks = params => getWorks(params, i => i.characters.length);
+const getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
+const getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.some(j=>/director/i.test(j)));
 
+// -----------------------------
+// 防抖机制
+const createOptimalDebounce=(fn,d=300)=>{let t=null,c=null,l;return (...a)=>new Promise((r,j)=>{l=a[0];if(t)clearTimeout(t);t=setTimeout(async()=>{if(c)c.abort();c=new AbortController();l.signal=c.signal;try{r(await fn(l))}catch(e){e.name==="AbortError"?r([]):j(e)}},d)})};
 
+// -----------------------------
+// 防抖包装接口
+const debouncedGetAllWorks = createOptimalDebounce(getAllWorks, 300);
+const debouncedGetActorWorks = createOptimalDebounce(getActorWorks, 300);
+const debouncedGetDirectorWorks = createOptimalDebounce(getDirectorWorks, 300);
+const debouncedGetOtherWorks = createOptimalDebounce(getOtherWorks, 300);
