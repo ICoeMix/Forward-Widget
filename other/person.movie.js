@@ -442,7 +442,7 @@ const createOptimalDebounce=(fn,d=300)=>{let t=null,c=null,l;return (...a)=>new 
 
 // -----------------------------
 // 防抖包装接口
-const debouncedGetAllWorks = createOptimalDebounce(getAllWorks, 300);
-const debouncedGetActorWorks = createOptimalDebounce(getActorWorks, 300);
-const debouncedGetDirectorWorks = createOptimalDebounce(getDirectorWorks, 300);
-const debouncedGetOtherWorks = createOptimalDebounce(getOtherWorks, 300);
+const debouncedGetAllWorks = createOptimalDebounce(getAllWorks, 3000);
+const debouncedGetActorWorks = createOptimalDebounce(getActorWorks, 3000);
+const debouncedGetDirectorWorks = createOptimalDebounce(getDirectorWorks, 3000);
+const debouncedGetOtherWorks = createOptimalDebounce(getOtherWorks, 3000);
