@@ -187,37 +187,6 @@ var WidgetMetadata = {
 let globalData = null;
 let dataFetchPromise = null;
 const archiveFetchPromises = {};
-const tmdbGenresCache = { movie:{}, tv:{} };
-
-async function initTmdbGenres(language="zh-CN"){
-    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
-        console.log("[DEBUG] tmdbGenresCache 已初始化，无需重复请求");
-        return;
-    }
-
-    try {
-        const [movieResp, tvResp] = await Promise.all([
-            Widget.tmdb.get("genre/movie/list",{params:{language}}),
-            Widget.tmdb.get("genre/tv/list",{params:{language}})
-        ]);
-
-        const movieGenres = movieResp?.genres || [];
-        const tvGenres = tvResp?.genres || [];
-
-        // 保证原对象引用不变并填充数据
-        Object.assign(tmdbGenresCache.movie, Object.fromEntries(movieGenres.map(g => [g.id, g.name])));
-        Object.assign(tmdbGenresCache.tv, Object.fromEntries(tvGenres.map(g => [g.id, g.name])));
-
-        console.log("[DEBUG] tmdbGenresCache 初始化完成",
-            { movie: tmdbGenresCache.movie, tv: tmdbGenresCache.tv, movieCount: movieGenres.length, tvCount: tvGenres.length }
-        );
-
-    } catch(e) {
-        logger.warn("初始化 TMDB 类型失败", e);
-        tmdbGenresCache.movie = {};
-        tmdbGenresCache.tv = {};
-    }
-}
 
 async function fetchAndCacheGlobalData() {
     if (globalData) return globalData;
@@ -251,41 +220,6 @@ const isPlainText=term=>!/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term);
 const getRegex=term=>regexCache.has(term)?regexCache.get(term):(regexCache.set(term,(()=>{try{return new RegExp(term,"i")}catch(e){return null}})()),regexCache.get(term)); 
 const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;if(filterUnitCache.has(filterStr))return filterUnitCache.get(filterStr);const terms=filterStr.split(/\s*\|\|\s*/).map(t=>t.trim()).filter(Boolean),plainTerms=[],regexTerms=[];for(const t of terms)(isPlainText(t)?plainTerms:regexTerms).push(t);let ac=null;if(plainTerms.length){const key=plainTerms.slice().sort().join("\u0001");if(acCache.has(key))ac=acCache.get(key);else{ac=new ACAutomaton();plainTerms.forEach(p=>ac.insert(p.toLowerCase()));ac.build();acCache.set(key,ac)}}const unit={ac,regexTerms};filterUnitCache.set(filterStr,unit);return unit}; 
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
-
-async function fetchRecentHot(params = {}) {
-    await fetchAndCacheGlobalData();
-    const category = params.category || "anime";
-
-    // --- 解析多页输入 ---
-    let pageList = [];
-    const pageInput = params.pages || "1";
-    if (pageInput.includes("-")) {
-        const [start, end] = pageInput.split("-").map(n => parseInt(n, 10));
-        for (let i = start; i <= end; i++) pageList.push(i);
-    } else {
-        pageList.push(parseInt(pageInput, 10));
-    }
-
-    const pages = globalData.recentHot?.[category] || [];
-    let resultList = [];
-    for (const p of pageList) {
-        if (pages[p - 1]) resultList = resultList.concat(pages[p - 1]);
-    }
-
-    // --- 排序 ---
-    const sort = params.sort || "default";
-    if (sort === "date") {
-        resultList.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
-    } else if (sort === "score") {
-        resultList.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    }
-
-    // --- 关键词过滤 ---
-    const keywordFilter = params.keywordFilter || "";
-    resultList = filterByKeywords(resultList, keywordFilter);
-
-    return resultList;
-}
 
 /* ==================== 优化后的 fetchAirtimeRanking ==================== */
 async function fetchAirtimeRanking(params = {}) {
@@ -348,7 +282,6 @@ async function fetchAirtimeRanking(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                    baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
                 }
             })();
         }
@@ -439,7 +372,6 @@ async function fetchDailyCalendarApi(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                    baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
                 }
             })();
         }
@@ -447,8 +379,6 @@ async function fetchDailyCalendarApi(params = {}) {
 
     return finalResults;
 }
-
-await initTmdbGenres(); // 在任何 TMDB 查询之前
 
 const DynamicDataProcessor = (() => {
 
@@ -493,15 +423,15 @@ const DynamicDataProcessor = (() => {
             score += Math.log10((result.popularity || 0) + 1) * 2.2;
             return score;
         }
-        
+
         // ==================== TMDB 查询 ====================
         static async searchTmdb(originalTitle, chineseTitle, year) {
             const cacheKey = `${originalTitle || ''}-${chineseTitle || ''}-${year || ''}`;
             if (Processor.tmdbCache.has(cacheKey)) return Processor.tmdbCache.get(cacheKey);
-        
+
             let bestMatch = null;
             let maxScore = -1;
-            const searchMediaType = 'tv'; // 或 'movie'，视需求
+            const searchMediaType = 'tv';
             const query = chineseTitle || originalTitle;
             try {
                 const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
@@ -516,18 +446,10 @@ const DynamicDataProcessor = (() => {
                         bestMatch = result;
                     }
                 }
-        
-                if (bestMatch) {
-                    // =======【需要新增】=======
-                    const genreMapping = tmdbGenresCache[bestMatch.media_type || 'tv'] || {};
-                    bestMatch.genre_titles = (bestMatch.genre_ids || []).map(id => genreMapping[id] || `Unknown(${id})`);
-                    // =========================
-                }
-        
             } catch (err) {
                 console.error(`[TMDB] searchTmdb error: ${err.message}`);
             }
-        
+
             Processor.tmdbCache.set(cacheKey, bestMatch);
             return bestMatch;
         }
@@ -550,7 +472,6 @@ const DynamicDataProcessor = (() => {
             return items;
         }
 
-        // ==================== fetchItemDetails 更新 ====================
         static async fetchItemDetails(item, category) {
             const yearMatch = item.info.match(/(\d{4})/);
             const year = yearMatch ? yearMatch[1] : '';
@@ -558,10 +479,8 @@ const DynamicDataProcessor = (() => {
                 id: item.id, type: "link", title: item.title,
                 posterPath: item.cover, releaseDate: Processor.parseDate(item.info),
                 mediaType: category, rating: item.rating,
-                description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`,
-                genre_ids: [], genre_titles: [], genreTitle: '未知' 
+                description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`
             };
-        
             const tmdbResult = await Processor.searchTmdb(item.title, null, year);
             if (tmdbResult) {
                 baseItem.id = String(tmdbResult.id);
@@ -574,11 +493,6 @@ const DynamicDataProcessor = (() => {
                 baseItem.link = null;
                 baseItem.tmdb_id = String(tmdbResult.id);
                 baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-                const genreMapping = tmdbGenresCache[tmdbResult.media_type || 'tv'] || {};
-                baseItem.genre_ids = tmdbResult.genre_ids || [];
-                baseItem.genre_titles = baseItem.genre_ids.map(id => genreMapping[id] || `Unknown(${id})`);
-                baseItem.genreTitle = baseItem.genre_titles.join(', ') || '未知';
-       
             }
             return baseItem;
         }
@@ -640,11 +554,6 @@ const DynamicDataProcessor = (() => {
                             baseItem.link = null;
                             baseItem.tmdb_id = String(tmdbResult.id);
                             baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-                            baseItem.genre_ids = tmdbResult.genre_ids || [];
-                            baseItem.genre_titles = tmdbResult.genre_titles || [];
-                        
-                            // ✅ 新增
-                            baseItem.genreTitle = baseItem.genre_titles.join(', ');
                         }
                         return baseItem;
                     });
