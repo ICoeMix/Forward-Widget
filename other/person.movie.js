@@ -276,15 +276,14 @@ function formatOutput(list){
 }
 
 // -----------------------------
-// AC 自动机 + 正则过滤（高性能紧凑版）
+// AC 自动机 + 正则过滤
 const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map();
 class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(w){let n=this.root;for(const c of w){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(w)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const c of Object.keys(node.next)){const ch=node.next[c];let f=node.fail;while(f!==this.root&&!f.next[c])f=f.fail;ch.fail=f.next[c]||this.root;ch.output=ch.output.concat(ch.fail.output);q.push(ch)}}};matchAny(text){if(!text)return false;let n=this.root;for(const c of text){while(n!==this.root&&!n.next[c])n=n.fail;n=n.next[c]||this.root;if(n.output.length)return true}return false}}
 function isPlainText(t){return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t)}
 function getRegex(t){if(regexCache.has(t))return regexCache.get(t);let r=null;try{r=new RegExp(t,'i')}catch(e){r=null}regexCache.set(t,r);return r}
 function buildFilterUnit(s){if(!s?.trim())return null;if(filterUnitCache.has(s))return filterUnitCache.get(s);const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}};const unit={ac,regexTerms:regex,bigRegex};filterUnitCache.set(s,unit);return unit}
 function normalizeTitleForMatch(s){return s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():""}
-function filterByKeywords(list,s,logMode="info"){if(!s?.trim()||!Array.isArray(list)||!list.length)return list;const logger=createLogger(logMode),unit=buildFilterUnit(s);if(!unit)return list;const {ac,bigRegex}=unit,filteredOut=[];const res=list.filter(item=>{try{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const t=item._normalizedTitle;let e=false;if(ac&&ac.matchAny(t))e=true;if(!e&&bigRegex&&bigRegex.test(t))e=true;if(e&&logMode==="debug")filteredOut.push(item);return !e}catch(err){return true}});if(logMode==="debug"&&filteredOut.length)logger.debug("过滤掉的作品:",filteredOut.map(i=>i.title));return res}
-
+function filterByKeywords(list,s,logMode="info"){if(!s?.trim()||!Array.isArray(list)||!list.length)return list;const logger=createLogger(logMode),unit=buildFilterUnit(s);if(!unit)return list;const {ac,bigRegex}=unit,filteredOut=[];const res=list.filter(item=>{try{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const t=item._normalizedTitle;let e=false;if(ac&&ac.matchAny(t))e=true;if(!e&&bigRegex&&bigRegex.test(t))e=true;if(e&&logMode==="debug")filteredOut.push(item.title||"(no title)");return !e}catch(err){return true}});if(logMode==="debug"&&filteredOut.length)logger.debug("过滤掉的作品:",filteredOut);return res}
 // -----------------------------
 // 核心加载流程（修复缓存 Promise 问题）
 async function loadPersonWorks(params){
