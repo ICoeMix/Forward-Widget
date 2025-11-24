@@ -116,7 +116,7 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
-// LRU 异步缓存（修复 Promise 缓存问题）
+// LRU 异步缓存
 class LRUCache{
     constructor(maxSize=200){ this.maxSize=maxSize; this.cache=new Map(); this.head=null; this.tail=null; }
     _removeNode(node){ if(!node) return; if(node.prev) node.prev.next=node.next; else this.head=node.next; if(node.next) node.next.prev=node.prev; else this.tail=node.prev; }
@@ -283,70 +283,73 @@ function isPlainText(t){return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t)}
 function getRegex(t){if(regexCache.has(t))return regexCache.get(t);let r=null;try{r=new RegExp(t,'i')}catch(e){r=null}regexCache.set(t,r);return r}
 function buildFilterUnit(s){if(!s?.trim())return null;if(filterUnitCache.has(s))return filterUnitCache.get(s);const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}};const unit={ac,regexTerms:regex,bigRegex};filterUnitCache.set(s,unit);return unit}
 function normalizeTitleForMatch(s){return s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():""}
-function filterByKeywords(list,s,logMode="info"){if(!s?.trim()||!Array.isArray(list)||!list.length)return list;const logger=createLogger(logMode),unit=buildFilterUnit(s);if(!unit)return list;const {ac,bigRegex}=unit,filteredOut=[];const res=list.filter(item=>{try{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const t=item._normalizedTitle;let e=false;if(ac&&ac.matchAny(t))e=true;if(!e&&bigRegex&&bigRegex.test(t))e=true;if(e&&logMode==="debug")filteredOut.push(item.title||"(no title)");return !e}catch(err){return true}});if(logMode==="debug"&&filteredOut.length)logger.debug("过滤掉的作品:",filteredOut);return res}
+function filterByKeywords(list, s) { return !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const unit=buildFilterUnit(s); if(!unit) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=unit, filteredOut=[]; const filtered=list.filter(item=>{ try{ if(!item._normalizedTitle) item._normalizedTitle=normalizeTitleForMatch(item.title||""); const t=item._normalizedTitle; let f=false; if(ac&&ac.matchAny(t)) f=true; if(!f&&bigRegex&&bigRegex.test(t)) f=true; if(f) filteredOut.push(item.title||"(no title)"); return !f } catch(e){return true} }); return {filtered, filteredOut}; })(); }
+
 // -----------------------------
-// 核心加载流程（修复缓存 Promise 问题）
+// 核心加载流程
 async function loadPersonWorks(params){
     const logger = createLogger(params?.logMode || "info");
     const personKey = `${params.personId}_${params.language || "zh-CN"}`;
 
-    if(personWorksCache.has(personKey)){
-        const cached = await personWorksCache.get(personKey);
+    // 1️⃣ 获取原始作品列表（缓存原始完整列表）
+    let rawWorks;
+    if(await personWorksCache.has(personKey)){
+        rawWorks = await personWorksCache.get(personKey);
         logger.info(`作品缓存命中: ${personKey}`);
-        return cached;
-    }
-
-    let finalList = [];
-    try{
+    } else {
         const personId = await resolvePersonIdSafe(params.personId, params.language, params.logMode);
         if(!personId) return [];
 
         await initTmdbGenres(params.language || "zh-CN", params.logMode);
-        let works = await fetchCreditsCached(personId, params.language, params.logMode);
+        rawWorks = await fetchCreditsCached(personId, params.language, params.logMode);
 
-        // 上映状态过滤
-        if(params.type && params.type !== "all"){
-            const nowDate = new Date();
-            works = works.filter(i => i.releaseDate ? 
-                (params.type==="released"? new Date(i.releaseDate)<=nowDate : new Date(i.releaseDate)>nowDate) 
-                : false);
+        await personWorksCache.set(personKey, rawWorks);
+    }
+
+    // 2️⃣ 局部数组处理动态参数
+    let works = [...rawWorks];
+    const filteredOutTitles = [];
+
+    // 上映状态过滤
+    if(params.type && params.type !== "all"){
+        const nowDate = new Date();
+        const prevLength = works.length;
+        works = works.filter(i => i.releaseDate ?
+            (params.type==="released" ? new Date(i.releaseDate)<=nowDate : new Date(i.releaseDate)>nowDate)
+            : false
+        );
+        if(params.logMode==="debug" && prevLength !== works.length){
+            filteredOutTitles.push(...rawWorks.filter(i => !works.includes(i)).map(i => i.title || "(no title)"));
         }
+    }
 
-        // 关键词过滤
-        if(params.filter?.trim()) works = filterByKeywords(works, params.filter, params.logMode);
+    // 3️⃣ 关键词过滤
+    if(params.filter?.trim()){
+        const { filtered, filteredOut } = filterByKeywords(works, params.filter);
+        works = filtered;
+        filteredOutTitles.push(...filteredOut);
+    }
 
-        // 排序
-        if(params.sort_by){
-            const [field, order] = params.sort_by.split('.');
-            works.sort((a,b)=>{
-                const valA = a[field] ?? 0;
-                const valB = b[field] ?? 0;
-                return order==='desc'? valB-valA : valA-valB;
-            });
-        }
+    // 4️⃣ 排序
+    if(params.sort_by){
+        const [field, order] = params.sort_by.split('.');
+        works.sort((a,b)=>{
+            const valA = a[field] ?? 0;
+            const valB = b[field] ?? 0;
+            return order==='desc' ? valB - valA : valA - valB;
+        });
+    }
 
-        finalList = formatOutput(works);
+    // 5️⃣ 格式化最终数据
+    const finalList = formatOutput(works);
 
-        // 缓存最终结果
-        await personWorksCache.set(personKey, finalList);
-
-    } catch(err){
-        logger.warning("loadPersonWorks 捕获异常:", err);
+    // 6️⃣ debug 输出
+    if(params.logMode==="debug"){
+        if(filteredOutTitles.length) logger.debug("被过滤掉的作品:", [...new Set(filteredOutTitles)]);
+        logger.debug("最终返回数据:", finalList.map(i => i.title));
     }
 
     return finalList;
-}
-
-// -----------------------------
-// 安全包装
-async function loadSharedWorksSafe(params){
-    try{
-        return await loadPersonWorks(params);
-    }catch(err){
-        const logger = createLogger(params?.logMode || "info");
-        logger.warning("loadSharedWorksSafe 捕获异常:", err);
-        return formatOutput([]);
-    }
 }
 
 // -----------------------------
