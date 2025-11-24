@@ -515,12 +515,11 @@ const DynamicDataProcessor = (() => {
                     }
                 }
         
-                // ======== 新增：根据 genre_ids 生成 genre_titles ========
                 if (bestMatch) {
-                    const genreMapping = tmdbGenresCache[searchMediaType] || {};
-                    bestMatch.genre_titles = Array.isArray(bestMatch.genre_ids) 
-                        ? bestMatch.genre_ids.map(id => genreMapping[id] || `Unknown(${id})`) 
-                        : [];
+                    // =======【需要新增】=======
+                    const genreMapping = tmdbGenresCache[bestMatch.media_type || 'tv'] || {};
+                    bestMatch.genre_titles = (bestMatch.genre_ids || []).map(id => genreMapping[id] || `Unknown(${id})`);
+                    // =========================
                 }
         
             } catch (err) {
@@ -557,7 +556,8 @@ const DynamicDataProcessor = (() => {
                 id: item.id, type: "link", title: item.title,
                 posterPath: item.cover, releaseDate: Processor.parseDate(item.info),
                 mediaType: category, rating: item.rating,
-                description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`
+                description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`,
+                genre_ids: [], genre_titles: [], genreTitle: '未知' 
             };
         
             const tmdbResult = await Processor.searchTmdb(item.title, null, year);
@@ -572,11 +572,11 @@ const DynamicDataProcessor = (() => {
                 baseItem.link = null;
                 baseItem.tmdb_id = String(tmdbResult.id);
                 baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+                const genreMapping = tmdbGenresCache[tmdbResult.media_type || 'tv'] || {};
                 baseItem.genre_ids = tmdbResult.genre_ids || [];
-                baseItem.genre_titles = tmdbResult.genre_titles || [];
-        
-                // ✅ 新增：统一 genreTitle
-                baseItem.genreTitle = baseItem.genre_titles.join(', ');
+                baseItem.genre_titles = baseItem.genre_ids.map(id => genreMapping[id] || `Unknown(${id})`);
+                baseItem.genreTitle = baseItem.genre_titles.join(', ') || '未知';
+       
             }
             return baseItem;
         }
