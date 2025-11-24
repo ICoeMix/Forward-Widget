@@ -310,12 +310,12 @@ async function loadPersonWorks(params){
     let works = [...rawWorks];
     const filteredOutTitles = [];
 
-    // 上映状态过滤
+    // 3️⃣ 上映状态过滤
     if(params.type && params.type !== "all"){
         const nowDate = new Date();
         const prevLength = works.length;
         works = works.filter(i => i.releaseDate ?
-            (params.type==="released" ? new Date(i.releaseDate)<=nowDate : new Date(i.releaseDate)>nowDate)
+            (params.type==="released" ? new Date(i.releaseDate) <= nowDate : new Date(i.releaseDate) > nowDate)
             : false
         );
         if(params.logMode==="debug" && prevLength !== works.length){
@@ -323,14 +323,14 @@ async function loadPersonWorks(params){
         }
     }
 
-    // 3️⃣ 关键词过滤
+    // 4️⃣ 关键词过滤
     if(params.filter?.trim()){
-        const { filtered, filteredOut } = filterByKeywords(works, params.filter);
+        const { filtered, filteredOut } = filterByKeywords(works, params.filter, params.logMode);
         works = filtered;
         filteredOutTitles.push(...filteredOut);
     }
 
-    // 4️⃣ 排序
+    // 5️⃣ 排序
     if(params.sort_by){
         const [field, order] = params.sort_by.split('.');
         works.sort((a,b)=>{
@@ -340,10 +340,10 @@ async function loadPersonWorks(params){
         });
     }
 
-    // 5️⃣ 格式化最终数据
+    // 6️⃣ 格式化最终数据
     const finalList = formatOutput(works);
 
-    // 6️⃣ debug 输出
+    // 7️⃣ debug 输出（统一显示）
     if(params.logMode==="debug"){
         if(filteredOutTitles.length) logger.debug("被过滤掉的作品:", [...new Set(filteredOutTitles)]);
         logger.debug("最终返回数据:", finalList.map(i => i.title));
