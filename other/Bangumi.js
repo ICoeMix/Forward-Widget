@@ -210,8 +210,6 @@ async function fetchAndCacheGlobalData() {
     return await dataFetchPromise;
 }
 
-// --- 模块实现 ---
-
 // -----------------------------
 // 高性能 AC + 完全正则过滤器（忽略大小写）
 // -----------------------------
@@ -237,6 +235,7 @@ async function fetchRecentHot(params = {}) {
         pageList.push(parseInt(pageInput, 10));
     }
 
+    // --- 收集结果 ---
     const pages = globalData.recentHot?.[category] || [];
     let resultList = [];
     for (const p of pageList) {
@@ -253,9 +252,9 @@ async function fetchRecentHot(params = {}) {
 
     // --- 关键词过滤 ---
     const keywordFilter = params.keywordFilter || "";
-    resultList = filterByKeywords(resultList, keywordFilter);
+    const { filtered, filteredOut } = filterByKeywords(resultList, keywordFilter);
 
-    return resultList;
+    return { filtered, filteredOut };
 }
 
 /* ==================== 优化后的 fetchAirtimeRanking ==================== */
@@ -323,9 +322,12 @@ async function fetchAirtimeRanking(params = {}) {
             })();
         }
     });
-
-    globalData.dynamic[dynamicKey] = listItems;
-    return listItems;
+    
+    const keywordFilter = params.keywordFilter || "";
+    const { filtered, filteredOut } = filterByKeywords(listItems, keywordFilter);
+    
+    globalData.dynamic[dynamicKey] = filtered;
+    return { filtered, filteredOut };
 }
 /* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
@@ -390,9 +392,10 @@ async function fetchDailyCalendarApi(params = {}) {
             return 0;
         });
     }
-
-    // 关键词过滤（保持原来的 AC + 正则逻辑）
-    const finalResults = filterByKeywords(sortedResults, keywordFilter);
+    // 关键词过滤
+    const keywordFilter = params.keywordFilter || "";
+    const { filtered, filteredOut } = filterByKeywords(sortedResults, keywordFilter);
+    const finalResults = filtered;
 
     // 异步更新 TMDB 详情
     finalResults.forEach(item => {
