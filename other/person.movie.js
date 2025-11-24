@@ -331,8 +331,6 @@ const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.le
 // -----------------------------
 // 核心加载流程
 // -----------------------------
-// loadPersonWorks 多行可读版
-// -----------------------------
 async function loadPersonWorks(params) {
     setLoggerMode(params.logMode);
 
@@ -418,25 +416,11 @@ async function loadSharedWorksSafe(params) {
 
 // -----------------------------
 // getWorks（单行紧凑，但可用）
-// -----------------------------
 const getWorks = (params, filterFn) => 
-    loadSharedWorksSafe({...params}).then(r => Array.isArray(r) ? r.filter(filterFn) : []);
+    loadSharedWorksSafe({...params}).then(r => Array.isArray(r) ? r.filter(i => i && filterFn(i)) : []);
 
-// -----------------------------
-// 四类接口示例
-// -----------------------------
-async function getAllWorks(params) {
-    return getWorks(params, () => true);
-}
+async function getAllWorks(params) { return getWorks(params, () => true); }
+async function getActorWorks(params) { return getWorks(params, w => w.characters.length); }
+async function getDirectorWorks(params) { return getWorks(params, w => w.jobs.some(j => /director/i.test(j))); }
+async function getOtherWorks(params) { return getWorks(params, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))); }
 
-async function getActorWorks(params) {
-    return getWorks(params, w => w.characters.length);
-}
-
-async function getDirectorWorks(params) {
-    return getWorks(params, w => w.jobs.some(j => /director/i.test(j)));
-}
-
-async function getOtherWorks(params) {
-    return getWorks(params, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j)));
-}
