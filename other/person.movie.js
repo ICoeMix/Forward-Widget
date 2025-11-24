@@ -330,17 +330,22 @@ const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.le
 
 // -----------------------------
 // 核心加载流程
-async function loadPersonWorks(p) {
-    setLoggerMode(p.logMode);
+// -----------------------------
+// loadPersonWorks 多行可读版
+// -----------------------------
+async function loadPersonWorks(params) {
+    setLoggerMode(params.logMode);
 
-    const language = p.language || "zh-CN";
-    const type = p.type || "all";
-    const filter = p.filter || "";
-    const sort_by = p.sort_by || "";
+    const language = params.language || "zh-CN";
+    const type = params.type || "all";
+    const filter = params.filter || "";
+    const sort_by = params.sort_by || "";
     const debugMode = logger.level === LoggerLevels.debug;
     const debugInfo = { filteredOutTitles: [] };
-    const personKey = `${p.personId}_${language}`;
-    const { signal } = p;
+    const personKey = `${params.personId}_${language}`;
+
+    // 支持 signal 取消请求
+    const { signal } = params;
 
     // 初始化 genre cache
     await initTmdbGenres(language);
@@ -348,22 +353,20 @@ async function loadPersonWorks(p) {
     // 获取缓存或请求作品
     let works = await personWorksCache.getOrSet(personKey, async () => {
         if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        const personId = await resolvePersonIdSafe(p.personId, language);
+
+        const personId = await resolvePersonIdSafe(params.personId, language);
         if (!personId) return [];
+
         const credits = await fetchCreditsCached(personId, language, signal);
-        credits.forEach(w => { if (w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
-        return credits;
+        (credits || []).forEach(w => { if (w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
+        return credits || [];
     });
 
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
     // 上映状态过滤
     const nowDate = new Date();
-    works = filterWithDebug(
-        works,
-        w => type === "all" || ((w._releaseDateObj && w._releaseDateObj <= nowDate) === (type === "released")),
-        debugInfo
-    );
+    works = filterWithDebug(works, w => type === "all" || ((w._releaseDateObj && w._releaseDateObj <= nowDate) === (type === "released")), debugInfo);
 
     // 关键词过滤
     if (filter.trim()) {
@@ -400,26 +403,40 @@ async function loadPersonWorks(p) {
 }
 
 // -----------------------------
-// 安全包装（单行紧凑）
-async function loadSharedWorksSafe(p){setLoggerMode(p.logMode);try{return await loadPersonWorks({...p})}catch(err){logger.warn("loadSharedWorksSafe 捕获异常:",err);return formatOutput([])}}
+// loadSharedWorksSafe
+// -----------------------------
+async function loadSharedWorksSafe(params) {
+    setLoggerMode(params.logMode);
+    try {
+        const r = await loadPersonWorks({...params});
+        return Array.isArray(r) ? r : [];
+    } catch (err) {
+        logger.warn("loadSharedWorksSafe 捕获异常:", err);
+        return [];
+    }
+}
 
 // -----------------------------
-// getWorks（统一接口，单行紧凑）
-const getWorks=(p,f)=>loadSharedWorksSafe({...p}).then(r=>r.filter(f));
+// getWorks（单行紧凑，但可用）
+// -----------------------------
+const getWorks = (params, filterFn) => 
+    loadSharedWorksSafe({...params}).then(r => Array.isArray(r) ? r.filter(filterFn) : []);
 
 // -----------------------------
-// createSafeDebounce（最优防抖 + 自动取消 + 单行紧凑）
-const createSafeDebounce=(fn,d=500)=>{let t=null,c=null,lastArgs;return(...a)=>new Promise((res,reject)=>{lastArgs=a[0];if(t)clearTimeout(t);t=setTimeout(async()=>{if(c)c.abort();c=new AbortController();const safeArgs={...lastArgs,signal:c.signal};try{res(await fn(safeArgs))}catch(e){e.name==="AbortError"?res([]):reject(e)}},d)})};
-
+// 四类接口示例
 // -----------------------------
-// 四类防抖接口（UI 直接调用，单行紧凑）
-const debounced={
- all:createSafeDebounce(p=>getWorks(p,()=>true)),
- actor:createSafeDebounce(p=>getWorks(p,i=>i.characters.length)),
- director:createSafeDebounce(p=>getWorks(p,i=>i.jobs.some(j=>/director/i.test(j)))),
- other:createSafeDebounce(p=>getWorks(p,i=>!i.characters.length&&!i.jobs.some(j=>/director/i.test(j))))
-};
+async function getAllWorks(params) {
+    return getWorks(params, () => true);
+}
 
-// -----------------------------
-// 模块导出接口（单行）
-const getDebouncedWorks=t=>debounced[t];
+async function getActorWorks(params) {
+    return getWorks(params, w => w.characters.length);
+}
+
+async function getDirectorWorks(params) {
+    return getWorks(params, w => w.jobs.some(j => /director/i.test(j)));
+}
+
+async function getOtherWorks(params) {
+    return getWorks(params, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j)));
+}
