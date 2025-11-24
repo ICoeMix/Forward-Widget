@@ -292,7 +292,7 @@ async function fetchRecentHot(params = {}) {
 
     // --- 关键词过滤 ---
     const keywordFilter = params.keywordFilter || "";
-    resultList = filterByKeywords(resultList, keywordFilter);
+    resultList = filterByKeywords(resultList, keywordFilter).filtered;
 
     return resultList;
 }
