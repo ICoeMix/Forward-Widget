@@ -414,42 +414,104 @@ async function loadSharedWorksSafe(params) {
     }
 }
 
+
 // -----------------------------
-// getWorks（内部使用）
-const getWorks = (params, filterFn) =>
+// 内部防抖控制对象
+const debounceControllers = {
+    all: { timer: null, controller: null },
+    actor: { timer: null, controller: null },
+    director: { timer: null, controller: null },
+    other: { timer: null, controller: null },
+};
+const DEBOUNCE_DELAY = 500;
+
+// -----------------------------
+// getWorks（原始可用接口）
+const getWorks = (params, filterFn) => 
     loadSharedWorksSafe({ ...params }).then(r => Array.isArray(r) ? r.filter(i => i && filterFn(i)) : []);
 
 // -----------------------------
-// 防抖工具函数（内部使用，timer 在外部共享）
-const createDebouncedFn = (fn, delay = 500) => {
-    let timer = null, controller = null; // <-- timer 放在这里
-    return async function(params) {
-        if (timer) clearTimeout(timer);
-        return new Promise((resolve, reject) => {
-            timer = setTimeout(async () => {  // <-- 这里就可以找到 setTimeout
-                if (controller) controller.abort();
-                controller = new AbortController();
-                params.signal = controller.signal;
-                try {
-                    const result = await fn(params);
-                    resolve(result);
-                } catch (err) {
-                    if (err.name === "AbortError") resolve([]);
-                    else reject(err);
-                }
-            }, delay);
-        });
-    };
-};
+// async function 接口（UI 只会调用 async function）
+async function getAllWorks(params) {
+    const { timer, controller } = debounceControllers.all;
+    if (timer) clearTimeout(timer);
+    if (controller) controller.abort();
 
-// -----------------------------
-// 四个接口（保持 Widget 识别形式）
-const debouncedAllWorks = createDebouncedFn(p => getWorks(p, () => true), 500);
-const debouncedActorWorks = createDebouncedFn(p => getWorks(p, w => w.characters.length), 500);
-const debouncedDirectorWorks = createDebouncedFn(p => getWorks(p, w => w.jobs.some(j => /director/i.test(j))), 500);
-const debouncedOtherWorks = createDebouncedFn(p => getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))), 500);
+    return new Promise((resolve, reject) => {
+        debounceControllers.all.timer = setTimeout(async () => {
+            const newController = new AbortController();
+            debounceControllers.all.controller = newController;
+            params.signal = newController.signal;
+            try {
+                const result = await getWorks(params, () => true);
+                resolve(result);
+            } catch (err) {
+                if (err.name === "AbortError") resolve([]);
+                else reject(err);
+            }
+        }, DEBOUNCE_DELAY);
+    });
+}
 
-async function getAllWorks(params) { return debouncedAllWorks(params); }
-async function getActorWorks(params) { return debouncedActorWorks(params); }
-async function getDirectorWorks(params) { return debouncedDirectorWorks(params); }
-async function getOtherWorks(params) { return debouncedOtherWorks(params); }
+async function getActorWorks(params) {
+    const { timer, controller } = debounceControllers.actor;
+    if (timer) clearTimeout(timer);
+    if (controller) controller.abort();
+
+    return new Promise((resolve, reject) => {
+        debounceControllers.actor.timer = setTimeout(async () => {
+            const newController = new AbortController();
+            debounceControllers.actor.controller = newController;
+            params.signal = newController.signal;
+            try {
+                const result = await getWorks(params, w => w.characters.length);
+                resolve(result);
+            } catch (err) {
+                if (err.name === "AbortError") resolve([]);
+                else reject(err);
+            }
+        }, DEBOUNCE_DELAY);
+    });
+}
+
+async function getDirectorWorks(params) {
+    const { timer, controller } = debounceControllers.director;
+    if (timer) clearTimeout(timer);
+    if (controller) controller.abort();
+
+    return new Promise((resolve, reject) => {
+        debounceControllers.director.timer = setTimeout(async () => {
+            const newController = new AbortController();
+            debounceControllers.director.controller = newController;
+            params.signal = newController.signal;
+            try {
+                const result = await getWorks(params, w => w.jobs.some(j => /director/i.test(j)));
+                resolve(result);
+            } catch (err) {
+                if (err.name === "AbortError") resolve([]);
+                else reject(err);
+            }
+        }, DEBOUNCE_DELAY);
+    });
+}
+
+async function getOtherWorks(params) {
+    const { timer, controller } = debounceControllers.other;
+    if (timer) clearTimeout(timer);
+    if (controller) controller.abort();
+
+    return new Promise((resolve, reject) => {
+        debounceControllers.other.timer = setTimeout(async () => {
+            const newController = new AbortController();
+            debounceControllers.other.controller = newController;
+            params.signal = newController.signal;
+            try {
+                const result = await getWorks(params, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j)));
+                resolve(result);
+            } catch (err) {
+                if (err.name === "AbortError") resolve([]);
+                else reject(err);
+            }
+        }, DEBOUNCE_DELAY);
+    });
+}
