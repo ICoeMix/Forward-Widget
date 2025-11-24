@@ -420,13 +420,13 @@ const getWorks = (params, filterFn) =>
     loadSharedWorksSafe({ ...params }).then(r => Array.isArray(r) ? r.filter(i => i && filterFn(i)) : []);
 
 // -----------------------------
-// 防抖工具函数（内部使用）
+// 防抖工具函数（内部使用，timer 在外部共享）
 const createDebouncedFn = (fn, delay = 500) => {
-    let timer = null, controller = null;
+    let timer = null, controller = null; // <-- timer 放在这里
     return async function(params) {
         if (timer) clearTimeout(timer);
         return new Promise((resolve, reject) => {
-            timer = setTimeout(async () => {
+            timer = setTimeout(async () => {  // <-- 这里就可以找到 setTimeout
                 if (controller) controller.abort();
                 controller = new AbortController();
                 params.signal = controller.signal;
@@ -443,19 +443,13 @@ const createDebouncedFn = (fn, delay = 500) => {
 };
 
 // -----------------------------
-// 四个接口（UI 调用的形式必须是 async function）
-async function getAllWorks(params) { 
-    return await createDebouncedFn(p => getWorks(p, () => true))(params);
-}
+// 四个接口（保持 Widget 识别形式）
+const debouncedAllWorks = createDebouncedFn(p => getWorks(p, () => true), 500);
+const debouncedActorWorks = createDebouncedFn(p => getWorks(p, w => w.characters.length), 500);
+const debouncedDirectorWorks = createDebouncedFn(p => getWorks(p, w => w.jobs.some(j => /director/i.test(j))), 500);
+const debouncedOtherWorks = createDebouncedFn(p => getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))), 500);
 
-async function getActorWorks(params) { 
-    return await createDebouncedFn(p => getWorks(p, w => w.characters.length))(params);
-}
-
-async function getDirectorWorks(params) { 
-    return await createDebouncedFn(p => getWorks(p, w => w.jobs.some(j => /director/i.test(j))))(params);
-}
-
-async function getOtherWorks(params) { 
-    return await createDebouncedFn(p => getWorks(p, w => !w.characters.length && !w.jobs.some(j => /director/i.test(j))))(params);
-}
+async function getAllWorks(params) { return debouncedAllWorks(params); }
+async function getActorWorks(params) { return debouncedActorWorks(params); }
+async function getDirectorWorks(params) { return debouncedDirectorWorks(params); }
+async function getOtherWorks(params) { return debouncedOtherWorks(params); }
