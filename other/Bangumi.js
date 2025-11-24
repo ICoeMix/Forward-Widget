@@ -16,7 +16,7 @@ var WidgetMetadata = {
     description: "获取Bangumi近期热门、每日放送数据，支持榜单筛选。",
     version: "3.0.0",
     author: "ICoeMix(Optimized by ChatGPT) ",
-    site: "https://github.com/opix-maker/Forward",
+    site: "https://github.com/ICoeMix/Forward-Widget",
     requiredVersion: "0.0.1",
     detailCacheDuration: 6000,
     modules: [
@@ -187,6 +187,30 @@ var WidgetMetadata = {
 let globalData = null;
 let dataFetchPromise = null;
 const archiveFetchPromises = {};
+const tmdbGenresCache = { movie: {}, tv: {} };
+
+async function initTmdbGenres(language="zh-CN") {
+    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
+        console.log("[DEBUG] tmdbGenresCache 已初始化，无需重复请求");
+        return;
+    }
+
+    try {
+        const [movieResp, tvResp] = await Promise.all([
+            Widget.tmdb.get("genre/movie/list",{params:{language}}),
+            Widget.tmdb.get("genre/tv/list",{params:{language}})
+        ]);
+
+        Object.assign(tmdbGenresCache.movie, Object.fromEntries((movieResp?.genres||[]).map(g => [g.id, g.name])));
+        Object.assign(tmdbGenresCache.tv, Object.fromEntries((tvResp?.genres||[]).map(g => [g.id, g.name])));
+
+        console.log("[DEBUG] tmdbGenresCache 初始化完成",
+            { movieCount: Object.keys(tmdbGenresCache.movie).length, tvCount: Object.keys(tmdbGenresCache.tv).length }
+        );
+    } catch(e) {
+        console.error("[DEBUG] 初始化 TMDB genres 失败", e.message);
+    }
+}
 
 async function fetchAndCacheGlobalData() {
     if (globalData) return globalData;
@@ -210,126 +234,18 @@ async function fetchAndCacheGlobalData() {
     return await dataFetchPromise;
 }
 
-// --- 模块实现 ---
-
 // -----------------------------
-// 高性能 AC + 完全正则过滤器（忽略大小写）
-// -----------------------------
-const acCache = new Map();         // plain text AC 自动机缓存
-const regexCache = new Map();      // 正则缓存
-const filterUnitCache = new Map(); // filter 字符串单元缓存
+// AC 自动机 + 正则过滤
+const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map();
+class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(w){let n=this.root;for(const c of w){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(w)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const c of Object.keys(node.next)){const ch=node.next[c];let f=node.fail;while(f!==this.root&&!f.next[c])f=f.fail;ch.fail=f.next[c]||this.root;ch.output=ch.output.concat(ch.fail.output);q.push(ch)}}};matchAny(text){if(!text)return false;let n=this.root;for(const c of text){while(n!==this.root&&!n.next[c])n=n.fail;n=n.next[c]||this.root;if(n.output.length)return true}return false}}
+const normalizeTitleForMatch = s => s?s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().toLowerCase():"";
+const isPlainText = t => !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t);
+const getRegex = t => regexCache.has(t)?regexCache.get(t):(regexCache.set(t,(r=>{try{return new RegExp(t,'i')}catch(e){return null}})()),regexCache.get(t));
+const buildFilterUnit = s => !s?.trim()?null:filterUnitCache.has(s)?filterUnitCache.get(s):(filterUnitCache.set(s,(()=>{const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}}const unit={ac,regexTerms:regex,bigRegex};return unit})()),filterUnitCache.get(s));
+const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const u=buildFilterUnit(s); if(!u) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=u,fo=[]; const f=list.filter(i=>{try{i._normalizedTitle||(i._normalizedTitle=normalizeTitleForMatch(i.title||"")); const t=i._normalizedTitle; let hit=false; if(ac&&ac.matchAny(t)) hit=true; if(!hit&&bigRegex&&bigRegex.test(t)) hit=true; if(hit) fo.push(i.title||"(no title)"); return !hit}catch(e){return true}}); return {filtered:f, filteredOut:fo}; })();
 
-function normalizeTitleForMatch(s) {
-    if (!s) return "";
-    return s.replace(/[\u200B-\u200D\uFEFF]/g, "").trim().normalize('NFC').toLowerCase();
-}
 
-class ACAutomaton {
-    constructor() { this.root = { next: Object.create(null), fail: null, output: [] }; }
-    insert(word) {
-        let node = this.root;
-        for (const ch of word) {
-            if (!node.next[ch]) node.next[ch] = { next: Object.create(null), fail: null, output: [] };
-            node = node.next[ch];
-        }
-        node.output.push(word);
-    }
-    build() {
-        const q = [];
-        this.root.fail = this.root;
-        for (const k of Object.keys(this.root.next)) {
-            const n = this.root.next[k]; n.fail = this.root; q.push(n);
-        }
-        while (q.length) {
-            const node = q.shift();
-            for (const ch of Object.keys(node.next)) {
-                const child = node.next[ch];
-                let f = node.fail;
-                while (f !== this.root && !f.next[ch]) f = f.fail;
-                child.fail = f.next[ch] || this.root;
-                child.output = child.output.concat(child.fail.output);
-                q.push(child);
-            }
-        }
-    }
-    match(text) {
-        const found = new Set();
-        if (!text) return found;
-        let node = this.root;
-        for (const ch of text) {
-            while (node !== this.root && !node.next[ch]) node = node.fail;
-            node = node.next[ch] || this.root;
-            node.output.forEach(w => found.add(w));
-        }
-        return found;
-    }
-}
-
-function isPlainText(term) { 
-    return !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term); 
-}
-
-function getRegex(term) {
-    if (regexCache.has(term)) return regexCache.get(term);
-    let re = null;
-    try { re = new RegExp(term, 'i'); } catch(e) { re = null; }
-    regexCache.set(term, re);
-    return re;
-}
-
-function buildFilterUnit(filterStr) {
-    if (!filterStr || !filterStr.trim()) return null;
-    if (filterUnitCache.has(filterStr)) return filterUnitCache.get(filterStr);
-
-    const terms = filterStr.split(/\s*\|\|\s*/).map(t => t.trim()).filter(Boolean);
-    const plainTerms = [];
-    const regexTerms = [];
-
-    for (const t of terms) (isPlainText(t) ? plainTerms : regexTerms).push(t);
-
-    let ac = null;
-    if (plainTerms.length) {
-        const key = plainTerms.slice().sort().join("\u0001");
-        if (acCache.has(key)) ac = acCache.get(key);
-        else {
-            ac = new ACAutomaton();
-            plainTerms.forEach(p => ac.insert(p.toLowerCase()));
-            ac.build();
-            acCache.set(key, ac);
-        }
-    }
-
-    const unit = { ac, regexTerms };
-    filterUnitCache.set(filterStr, unit);
-    return unit;
-}
-
-function filterByKeywords(list, filterStr) {
-    if (!filterStr || !filterStr.trim()) return list;
-    if (!Array.isArray(list) || list.length === 0) return list;
-
-    const unit = buildFilterUnit(filterStr);
-    if (!unit) return list;
-
-    const { ac, regexTerms } = unit;
-
-    return list.filter(item => {
-        if (!item._normalizedTitle) item._normalizedTitle = normalizeTitleForMatch(item.title || "");
-        const title = item._normalizedTitle;
-
-        // AC 匹配
-        if (ac && ac.match(title).size) return false;
-
-        // 正则匹配
-        for (const r of regexTerms) {
-            const re = getRegex(r);
-            if (re && re.test(title)) return false;
-        }
-
-        return true; // 保留
-    });
-}
-
+/* ==================== 优化后的 fetchRecentHot ==================== */
 async function fetchRecentHot(params = {}) {
     await fetchAndCacheGlobalData();
     const category = params.category || "anime";
@@ -344,11 +260,27 @@ async function fetchRecentHot(params = {}) {
         pageList.push(parseInt(pageInput, 10));
     }
 
+    // --- 读取缓存 ---
     const pages = globalData.recentHot?.[category] || [];
     let resultList = [];
     for (const p of pageList) {
         if (pages[p - 1]) resultList = resultList.concat(pages[p - 1]);
     }
+
+    // --- 异步更新 TMDB 详情并统一字段 ---
+    resultList.forEach(item => {
+        if (item.type === "link") {
+            (async () => {
+                const tmdbResult = await DynamicDataProcessor.fillTmdbInfo(item, "tv");
+                // fillTmdbInfo 会自动填充 id/type/title/posterPath/releaseDate/rating/description/link/tmdb_id/tmdb_origin_countries/genre_ids/genre_names
+            })();
+        } else if (item.type === "tmdb") {
+            // 已经是 tmdb 类型，确保 genre_names 填充
+            if(item.genre_ids && !item.genre_names){
+                item.genre_names = item.genre_ids.map(id => tmdbGenresCache.tv[id] || "未知");
+            }
+        }
+    });
 
     // --- 排序 ---
     const sort = params.sort || "default";
@@ -365,7 +297,7 @@ async function fetchRecentHot(params = {}) {
     return resultList;
 }
 
-/* ==================== 优化后的 fetchAirtimeRanking ==================== */
+/* ==================== 优化后的 fetchAirtimeRanking（统一 genre） ==================== */
 async function fetchAirtimeRanking(params = {}) {
     await fetchAndCacheGlobalData();
     const category = params.category || "anime";
@@ -376,22 +308,22 @@ async function fetchAirtimeRanking(params = {}) {
 
     // 先从已有缓存读取，减少重复请求
     if (!globalData.airtimeRanking[category]?.[year]) {
-    if (!archiveFetchPromises[`${category}-${year}`]) {
-        archiveFetchPromises[`${category}-${year}`] = (async () => {
-            try {
-                const archiveUrl = `${BASE_DATA_URL}/archive/${year}.json`;
-                const response = await Widget.http.get(archiveUrl, { headers: { 'Cache-Control': 'no-cache' } });
-                if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
-                globalData.airtimeRanking[category][year] = response.data.airtimeRanking[category][year] || {};
-            } catch (e) {
-                console.warn(`加载存档 ${year} 失败: ${e.message}`);
-                if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
-                globalData.airtimeRanking[category][year] = {}; // 避免使用字符串
-            }
-        })();
+        if (!archiveFetchPromises[`${category}-${year}`]) {
+            archiveFetchPromises[`${category}-${year}`] = (async () => {
+                try {
+                    const archiveUrl = `${BASE_DATA_URL}/archive/${year}.json`;
+                    const response = await Widget.http.get(archiveUrl, { headers: { 'Cache-Control': 'no-cache' } });
+                    if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
+                    globalData.airtimeRanking[category][year] = response.data.airtimeRanking[category][year] || {};
+                } catch (e) {
+                    console.warn(`加载存档 ${year} 失败: ${e.message}`);
+                    if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
+                    globalData.airtimeRanking[category][year] = {};
+                }
+            })();
+        }
+        await archiveFetchPromises[`${category}-${year}`];
     }
-    await archiveFetchPromises[`${category}-${year}`];
-}
 
     // 命中已有数据
     try {
@@ -410,30 +342,26 @@ async function fetchAirtimeRanking(params = {}) {
     const url = `https://bgm.tv/${category}/browser/airtime/${year}/${month}?sort=${sort}&page=${page}`;
     const listItems = await DynamicDataProcessor.processBangumiPage(url, category);
 
-    // 异步更新 TMDB 详情
+    // 异步更新 TMDB 详情并统一 genre 字段
     listItems.forEach(item => {
         if (item.type === "link") {
-            // 异步 fetch TMDB，不阻塞主流程
             (async () => {
-                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
-                if (tmdbResult) {
-                    item.id = String(tmdbResult.id);
-                    item.type = "tmdb";
-                    item.title = tmdbResult.name || tmdbResult.title || item.title;
-                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
-                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
-                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
-                    item.description = tmdbResult.overview || item.description;
-                    item.tmdb_id = String(tmdbResult.id);
-                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                }
+                const tmdbResult = await DynamicDataProcessor.fillTmdbInfo(item, category);
+                // fillTmdbInfo 会自动填充 id/type/title/posterPath/releaseDate/rating/description/link/genre_ids/genre_names
             })();
+        } else {
+            // 已经是 tmdb 类型，确保 genre_names 填充
+            if(item.genre_ids && !item.genre_names){
+                const type = category==='anime'?'tv':'movie';
+                item.genre_names = item.genre_ids.map(id => tmdbGenresCache[type][id] || "未知");
+            }
         }
     });
 
     globalData.dynamic[dynamicKey] = listItems;
     return listItems;
 }
+
 /* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
@@ -501,23 +429,18 @@ async function fetchDailyCalendarApi(params = {}) {
     // 关键词过滤（保持原来的 AC + 正则逻辑）
     const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 异步更新 TMDB 详情
+    // 异步更新 TMDB 详情并统一字段
     finalResults.forEach(item => {
         if (item.type === "link") {
             (async ()=>{
-                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
-                if (tmdbResult) {
-                    item.id = String(tmdbResult.id);
-                    item.type = "tmdb";
-                    item.title = tmdbResult.name || tmdbResult.title || item.title;
-                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
-                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
-                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
-                    item.description = tmdbResult.overview || item.description;
-                    item.tmdb_id = String(tmdbResult.id);
-                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                }
+                const tmdbResult = await DynamicDataProcessor.fillTmdbInfo(item, "tv");
+                // fillTmdbInfo 会自动填充 id/type/title/posterPath/releaseDate/rating/description/link/tmdb_id/tmdb_origin_countries/genre_ids/genre_names
             })();
+        } else if(item.type === "tmdb") {
+            // 已经是 tmdb 类型，确保 genre_names 填充
+            if(item.genre_ids && !item.genre_names){
+                item.genre_names = item.genre_ids.map(id => tmdbGenresCache.tv[id] || "未知");
+            }
         }
     });
 
@@ -598,6 +521,27 @@ const DynamicDataProcessor = (() => {
             return bestMatch;
         }
 
+        // ==================== TMDB 详情填充（统一字段） ====================
+        static async fillTmdbInfo(baseItem, category='tv') {
+            const year = baseItem.releaseDate?.substring(0,4) || '';
+            const tmdbResult = await Processor.searchTmdb(baseItem.title, null, year);
+            if (tmdbResult) {
+                baseItem.id = String(tmdbResult.id);
+                baseItem.type = "tmdb";
+                baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
+                baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
+                baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
+                baseItem.rating = tmdbResult.vote_average?.toFixed(1) || baseItem.rating;
+                baseItem.description = tmdbResult.overview || baseItem.description;
+                baseItem.link = null;
+                baseItem.tmdb_id = String(tmdbResult.id);
+                baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+                baseItem.genre_ids = tmdbResult.genre_ids || [];
+                baseItem.genre_names = baseItem.genre_ids.map(id => (category==='tv'?tmdbGenresCache.tv[id]:tmdbGenresCache.movie[id]) || "未知");
+            }
+            return baseItem;
+        }
+
         // ==================== Bangumi 页面解析 ====================
         static parseBangumiListItems(htmlContent) {
             const $ = Widget.html.load(htmlContent);
@@ -625,20 +569,7 @@ const DynamicDataProcessor = (() => {
                 mediaType: category, rating: item.rating,
                 description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`
             };
-            const tmdbResult = await Processor.searchTmdb(item.title, null, year);
-            if (tmdbResult) {
-                baseItem.id = String(tmdbResult.id);
-                baseItem.type = "tmdb";
-                baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
-                baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
-                baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
-                baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
-                baseItem.description = tmdbResult.overview || baseItem.description;
-                baseItem.link = null;
-                baseItem.tmdb_id = String(tmdbResult.id);
-                baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-            }
-            return baseItem;
+            return Processor.fillTmdbInfo(baseItem, category);
         }
 
         static async processBangumiPage(url, category) {
@@ -686,20 +617,7 @@ const DynamicDataProcessor = (() => {
                             link: item.url, bgm_id: String(item.id), bgm_score: item.rating?.score || 0,
                             bgm_rating_total: item.rating?.total || 0, bgm_weekday_id: item.bgm_weekday_id
                         };
-                        const tmdbResult = await Processor.searchTmdb(item.name, item.name_cn, item.air_date?.substring(0, 4));
-                        if (tmdbResult) {
-                            baseItem.id = String(tmdbResult.id);
-                            baseItem.type = "tmdb";
-                            baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
-                            baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
-                            baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
-                            baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
-                            baseItem.description = tmdbResult.overview || baseItem.description;
-                            baseItem.link = null;
-                            baseItem.tmdb_id = String(tmdbResult.id);
-                            baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-                        }
-                        return baseItem;
+                        return Processor.fillTmdbInfo(baseItem, 'tv');
                     });
                     const settled = await Promise.allSettled(promises);
                     settled.forEach(res => {
@@ -716,6 +634,7 @@ const DynamicDataProcessor = (() => {
 
     return {
         processBangumiPage: Processor.processBangumiPage,
-        processDailyCalendar: Processor.processDailyCalendar
+        processDailyCalendar: Processor.processDailyCalendar,
+        fillTmdbInfo: Processor.fillTmdbInfo
     };
 })();
