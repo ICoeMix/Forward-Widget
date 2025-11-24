@@ -429,11 +429,11 @@ async function getWorks(params, filterFn){ setLoggerMode(params.logMode); return
 
 // -----------------------------
 // 最优防抖 + 自动取消（紧凑单行）
-const createDebounced=(fn,d=300)=>{let t=null,c=null,l;return (...a)=>new Promise((r,j)=>{l=a[0];if(t)clearTimeout(t);t=setTimeout(async()=>{if(c)c.abort();c=new AbortController();l.signal=c.signal;try{r(await fn(l))}catch(e){e.name==="AbortError"?r([]):j(e)}},d)})};
+const createDebounced=(fn,d=300000)=>{let t=null,c=null,l;return (...a)=>new Promise((r,j)=>{l=a[0];if(t)clearTimeout(t);t=setTimeout(async()=>{if(c)c.abort();c=new AbortController();l.signal=c.signal;try{r(await fn(l))}catch(e){e.name==="AbortError"?r([]):j(e)}},d)})};
 
 // -----------------------------
 // 防抖模块接口（UI 直接调用）
-const debouncedGetAllWorks = createDebounced(params=>getWorks(params, ()=>true),300);
-const debouncedGetActorWorks = createDebounced(params=>getWorks(params, i=>i.characters.length),300);
-const debouncedGetDirectorWorks = createDebounced(params=>getWorks(params, i=>i.jobs.some(j=>/director/i.test(j))),300);
-const debouncedGetOtherWorks = createDebounced(params=>getWorks(params, i=>!i.characters.length && !i.jobs.some(j=>/director/i.test(j))),300);
+const debouncedGetAllWorks = createDebounced(params=>getWorks(params, ()=>true),300000);
+const debouncedGetActorWorks = createDebounced(params=>getWorks(params, i=>i.characters.length),3000000);
+const debouncedGetDirectorWorks = createDebounced(params=>getWorks(params, i=>i.jobs.some(j=>/director/i.test(j))),3000000);
+const debouncedGetOtherWorks = createDebounced(params=>getWorks(params, i=>!i.characters.length && !i.jobs.some(j=>/director/i.test(j))),3000000);
