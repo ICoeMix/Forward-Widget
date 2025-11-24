@@ -427,13 +427,6 @@ async function getWorks(params, filterFn){
     return (await loadSharedWorksSafe(params)).filter(filterFn);
 }
 
-// -----------------------------
-// 模块接口
-async function getAllWorks(params){ return await getWorks(params, ()=>true); }
-getActorWorks = params => getWorks(params, i => i.characters.length);
-getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
-getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.some(j=>/director/i.test(j)));
-
 // 防抖机制
 
 function initWidgetInputsSmart(inputsConfig, baseParams = {}, debounceMs = 3000) {
@@ -564,3 +557,12 @@ function initWidgetInputsSmart(inputsConfig, baseParams = {}, debounceMs = 3000)
 
     return { handleInputChange, inputStates };
 }
+
+// -----------------------------
+// 模块接口
+async function getAllWorks(params){ return await getWorks(params, ()=>true); }
+getActorWorks = params => getWorks(params, i => i.characters.length);
+getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
+getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.some(j=>/director/i.test(j)));
+
+
