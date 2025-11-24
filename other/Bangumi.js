@@ -448,6 +448,8 @@ async function fetchDailyCalendarApi(params = {}) {
     return finalResults;
 }
 
+await initTmdbGenres(); // 在任何 TMDB 查询之前
+
 const DynamicDataProcessor = (() => {
 
     class Processor {
@@ -491,8 +493,6 @@ const DynamicDataProcessor = (() => {
             score += Math.log10((result.popularity || 0) + 1) * 2.2;
             return score;
         }
-
-        await initTmdbGenres(); // 在任何 TMDB 查询之前
         
         // ==================== TMDB 查询 ====================
         static async searchTmdb(originalTitle, chineseTitle, year) {
