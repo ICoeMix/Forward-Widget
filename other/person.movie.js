@@ -116,10 +116,32 @@ const Params = [
 WidgetMetadata.modules.forEach(m => m.params = JSON.parse(JSON.stringify(Params)));
 
 // -----------------------------
+// logger
+const LoggerLevels = { debug: 0, info: 1, warn: 2, notify: 3 };
+const logger = {
+    level: LoggerLevels.info,
+    setLevel(level) {
+        if (level in LoggerLevels) this.level = LoggerLevels[level];
+    },
+    debug(...args) { if (this.level <= LoggerLevels.debug) console.log("[DEBUG]", ...args); },
+    info(...args) { if (this.level <= LoggerLevels.info) console.log("[INFO]", ...args); },
+    warn(...args) { if (this.level <= LoggerLevels.warn) console.warn("[WARN]", ...args); },
+    notify(...args) { if (this.level <= LoggerLevels.notify) console.info("[NOTIFY]", ...args); }
+};
+
+function setLoggerMode(logMode) {
+    switch(logMode){
+        case "debug": logger.setLevel("debug"); break;
+        case "info": logger.setLevel("info"); break;
+        case "warning": logger.setLevel("warn"); break;
+        default: logger.setLevel("info");
+    }
+}
+
+// -----------------------------
 // LRU 异步缓存
 class LRUCache {
     constructor(maxSize = 200) { this.maxSize = maxSize; this.cache = new Map(); this.head = null; this.tail = null; }
-
     _removeNode(n) { if (!n) return; if (n.prev) n.prev.next = n.next; else this.head = n.next; if (n.next) n.next.prev = n.prev; else this.tail = n.prev; }
     _addNodeToHead(n) { n.next = this.head; n.prev = null; if (this.head) this.head.prev = n; this.head = n; if (!this.tail) this.tail = n; }
     _touchNode(n) { this._removeNode(n); this._addNodeToHead(n); }
@@ -133,13 +155,9 @@ class LRUCache {
     async getOrSet(key, fetcher) {
         if (this.has(key)) return await this.get(key);
         try { const r = await fetcher(); this.set(key, r); return r; } 
-        catch (e) { this.delete(key); throw e; }
+        catch (e) { this.delete(key); logger.warn("缓存 fetcher 异常:", e); throw e; }
     }
 }
-
-// -----------------------------
-// logger
-const LoggerLevels={debug:0,info:1,warn:2,notify:3},Logger=(l=LoggerLevels.info)=>({setLevel:level=>level in LoggerLevels&&(l=LoggerLevels[level]),debug:(...a)=>l<=LoggerLevels.debug&&console.log("[DEBUG]",...a),info:(...a)=>l<=LoggerLevels.info&&console.log("[INFO]",...a),warn:(...a)=>l<=LoggerLevels.warn&&console.warn("[WARN]",...a),notify:(...a)=>l<=LoggerLevels.notify&&console.info("[NOTIFY]",...a)})();
 
 // -----------------------------
 // 缓存实例
@@ -151,17 +169,17 @@ const tmdbGenresCache = { movie:{}, tv:{} };
 // 安全获取人物ID
 async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug"){
     const s = personInput?.toString().trim();
-    if(!s){ Logger.warn("输入为空"); return null; }
+    if(!s){ logger.warn("输入为空"); return null; }
     if(/^\d+$/.test(s)) return Number(s);
 
     const cacheKey = `${s}_${language}`;
     return await personIdCache.getOrSet(cacheKey, async ()=>{
-        Logger.info(`搜索人物ID: "${s}"`);
+        logger.info(`搜索人物ID: "${s}"`);
         try{
             const res = await Widget.tmdb.get("search/person",{params:{query:s, language}});
             return res?.results?.[0]?.id || null;
         } catch(e){
-            Logger.warn("resolvePersonId失败", e);
+            logger.warn("resolvePersonId失败", e);
             return null;
         }
     });
@@ -170,7 +188,6 @@ async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug
 // -----------------------------
 // 初始化 TMDB 类型
 async function initTmdbGenres(language="zh-CN"){
-    // 如果已有数据就直接返回
     if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) return;
 
     try{
@@ -178,11 +195,10 @@ async function initTmdbGenres(language="zh-CN"){
             Widget.tmdb.get("genre/movie/list",{params:{language}}),
             Widget.tmdb.get("genre/tv/list",{params:{language}})
         ]);
-        // 使用 ||= 优化
         tmdbGenresCache.movie ||= Object.fromEntries((movieGenres?.genres||[]).map(g=>[g.id,g.name]));
         tmdbGenresCache.tv ||= Object.fromEntries((tvGenres?.genres||[]).map(g=>[g.id,g.name]));
     } catch(e){
-        Logger.warn("初始化TMDB类型失败", e);
+        logger.warn("初始化TMDB类型失败", e);
         tmdbGenresCache.movie = {}; 
         tmdbGenresCache.tv = {};
     }
@@ -195,12 +211,11 @@ async function fetchCreditsCached(personId, language="zh-CN"){
     return await personWorksCache.getOrSet(cacheKey, async ()=>{
         try{
             const res = await Widget.tmdb.get(`person/${personId}/combined_credits`, { params: { language } });
-            // 使用 normalizeItems 批量处理
             const cast = normalizeItems(res?.cast || []);
             const crew = normalizeItems(res?.crew || []);
             return [...cast, ...crew];
         } catch(e){
-            Logger.warn("fetchCredits 获取作品失败", e);
+            logger.warn("fetchCredits 获取作品失败", e);
             return [];
         }
     });
@@ -238,11 +253,7 @@ function normalizeItem(item){
     };
 }
 
-// 批量处理函数
-function normalizeItems(list){
-    if(!Array.isArray(list)) return [];
-    return list.map(normalizeItem);
-}
+function normalizeItems(list){ return Array.isArray(list)?list.map(normalizeItem):[]; }
 
 // -----------------------------
 // 输出格式化
@@ -276,18 +287,12 @@ function formatOutput(list){
 // 带 debug 的通用过滤函数
 function filterWithDebug(list, predicate, debugInfo){
     if(!Array.isArray(list) || !list.length) return [];
-
     return list.filter(item => {
         try {
             const keep = predicate(item);
-            if(!keep && debugInfo){
-                debugInfo.filteredOutTitles.push(item.title || "(no title)");
-            }
+            if(!keep && debugInfo) debugInfo.filteredOutTitles.push(item.title || "(no title)");
             return keep;
-        } catch(e){
-            // 出现异常时默认保留
-            return true;
-        }
+        } catch(e){ return true; }
     });
 }
 
@@ -300,6 +305,7 @@ const isPlainText = t => !/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(t);
 const getRegex = t => regexCache.has(t)?regexCache.get(t):(regexCache.set(t,(r=>{try{return new RegExp(t,'i')}catch(e){return null}})()),regexCache.get(t));
 const buildFilterUnit = s => !s?.trim()?null:filterUnitCache.has(s)?filterUnitCache.get(s):(filterUnitCache.set(s,(()=>{const terms=s.split(/\s*\|\|?\s*/).map(t=>t.trim()).filter(Boolean),plain=[],regex=[];for(const t of terms)isPlainText(t)?plain.push(t):regex.push(t);let ac=null;if(plain.length){const np=plain.map(p=>p.toLowerCase()),key=np.slice().sort().join("\u0001");ac=acCache.get(key)||new ACAutomaton();if(!acCache.has(key)){np.forEach(p=>ac.insert(p));ac.build();acCache.set(key,ac)}};let bigRegex=null;if(regex.length){const valid=[];for(const r of regex){const re=getRegex(r);if(re)valid.push(r)}if(valid.length){try{bigRegex=new RegExp(valid.join("|"),"i")}catch(e){bigRegex=null}}}const unit={ac,regexTerms:regex,bigRegex};return unit})()),filterUnitCache.get(s));
 const filterByKeywords = (list, s) => !s?.trim()||!Array.isArray(list)||!list.length ? {filtered:list, filteredOut:[]} : (()=>{ const u=buildFilterUnit(s); if(!u) return {filtered:list, filteredOut:[]}; const {ac,bigRegex}=u,fo=[]; const f=list.filter(i=>{try{i._normalizedTitle||(i._normalizedTitle=normalizeTitleForMatch(i.title||"")); const t=i._normalizedTitle; let hit=false; if(ac&&ac.matchAny(t)) hit=true; if(!hit&&bigRegex&&bigRegex.test(t)) hit=true; if(hit) fo.push(i.title||"(no title)"); return !hit}catch(e){return true}}); return {filtered:f, filteredOut:fo}; })();
+
 // -----------------------------
 // 核心加载流程
 async function loadPersonWorks(params){
@@ -311,21 +317,17 @@ async function loadPersonWorks(params){
     const debugInfo = { filteredOutTitles: [] };
     const personKey = `${params.personId}_${language}`;
 
-    // 获取缓存或请求
-    let rawWorks = await personWorksCache.getOrSet(personKey, async ()=>{
-    const personId = await resolvePersonIdSafe(params.personId, language, params.logMode);
-    if(!personId) return [];
+    let works = await personWorksCache.getOrSet(personKey, async ()=>{
+        const personId = await resolvePersonIdSafe(params.personId, language, params.logMode);
+        if(!personId) return [];
 
-    await initTmdbGenres(language, params.logMode);
-    const works = await fetchCreditsCached(personId, language, params.logMode);
+        await initTmdbGenres(language);
+        const credits = await fetchCreditsCached(personId, language);
 
-    // 统一预处理 _releaseDateObj
-    works.forEach(w => { if(w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
-
-    return works;
+        credits.forEach(w => { if(w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
+        return credits;
     });
 
-    // 上映状态过滤
     const nowDate = new Date();
     works = filterWithDebug(works, w => {
         if(type === "all") return true;
@@ -333,14 +335,12 @@ async function loadPersonWorks(params){
         return type === "released" ? isReleased : !isReleased;
     }, debugInfo);
 
-   // 关键词过滤
     if(filter.trim()){
         const { filtered, filteredOut } = filterByKeywords(works, filter);
         works = filtered;
         if(debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
     }
 
-    // 排序
     if(sort_by){
         const [field, order] = sort_by.split('.');
         works.sort((a,b)=>{
@@ -348,23 +348,21 @@ async function loadPersonWorks(params){
             const valB = b[field] ?? 0;
             return order === 'desc' ? valB - valA : valA - valB;
         });
-        if(debugMode) Logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
+        if(debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
     }
 
-    // 格式化输出
     const finalList = formatOutput(works);
 
-    // debug 输出
     if(debugMode){
-        Logger.debug("===== 调用条件 =====");
-        Logger.debug("上映状态 type:", type);
-        Logger.debug("关键词 filter:", filter);
-        Logger.debug("排序 sort_by:", sort_by);
+        logger.debug("===== 调用条件 =====");
+        logger.debug("上映状态 type:", type);
+        logger.debug("关键词 filter:", filter);
+        logger.debug("排序 sort_by:", sort_by);
         if(debugInfo.filteredOutTitles.length){
-            Logger.debug("被过滤掉的作品:", [...new Set(debugInfo.filteredOutTitles)]);
+            logger.debug("被过滤掉的作品:", [...new Set(debugInfo.filteredOutTitles)]);
         }
-        Logger.debug("最终返回数据:", finalList.map(i=>i.title));
-        Logger.debug("====================");
+        logger.debug("最终返回数据:", finalList.map(i=>i.title));
+        logger.debug("====================");
     }
 
     return finalList;
@@ -373,20 +371,22 @@ async function loadPersonWorks(params){
 // -----------------------------
 // 安全包装
 async function loadSharedWorksSafe(params){
+    setLoggerMode(params.logMode);
     try{
         return await loadPersonWorks(params);
     }catch(err){
-        Logger.warn("loadSharedWorksSafe 捕获异常:", err);
+        logger.warn("loadSharedWorksSafe 捕获异常:", err);
         return formatOutput([]);
     }
 }
 
-async function getWorks(params, filterFn){ 
-    return (await loadSharedWorksSafe(params)).filter(filterFn);
-}
 // -----------------------------
 // 模块接口
-async function getAllWorks(params){ return await loadSharedWorksSafe(params); }
+async function getWorks(params, filterFn){ 
+    setLoggerMode(params.logMode);
+    return (await loadSharedWorksSafe(params)).filter(filterFn);
+}
+async function getAllWorks(params){ return await getWorks(params, ()=>true); }
 getActorWorks = params => getWorks(params, i => i.characters.length);
 getDirectorWorks = params => getWorks(params, i => i.jobs.some(j=>/director/i.test(j)));
 getOtherWorks = params => getWorks(params, i => !i.characters.length && !i.jobs.some(j=>/director/i.test(j)));
