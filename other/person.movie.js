@@ -342,25 +342,14 @@ async function loadPersonWorks(params){
     const personKey = `${params.personId}_${language}`;
 
     // -----------------------------
-    // 先保证 genre cache 已初始化
-    if(!Object.keys(tmdbGenresCache.movie).length || !Object.keys(tmdbGenresCache.tv).length){
-        try{
-            await initTmdbGenres(language);
-            if(debugMode){
-                console.log("[DEBUG] tmdbGenresCache.movie:", tmdbGenresCache.movie);
-                console.log("[DEBUG] tmdbGenresCache.tv:", tmdbGenresCache.tv);
-            }
-        } catch(e){
-            logger.warn("初始化 TMDB 类型失败", e);
-        }
-    }
+    // 初始化 genrecache
+    await initTmdbGenres(language);
 
     // -----------------------------
     // 获取缓存或请求作品
     let works = await personWorksCache.getOrSet(personKey, async ()=>{
         const personId = await resolvePersonIdSafe(params.personId, language);
         if(!personId) return [];
-
         const credits = await fetchCreditsCached(personId, language);
         credits.forEach(w => { if(w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
         return credits;
@@ -369,11 +358,7 @@ async function loadPersonWorks(params){
     // -----------------------------
     // 上映状态过滤
     const nowDate = new Date();
-    works = filterWithDebug(works, w => {
-        if(type === "all") return true;
-        const isReleased = w._releaseDateObj && w._releaseDateObj <= nowDate;
-        return type === "released" ? isReleased : !isReleased;
-    }, debugInfo);
+    works = filterWithDebug(works, w => type === "all" || ((w._releaseDateObj && w._releaseDateObj <= nowDate) === (type === "released")), debugInfo);
 
     // -----------------------------
     // 关键词过滤
@@ -387,11 +372,7 @@ async function loadPersonWorks(params){
     // 排序
     if(sort_by){
         const [field, order] = sort_by.split('.');
-        works.sort((a,b)=>{
-            const valA = a[field] ?? 0;
-            const valB = b[field] ?? 0;
-            return order === 'desc' ? valB - valA : valA - valB;
-        });
+        works.sort((a,b)=> ((a[field] ?? 0) - (b[field] ?? 0)) * (order === 'desc' ? -1 : 1));
         if(debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
     }
 
@@ -402,21 +383,17 @@ async function loadPersonWorks(params){
     // -----------------------------
     // debug 输出
     if(debugMode){
-        logger.debug("上映状态 type:", type);
-        logger.debug("关键词 filter:", filter);
-        logger.debug("排序 sort_by:", sort_by);
-        if(debugInfo.filteredOutTitles.length){
-            logger.debug("被过滤掉的作品:", [...new Set(debugInfo.filteredOutTitles)]);
-        }
-        const isCacheEmpty = !Object.keys(tmdbGenresCache.movie || {}).length && !Object.keys(tmdbGenresCache.tv || {}).length;
-        if(isCacheEmpty){
-        logger.warn("tmdbGenresCache 为空，可能没有正确初始化！", JSON.stringify(tmdbGenresCache, null, 2));
-        } else {
-        // 输出已获取到的 genre 数据
-        logger.info("tmdbGenresCache 数据 (movie + tv 一起):", JSON.stringify(tmdbGenresCache, null, 2));
-        }
-        console.log(JSON.stringify(tmdbGenresCache, null, 2));
-        logger.debug("最终返回数据:", finalList.map(i=>i.title));
+        const isCacheEmpty = !Object.keys(tmdbGenresCache.movie).length || !Object.keys(tmdbGenresCache.tv).length;
+        logger.debug("loadPersonWorks Debug Info:", {
+            type,
+            filter,
+            sort_by,
+            filteredOutTitles: debugInfo.filteredOutTitles.length ? [...new Set(debugInfo.filteredOutTitles)] : null,
+            tmdbGenresCacheStatus: isCacheEmpty ? "EMPTY" : "OK",
+            tmdbGenresCache,
+            finalTitles: finalList.map(i => i.title)
+        });
+        if(isCacheEmpty) logger.warn("tmdbGenresCache 为空，可能没有正确初始化！");
     }
 
     return finalList;
