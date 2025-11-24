@@ -11,7 +11,7 @@ for (let year = currentYear; year >= 1940; year--) {
 }
 
 var WidgetMetadata = {
-    id: "bangumi_charts_tmdb_v3",
+    id: "bangumi-tmdb_v3",
     title: "Bangumi 热门榜单",
     description: "获取Bangumi近期热门、每日放送数据，支持榜单筛选。",
     version: "3.0.0",
@@ -210,9 +210,6 @@ async function fetchAndCacheGlobalData() {
     return await dataFetchPromise;
 }
 
-// -----------------------------
-// 高性能 AC + 完全正则过滤器（忽略大小写）
-// -----------------------------
 const acCache=new Map(),regexCache=new Map(),filterUnitCache=new Map(); 
 const normalizeTitleForMatch=s=>!s?"":s.replace(/[\u200B-\u200D\uFEFF]/g,"").trim().normalize("NFC").toLowerCase(); 
 class ACAutomaton{constructor(){this.root={next:Object.create(null),fail:null,output:[]}};insert(word){let n=this.root;for(const c of word){if(!n.next[c])n.next[c]={next:Object.create(null),fail:null,output:[]};n=n.next[c]}n.output.push(word)};build(){const q=[];this.root.fail=this.root;for(const k of Object.keys(this.root.next)){const n=this.root.next[k];n.fail=this.root;q.push(n)}while(q.length){const node=q.shift();for(const ch of Object.keys(node.next)){const child=node.next[ch];let f=node.fail;while(f!==this.root&&!f.next[ch])f=f.fail;child.fail=f.next[ch]||this.root;child.output=child.output.concat(child.fail.output);q.push(child)}}};match(text){const found=new Set();if(!text)return found;let node=this.root;for(const ch of text){while(node!==this.root&&!node.next[ch])node=node.fail;node=node.next[ch]||this.root;node.output.forEach(w=>found.add(w))}return found}} 
@@ -220,6 +217,41 @@ const isPlainText=term=>!/[\*\?\^\$\.\+\|\(\)\[\]\{\}\\]/.test(term);
 const getRegex=term=>regexCache.has(term)?regexCache.get(term):(regexCache.set(term,(()=>{try{return new RegExp(term,"i")}catch(e){return null}})()),regexCache.get(term)); 
 const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;if(filterUnitCache.has(filterStr))return filterUnitCache.get(filterStr);const terms=filterStr.split(/\s*\|\|\s*/).map(t=>t.trim()).filter(Boolean),plainTerms=[],regexTerms=[];for(const t of terms)(isPlainText(t)?plainTerms:regexTerms).push(t);let ac=null;if(plainTerms.length){const key=plainTerms.slice().sort().join("\u0001");if(acCache.has(key))ac=acCache.get(key);else{ac=new ACAutomaton();plainTerms.forEach(p=>ac.insert(p.toLowerCase()));ac.build();acCache.set(key,ac)}}const unit={ac,regexTerms};filterUnitCache.set(filterStr,unit);return unit}; 
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
+
+async function fetchRecentHot(params = {}) {
+    await fetchAndCacheGlobalData();
+    const category = params.category || "anime";
+
+    // --- 解析多页输入 ---
+    let pageList = [];
+    const pageInput = params.pages || "1";
+    if (pageInput.includes("-")) {
+        const [start, end] = pageInput.split("-").map(n => parseInt(n, 10));
+        for (let i = start; i <= end; i++) pageList.push(i);
+    } else {
+        pageList.push(parseInt(pageInput, 10));
+    }
+
+    const pages = globalData.recentHot?.[category] || [];
+    let resultList = [];
+    for (const p of pageList) {
+        if (pages[p - 1]) resultList = resultList.concat(pages[p - 1]);
+    }
+
+    // --- 排序 ---
+    const sort = params.sort || "default";
+    if (sort === "date") {
+        resultList.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
+    } else if (sort === "score") {
+        resultList.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+
+    // --- 关键词过滤 ---
+    const keywordFilter = params.keywordFilter || "";
+    resultList = filterByKeywords(resultList, keywordFilter);
+
+    return resultList;
+}
 
 /* ==================== 优化后的 fetchAirtimeRanking ==================== */
 async function fetchAirtimeRanking(params = {}) {
