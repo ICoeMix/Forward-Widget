@@ -328,18 +328,32 @@ async function loadPersonWorks(params){
     const debugInfo = { filteredOutTitles: [] };
     const personKey = `${params.personId}_${language}`;
 
-    // 获取缓存或请求
+    // -----------------------------
+    // 先保证 genre cache 已初始化
+    if(!Object.keys(tmdbGenresCache.movie).length || !Object.keys(tmdbGenresCache.tv).length){
+        try{
+            await initTmdbGenres(language);
+            if(debugMode){
+                console.log("[DEBUG] tmdbGenresCache.movie:", tmdbGenresCache.movie);
+                console.log("[DEBUG] tmdbGenresCache.tv:", tmdbGenresCache.tv);
+            }
+        } catch(e){
+            logger.warn("初始化 TMDB 类型失败", e);
+        }
+    }
+
+    // -----------------------------
+    // 获取缓存或请求作品
     let works = await personWorksCache.getOrSet(personKey, async ()=>{
         const personId = await resolvePersonIdSafe(params.personId, language);
         if(!personId) return [];
 
-        await initTmdbGenres(language);
         const credits = await fetchCreditsCached(personId, language);
-
         credits.forEach(w => { if(w.releaseDate) w._releaseDateObj = new Date(w.releaseDate); });
         return credits;
     });
 
+    // -----------------------------
     // 上映状态过滤
     const nowDate = new Date();
     works = filterWithDebug(works, w => {
@@ -348,6 +362,7 @@ async function loadPersonWorks(params){
         return type === "released" ? isReleased : !isReleased;
     }, debugInfo);
 
+    // -----------------------------
     // 关键词过滤
     if(filter.trim()){
         const { filtered, filteredOut } = filterByKeywords(works, filter);
@@ -355,6 +370,7 @@ async function loadPersonWorks(params){
         if(debugMode) debugInfo.filteredOutTitles.push(...filteredOut);
     }
 
+    // -----------------------------
     // 排序
     if(sort_by){
         const [field, order] = sort_by.split('.');
@@ -366,9 +382,11 @@ async function loadPersonWorks(params){
         if(debugMode) logger.debug(`[排序] 字段: ${field}, 顺序: ${order}`);
     }
 
+    // -----------------------------
     // 格式化输出
     const finalList = formatOutput(works);
 
+    // -----------------------------
     // debug 输出
     if(debugMode){
         logger.debug("===== 调用条件 =====");
