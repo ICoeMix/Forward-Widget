@@ -496,10 +496,10 @@ const DynamicDataProcessor = (() => {
         static async searchTmdb(originalTitle, chineseTitle, year) {
             const cacheKey = `${originalTitle || ''}-${chineseTitle || ''}-${year || ''}`;
             if (Processor.tmdbCache.has(cacheKey)) return Processor.tmdbCache.get(cacheKey);
-
+        
             let bestMatch = null;
             let maxScore = -1;
-            const searchMediaType = 'tv';
+            const searchMediaType = 'tv'; // 或 'movie'，视需求
             const query = chineseTitle || originalTitle;
             try {
                 const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
@@ -514,10 +514,19 @@ const DynamicDataProcessor = (() => {
                         bestMatch = result;
                     }
                 }
+        
+                // ======== 新增：根据 genre_ids 生成 genre_titles ========
+                if (bestMatch) {
+                    const genreMapping = tmdbGenresCache[searchMediaType] || {};
+                    bestMatch.genre_titles = Array.isArray(bestMatch.genre_ids) 
+                        ? bestMatch.genre_ids.map(id => genreMapping[id] || `Unknown(${id})`) 
+                        : [];
+                }
+        
             } catch (err) {
                 console.error(`[TMDB] searchTmdb error: ${err.message}`);
             }
-
+        
             Processor.tmdbCache.set(cacheKey, bestMatch);
             return bestMatch;
         }
@@ -540,6 +549,7 @@ const DynamicDataProcessor = (() => {
             return items;
         }
 
+        // ==================== fetchItemDetails 更新 ====================
         static async fetchItemDetails(item, category) {
             const yearMatch = item.info.match(/(\d{4})/);
             const year = yearMatch ? yearMatch[1] : '';
@@ -549,6 +559,7 @@ const DynamicDataProcessor = (() => {
                 mediaType: category, rating: item.rating,
                 description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`
             };
+        
             const tmdbResult = await Processor.searchTmdb(item.title, null, year);
             if (tmdbResult) {
                 baseItem.id = String(tmdbResult.id);
@@ -561,7 +572,8 @@ const DynamicDataProcessor = (() => {
                 baseItem.link = null;
                 baseItem.tmdb_id = String(tmdbResult.id);
                 baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-                baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
+                baseItem.genre_ids = tmdbResult.genre_ids || [];
+                baseItem.genre_titles = tmdbResult.genre_titles || [];
             }
             return baseItem;
         }
@@ -623,7 +635,8 @@ const DynamicDataProcessor = (() => {
                             baseItem.link = null;
                             baseItem.tmdb_id = String(tmdbResult.id);
                             baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-                            baseItem.tmdb_genre_titles = tmdbResult.genre_titles || [];
+                            baseItem.genre_ids = tmdbResult.genre_ids || [];
+                            baseItem.genre_titles = tmdbResult.genre_titles || [];
                         }
                         return baseItem;
                     });
