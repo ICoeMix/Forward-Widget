@@ -169,18 +169,25 @@ const tmdbGenresCache = { movie:{}, tv:{} };
 
 // -----------------------------
 // 安全获取人物ID
-async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug"){
-    const s = personInput?.toString().trim();
-    if(!s){ logger.warn("输入为空"); return null; }
-    if(/^\d+$/.test(s)) return Number(s);
+async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug") {
+    let s = personInput?.toString().trim();
+
+    // 输入为空时，默认搜索“张艺谋”
+    if (!s) {
+        s = "张艺谋";
+        logger.info(`输入为空，使用默认搜索人物: "${s}"`);
+    }
+
+    // 如果输入的是数字，直接返回
+    if (/^\d+$/.test(s)) return Number(s);
 
     const cacheKey = `${s}_${language}`;
-    return await personIdCache.getOrSet(cacheKey, async ()=>{
+    return await personIdCache.getOrSet(cacheKey, async () => {
         logger.info(`搜索人物ID: "${s}"`);
-        try{
-            const res = await Widget.tmdb.get("search/person",{params:{query:s, language}});
-            return res?.results?.[0]?.id || null;
-        } catch(e){
+        try {
+            const res = await Widget.tmdb.get("search/person", { params: { query: s, language } });
+            return res?.results?.[0]?.id || null;  // 找不到就返回 null
+        } catch (e) {
             logger.warn("resolvePersonId失败", e);
             return null;
         }
