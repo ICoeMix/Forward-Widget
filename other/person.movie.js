@@ -396,8 +396,12 @@ async function loadPersonWorks(params){
         if(debugInfo.filteredOutTitles.length){
             logger.debug("被过滤掉的作品:", [...new Set(debugInfo.filteredOutTitles)]);
         }
+        // 打印每条作品的 mediaType / genre_ids / genreTitle
+        finalList.forEach(i=>{
+            logger.debug(`[作品] title: ${i.title}, mediaType: ${i.mediaType}, genre_ids: ${i.genre_ids}, genreTitle: ${i.genreTitle}`);
+        });
+    
         logger.debug("最终返回数据:", finalList.map(i=>i.title));
-        logger.debug("====================");
     }
 
     return finalList;
