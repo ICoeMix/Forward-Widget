@@ -197,18 +197,31 @@ async function resolvePersonIdSafe(personInput, language="zh-CN", logMode="debug
 // -----------------------------
 // 初始化 TMDB 类型
 async function initTmdbGenres(language="zh-CN"){
-    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) return;
+    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
+        console.log("[DEBUG] tmdbGenresCache 已初始化，无需重复请求");
+        return;
+    }
 
-    try{
-        const [movieGenres, tvGenres] = await Promise.all([
+    try {
+        const [movieResp, tvResp] = await Promise.all([
             Widget.tmdb.get("genre/movie/list",{params:{language}}),
             Widget.tmdb.get("genre/tv/list",{params:{language}})
         ]);
-        tmdbGenresCache.movie ||= Object.fromEntries((movieGenres?.genres||[]).map(g=>[g.id,g.name]));
-        tmdbGenresCache.tv ||= Object.fromEntries((tvGenres?.genres||[]).map(g=>[g.id,g.name]));
-    } catch(e){
-        logger.warn("初始化TMDB类型失败", e);
-        tmdbGenresCache.movie = {}; 
+
+        const movieGenres = movieResp?.genres || [];
+        const tvGenres = tvResp?.genres || [];
+
+        // 保证原对象引用不变并填充数据
+        Object.assign(tmdbGenresCache.movie, Object.fromEntries(movieGenres.map(g => [g.id, g.name])));
+        Object.assign(tmdbGenresCache.tv, Object.fromEntries(tvGenres.map(g => [g.id, g.name])));
+
+        console.log("[DEBUG] tmdbGenresCache 初始化完成",
+            { movie: tmdbGenresCache.movie, tv: tmdbGenresCache.tv, movieCount: movieGenres.length, tvCount: tvGenres.length }
+        );
+
+    } catch(e) {
+        logger.warn("初始化 TMDB 类型失败", e);
+        tmdbGenresCache.movie = {};
         tmdbGenresCache.tv = {};
     }
 }
@@ -397,9 +410,11 @@ async function loadPersonWorks(params){
         }
         const isCacheEmpty = !Object.keys(tmdbGenresCache.movie || {}).length && !Object.keys(tmdbGenresCache.tv || {}).length;
         if(isCacheEmpty){
-        console.warn("[WARN] tmdbGenresCache 为空，可能没有正确初始化！");
-    }
-        console.warn("[WARN] 当前 tmdbGenresCache:");
+        logger.warn("tmdbGenresCache 为空，可能没有正确初始化！", JSON.stringify(tmdbGenresCache, null, 2));
+        } else {
+        // 输出已获取到的 genre 数据
+        logger.info("tmdbGenresCache 数据 (movie + tv 一起):", JSON.stringify(tmdbGenresCache, null, 2));
+        }
         console.log(JSON.stringify(tmdbGenresCache, null, 2));
         logger.debug("最终返回数据:", finalList.map(i=>i.title));
     }
