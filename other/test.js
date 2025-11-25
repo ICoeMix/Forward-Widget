@@ -220,33 +220,7 @@ function normalizeItem(item){
 
 function normalizeItems(list){ return Array.isArray(list)?list.map(normalizeItem):[]; }
 
-// -----------------------------
-// 输出格式化
-function formatOutput(list){
-    return [...(Array.isArray(list)?list:[])]
-        .filter(i => i && typeof i==="object")
-        .sort((a,b)=>new Date(b.releaseDate||0) - new Date(a.releaseDate||0))
-        .map(i=>{
-            const mediaType = i.mediaType || "movie";
-            const genreMap = tmdbGenresCache[mediaType] || {};
-            const genreTitle = Array.isArray(i.genre_ids) ? i.genre_ids.map(id=>genreMap[id] || `未知类型(${id})`).join("•") : "";
-            return {
-                id: i.id,
-                type: "tmdb",
-                title: i.title || "未知",
-                description: i.overview || "",
-                releaseDate: i.releaseDate || "",
-                rating: i.rating || 0,
-                popularity: i.popularity || 0,
-                posterPath: i.posterPath || "",
-                backdropPath: i.backdropPath || "",
-                mediaType,
-                jobs: i.jobs || [],
-                characters: i.characters || [],
-                genreTitle
-            };
-        });
-}
+
 
 async function fetchAndCacheGlobalData() {
     if (globalData) return globalData;
