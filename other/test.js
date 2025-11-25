@@ -188,6 +188,66 @@ let globalData = null;
 let dataFetchPromise = null;
 const archiveFetchPromises = {};
 
+function normalizeItem(item){
+    if(!item || typeof item!=="object") return { 
+        id:null, type:"tmdb", title:"未知", overview:"", posterPath:"", backdropPath:"", 
+        mediaType:"movie", releaseDate:"", popularity:0, rating:0, jobs:[], characters:[], genre_ids:[], 
+        _normalizedTitle:"", _releaseTime:0, _popularity:0, _rating:0 
+    };
+    const title = item.title || item.name || "未知";
+    const mediaType = item.media_type || (item.release_date ? "movie" : (item.first_air_date ? "tv" : "movie"));
+    const release = item.release_date || item.first_air_date || "";
+    return {
+        id: item.id || null,
+        type: "tmdb",
+        title,
+        overview: item.overview || "",
+        posterPath: item.poster_path || "",
+        backdropPath: item.backdrop_path || "",
+        mediaType,
+        releaseDate: release,
+        popularity: Number(item.popularity || 0),
+        rating: Number(item.vote_average || 0),
+        jobs: Array.isArray(item.jobs) ? item.jobs : (item.job ? [item.job] : []),
+        characters: Array.isArray(item.characters) ? item.characters : (item.character ? [item.character] : []),
+        genre_ids: Array.isArray(item.genre_ids) ? item.genre_ids : [],
+        _normalizedTitle: title.toLowerCase(),
+        _releaseTime: release ? new Date(release).getTime() : 0,
+        _popularity: Number(item.popularity || 0),
+        _rating: Number(item.vote_average || 0)
+    };
+}
+
+function normalizeItems(list){ return Array.isArray(list)?list.map(normalizeItem):[]; }
+
+// -----------------------------
+// 输出格式化
+function formatOutput(list){
+    return [...(Array.isArray(list)?list:[])]
+        .filter(i => i && typeof i==="object")
+        .sort((a,b)=>new Date(b.releaseDate||0) - new Date(a.releaseDate||0))
+        .map(i=>{
+            const mediaType = i.mediaType || "movie";
+            const genreMap = tmdbGenresCache[mediaType] || {};
+            const genreTitle = Array.isArray(i.genre_ids) ? i.genre_ids.map(id=>genreMap[id] || `未知类型(${id})`).join("•") : "";
+            return {
+                id: i.id,
+                type: "tmdb",
+                title: i.title || "未知",
+                description: i.overview || "",
+                releaseDate: i.releaseDate || "",
+                rating: i.rating || 0,
+                popularity: i.popularity || 0,
+                posterPath: i.posterPath || "",
+                backdropPath: i.backdropPath || "",
+                mediaType,
+                jobs: i.jobs || [],
+                characters: i.characters || [],
+                genreTitle
+            };
+        });
+}
+
 async function fetchAndCacheGlobalData() {
     if (globalData) return globalData;
     if (dataFetchPromise) return await dataFetchPromise;
@@ -268,65 +328,66 @@ async function fetchAirtimeRanking(params = {}) {
 
     // 先从已有缓存读取，减少重复请求
     if (!globalData.airtimeRanking[category]?.[year]) {
-    if (!archiveFetchPromises[`${category}-${year}`]) {
-        archiveFetchPromises[`${category}-${year}`] = (async () => {
-            try {
-                const archiveUrl = `${BASE_DATA_URL}/archive/${year}.json`;
-                const response = await Widget.http.get(archiveUrl, { headers: { 'Cache-Control': 'no-cache' } });
-                if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
-                globalData.airtimeRanking[category][year] = response.data.airtimeRanking[category][year] || {};
-            } catch (e) {
-                console.warn(`加载存档 ${year} 失败: ${e.message}`);
-                if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
-                globalData.airtimeRanking[category][year] = {}; // 避免使用字符串
-            }
-        })();
+        if (!archiveFetchPromises[`${category}-${year}`]) {
+            archiveFetchPromises[`${category}-${year}`] = (async () => {
+                try {
+                    const archiveUrl = `${BASE_DATA_URL}/archive/${year}.json`;
+                    const response = await Widget.http.get(archiveUrl, { headers: { 'Cache-Control': 'no-cache' } });
+                    if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
+                    globalData.airtimeRanking[category][year] = response.data.airtimeRanking[category][year] || {};
+                } catch (e) {
+                    console.warn(`加载存档 ${year} 失败: ${e.message}`);
+                    if (!globalData.airtimeRanking[category]) globalData.airtimeRanking[category] = {};
+                    globalData.airtimeRanking[category][year] = {};
+                }
+            })();
+        }
+        await archiveFetchPromises[`${category}-${year}`];
     }
-    await archiveFetchPromises[`${category}-${year}`];
-}
 
     // 命中已有数据
     try {
         const pages = globalData.airtimeRanking[category][year][month]?.[sort];
         if (pages && pages[page - 1]) {
             console.log(`[BGM Widget vOptimized] 命中预构建数据: ${year}-${sort}-p${page}`);
-            return pages[page - 1];
+            return formatOutput(normalizeItems(pages[page - 1]));
         }
     } catch (e) {}
 
     // 动态抓取
     const dynamicKey = `airtime-${category}-${year}-${month}-${sort}-${page}`;
-    if (globalData.dynamic[dynamicKey]) return globalData.dynamic[dynamicKey];
+    if (globalData.dynamic[dynamicKey]) return formatOutput(normalizeItems(globalData.dynamic[dynamicKey]));
 
     console.log(`[BGM Widget vOptimized] 动态获取: ${year}-${sort}-p${page}`);
     const url = `https://bgm.tv/${category}/browser/airtime/${year}/${month}?sort=${sort}&page=${page}`;
     const listItems = await DynamicDataProcessor.processBangumiPage(url, category);
 
-    // 异步更新 TMDB 详情
+    // 异步更新 TMDB 详情并添加 genre
     listItems.forEach(item => {
         if (item.type === "link") {
-            // 异步 fetch TMDB，不阻塞主流程
             (async () => {
                 const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
                 if (tmdbResult) {
-                    item.id = String(tmdbResult.id);
-                    item.type = "tmdb";
-                    item.title = tmdbResult.name || tmdbResult.title || item.title;
-                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
-                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
-                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
-                    item.description = tmdbResult.overview || item.description;
-                    item.tmdb_id = String(tmdbResult.id);
-                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                    item.genre_ids = tmdbResult.genre_ids || [];
-                    item.genreTitle = (item.genre_ids || []).filter(id => id !== DynamicDataProcessor.Processor.TMDB_ANIMATION_GENRE_ID).map(id => DynamicDataProcessor.Processor.tmdbGenreMap.get(id)).filter(Boolean).join(', ');
+                    const normalized = normalizeItem(tmdbResult);
+
+                    // 更新原 item 保持结构
+                    Object.assign(item, normalized);
+
+                    // 添加 genreTitle
+                    const mediaType = normalized.mediaType || "movie";
+                    const genreMap = tmdbGenresCache[mediaType] || {};
+                    item.genreTitle = (normalized.genre_ids || [])
+                        .map(id => genreMap[id] || `未知类型(${id})`)
+                        .join("•");
                 }
             })();
         }
     });
 
     globalData.dynamic[dynamicKey] = listItems;
-    return listItems;
+    
+    // 返回标准化 + 格式化后的输出
+    return formatOutput(normalizeItems(listItems));
 }
 /* ==================== fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
