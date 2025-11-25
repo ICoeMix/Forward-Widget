@@ -140,20 +140,24 @@ async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
     let items = globalData.dailyCalendar?.all_week || [];
+
+    // 如果没有缓存原始数据，先动态拉取 Bangumi
     if (!items.length && !archiveFetchPromises['daily']) {
         console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
         archiveFetchPromises['daily'] = (async () => {
             const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
+            // 只缓存原始 Bangumi 数据，不包含 genre
             if (!globalData.dailyCalendar) globalData.dailyCalendar = {};
             globalData.dailyCalendar.all_week = dynamicItems;
+            return dynamicItems;
         })();
     }
-    if (archiveFetchPromises['daily']) await archiveFetchPromises['daily'];
 
-    items = globalData.dailyCalendar?.all_week || [];
+    // 等待动态拉取完成
+    items = archiveFetchPromises['daily'] ? await archiveFetchPromises['daily'] : items;
 
+    // 日筛选、地区筛选、排序、关键词逻辑保持不变
     const { filterType = "today", specificWeekday = "1", dailySortOrder = "popularity_rat_bgm", dailyRegionFilter = "all", keywordFilter = "" } = params;
-
     const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
     const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
 
@@ -197,38 +201,19 @@ async function fetchDailyCalendarApi(params = {}) {
         });
     }
 
-    const finalResults = filterByKeywords(sortedResults, keywordFilter);
+    let finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    const GENRE_MAP = {
-        16: "Animation",
-        35: "Comedy",
-        18: "Drama",
-        10751: "Family",
-        10759: "Action & Adventure",
-        10762: "Kids",
-        9648: "Mystery",
-        10763: "News",
-        10764: "Reality",
-        10765: "Sci-Fi & Fantasy",
-        10766: "Soap",
-        10767: "Talk",
-        10768: "War & Politics",
-        37: "Western"
-    };
+    // --- TMDB enrichment，加入 genre_ids 和 genre_titles ---
+    await DynamicDataProcessor.enrichWithTmdbAndGenres(finalResults);
 
-    // 强制使用 TMDB 结果覆盖原始 Bangumi 字段，并打印 genre 调试信息
-    for (let i = 0; i < finalResults.length; i++) {
-        const item = finalResults[i];
-        if (item.type === 'link' && item.tmdb_id) {
-            item.type = 'tmdb';
-            // 保存 genre_ids 并映射 title
-            item.tmdb_genre_ids = item.tmdb_genre_ids || [];
-            item.tmdb_genre_titles = item.tmdb_genre_ids.map(id => GENRE_MAP[id] || `Unknown(${id})`);
-            console.log(`[DEBUG] TMDB enrichment for "${item.title}" (tmdb_id: ${item.tmdb_id})`);
-            console.log(`  genre_ids:`, item.tmdb_genre_ids);
-            console.log(`  genre_titles:`, item.tmdb_genre_titles);
-        }
-    }
+    // 调试日志
+    finalResults.forEach(item => {
+        console.log(`[DEBUG] Final TMDB item "${item.title}"`, {
+            id: item.id,
+            tmdb_id: item.tmdb_id,
+            genre_ids: item.tmdb_genres || [],
+        });
+    });
 
     return finalResults;
 }
