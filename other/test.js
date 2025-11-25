@@ -454,7 +454,7 @@ async function fetchDailyCalendarApi(params = {}) {
         }
     });
 
-    return normalizeItem(finalResults);
+    return normalizeItems(finalResults);
 }
 
 
