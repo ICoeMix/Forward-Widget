@@ -404,7 +404,7 @@ async function fetchDailyCalendarApi(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                    baseItem.genreIds = tmdbResult.genre_ids || [16];
+                    item.genreTitle = ["Animation", "Comedy"];
                 }
             })();
         }
