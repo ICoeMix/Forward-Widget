@@ -136,6 +136,7 @@ const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;i
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
 
 /* ==================== 优化后的 fetchDailyCalendarApi ==================== */
+/* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
@@ -197,15 +198,18 @@ async function fetchDailyCalendarApi(params = {}) {
         });
     }
 
-    const finalResults = filterByKeywords(sortedResults, keywordFilter);
+    let finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 强制使用 TMDB 结果覆盖原始 Bangumi 字段
-    for(let i=0;i<finalResults.length;i++){
-        const item = finalResults[i];
-        if(item.type === 'link' && item.tmdb_id){
-            item.type = 'tmdb';
+    // 强制使用 TMDB 完整字段覆盖最终结果
+    finalResults = finalResults.map(item => {
+        if(item.tmdb_id){
+            const tmdbItem = globalData.tmdbDetailsCache?.[item.tmdb_id];
+            if(tmdbItem){
+                return { ...tmdbItem }; // 覆盖为完整 TMDB 字段
+            }
         }
-    }
+        return item;
+    });
 
     return finalResults;
 }
