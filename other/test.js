@@ -190,17 +190,18 @@ const archiveFetchPromises = {};
 
 
 // 格式化处理
+// 标准化单个对象
 function normalizeItem(item) {
     if (!item || typeof item !== "object") item = {};
 
     const mediaType = item.mediaType || "movie";
     const type = item.type || "tmdb";
-    const id = item.id != null
-        ? (type === "tmdb" ? `${mediaType}.${item.id}` : `${item.id}`)
-        : null;
 
     return {
-        id: id,
+        id: item.id != null
+            ? (type === "tmdb" ? `${mediaType}.${item.id}` : `${item.id}`)
+            : null,
+
         type: type,
         title: item.title || "",
         posterPath: item.posterPath || "",
@@ -217,15 +218,19 @@ function normalizeItem(item) {
         episode: item.episode != null ? Number(item.episode) : 0,
         description: item.description || "",
         playerType: item.playerType || "system",
+
+        // childItems 递归标准化
         childItems: Array.isArray(item.childItems)
             ? item.childItems.map(normalizeItem)
             : []
     };
 }
 
-// 处理数组
+// 标准化数组（注意这里只返回一维数组）
 function normalizeItems(list) {
-    return Array.isArray(list) ? list.map(normalizeItem) : [];
+    return Array.isArray(list)
+        ? list.map(item => normalizeItem(item))
+        : [];
 }
 
 async function fetchAndCacheGlobalData() {
