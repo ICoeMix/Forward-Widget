@@ -324,13 +324,13 @@ async function fetchAirtimeRanking(params = {}) {
         const pages = globalData.airtimeRanking[category][year][month]?.[sort];
         if (pages && pages[page - 1]) {
             console.log(`[BGM Widget vOptimized] 命中预构建数据: ${year}-${sort}-p${page}`);
-            return formatOutput(normalizeItems(pages[page - 1]));
+            return normalizeItems(pages[page - 1]);
         }
     } catch (e) {}
 
     // 动态抓取
     const dynamicKey = `airtime-${category}-${year}-${month}-${sort}-${page}`;
-    if (globalData.dynamic[dynamicKey]) return formatOutput(normalizeItems(globalData.dynamic[dynamicKey]));
+    if (globalData.dynamic[dynamicKey]) return normalizeItems(globalData.dynamic[dynamicKey]);
 
     console.log(`[BGM Widget vOptimized] 动态获取: ${year}-${sort}-p${page}`);
     const url = `https://bgm.tv/${category}/browser/airtime/${year}/${month}?sort=${sort}&page=${page}`;
