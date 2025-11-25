@@ -187,42 +187,9 @@ var WidgetMetadata = {
 let globalData = null;
 let dataFetchPromise = null;
 const archiveFetchPromises = {};
-const tmdbGenresCache = { movie:{}, tv:{} };
 
-// -----------------------------
-// 初始化 TMDB 类型
-async function initTmdbGenres(language="zh-CN"){
-    if(Object.keys(tmdbGenresCache.movie).length && Object.keys(tmdbGenresCache.tv).length) {
-        console.log("[DEBUG] tmdbGenresCache 已初始化，无需重复请求");
-        return;
-    }
 
-    try {
-        const [movieResp, tvResp] = await Promise.all([
-            Widget.tmdb.get("genre/movie/list",{params:{language}}),
-            Widget.tmdb.get("genre/tv/list",{params:{language}})
-        ]);
-
-        const movieGenres = movieResp?.genres || [];
-        const tvGenres = tvResp?.genres || [];
-
-        // 保证原对象引用不变并填充数据
-        Object.assign(tmdbGenresCache.movie, Object.fromEntries(movieGenres.map(g => [g.id, g.name])));
-        Object.assign(tmdbGenresCache.tv, Object.fromEntries(tvGenres.map(g => [g.id, g.name])));
-
-        console.log("[DEBUG] tmdbGenresCache 初始化完成",
-            { movie: tmdbGenresCache.movie, tv: tmdbGenresCache.tv, movieCount: movieGenres.length, tvCount: tvGenres.length }
-        );
-
-    } catch(e) {
-        logger.warn("初始化 TMDB 类型失败", e);
-        tmdbGenresCache.movie = {};
-        tmdbGenresCache.tv = {};
-    }
-}
-
-// -----------------------------
-// 标准化处理函数
+// 格式化处理
 function normalizeItem(item) {
     if (!item || typeof item !== "object") item = {};
 
@@ -260,8 +227,6 @@ function normalizeItem(item) {
 function normalizeItems(list) {
     return Array.isArray(list) ? list.map(normalizeItem) : [];
 }
-
-
 
 async function fetchAndCacheGlobalData() {
     if (globalData) return globalData;
@@ -324,10 +289,8 @@ async function fetchRecentHot(params = {}) {
     // --- 关键词过滤 ---
     const keywordFilter = params.keywordFilter || "";
     resultList = filterByKeywords(resultList, keywordFilter);
-   
-    // --- 归一化 & 格式化输出 ---
-    const normalized = normalizeItems(resultList);
-    return normalized;
+
+    return resultList;
 }
 
 /* ==================== 优化后的 fetchAirtimeRanking ==================== */
@@ -486,8 +449,9 @@ async function fetchDailyCalendarApi(params = {}) {
         }
     });
 
-    return finalResults;
+    return normalizeItem(finalResults);
 }
+
 
 const DynamicDataProcessor = (() => {
 
@@ -582,16 +546,37 @@ const DynamicDataProcessor = (() => {
         }
 
         static async fetchItemDetails(item, category) {
-            const yearMatch = item.info.match(/(\d{4})/);
+            const yearMatch = item.info?.match(/(\d{4})/);
             const year = yearMatch ? yearMatch[1] : '';
+        
+            // 基础 BGM 信息
             const baseItem = {
-                id: item.id, type: "link", title: item.title,
-                posterPath: item.cover, releaseDate: Processor.parseDate(item.info),
-                mediaType: category, rating: item.rating,
-                description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`
+                id: item.id,
+                type: "link",
+                title: item.title,
+                posterPath: item.cover,
+                releaseDate: Processor.parseDate(item.info),
+                mediaType: category,
+                rating: item.rating,
+                description: item.info,
+                link: `${Processor.BGM_BASE_URL}/subject/${item.id}`,
+                bgm_origin: true
             };
-            const tmdbResult = await Processor.searchTmdb(item.title, null, year);
+        
+            const cacheKey = `${item.title}-${year}`;
+            let tmdbResult = Processor.tmdbCache.get(cacheKey);
+        
+            if (!tmdbResult) {
+                try {
+                    tmdbResult = await Processor.searchTmdb(item.title, null, year);
+                    Processor.tmdbCache.set(cacheKey, tmdbResult || null);
+                } catch (err) {
+                    console.error(`[TMDB] fetchItemDetails error: ${err.message}`);
+                }
+            }
+        
             if (tmdbResult) {
+                // 核心字段覆盖
                 baseItem.id = String(tmdbResult.id);
                 baseItem.type = "tmdb";
                 baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
@@ -599,10 +584,13 @@ const DynamicDataProcessor = (() => {
                 baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
                 baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
                 baseItem.description = tmdbResult.overview || baseItem.description;
-                baseItem.link = null;
                 baseItem.tmdb_id = String(tmdbResult.id);
                 baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+        
+                // 全字段保留在 tmdb 对象里，避免顶层污染，同时保证完整数据
+                baseItem.tmdb = tmdbResult;
             }
+        
             return baseItem;
         }
 
@@ -626,7 +614,7 @@ const DynamicDataProcessor = (() => {
             }
         }
 
-        // ==================== 每日放送 ====================
+       // ==================== 每日放送 ====================
         static async processDailyCalendar() {
             try {
                 const apiResponse = await Widget.http.get("https://api.bgm.tv/calendar");
@@ -639,38 +627,73 @@ const DynamicDataProcessor = (() => {
                         });
                     }
                 });
+        
                 const enhancedItems = [];
                 for (let i = 0; i < allItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
                     const batch = allItems.slice(i, i + Processor.MAX_CONCURRENT_DETAILS_FETCH);
                     const promises = batch.map(async (item) => {
+                        // 基础 BGM 信息
                         const baseItem = {
-                            id: String(item.id), type: "link", title: item.name_cn || item.name,
+                            id: String(item.id),
+                            type: "link",
+                            title: item.name_cn || item.name,
                             posterPath: item.images?.large?.startsWith('//') ? 'https:' + item.images.large : item.images?.large,
-                            releaseDate: item.air_date, mediaType: 'anime', rating: item.rating?.score?.toFixed(1) || "N/A",
+                            releaseDate: item.air_date,
+                            mediaType: 'anime',
+                            rating: item.rating?.score?.toFixed(1) || "N/A",
                             description: `[${item.weekday?.cn || ''}] ${item.summary || ''}`.trim(),
-                            link: item.url, bgm_id: String(item.id), bgm_score: item.rating?.score || 0,
-                            bgm_rating_total: item.rating?.total || 0, bgm_weekday_id: item.bgm_weekday_id
+                            link: item.url,
+                            bgm_id: String(item.id),
+                            bgm_score: item.rating?.score || 0,
+                            bgm_rating_total: item.rating?.total || 0,
+                            bgm_weekday_id: item.bgm_weekday_id
                         };
-                        const tmdbResult = await Processor.searchTmdb(item.name, item.name_cn, item.air_date?.substring(0, 4));
-                        if (tmdbResult) {
-                            baseItem.id = String(tmdbResult.id);
-                            baseItem.type = "tmdb";
-                            baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
-                            baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
-                            baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
-                            baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
-                            baseItem.description = tmdbResult.overview || baseItem.description;
-                            baseItem.link = null;
-                            baseItem.tmdb_id = String(tmdbResult.id);
-                            baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+        
+                        const year = item.air_date?.substring(0, 4) || '';
+                        const cacheKey = `${item.name}-${year}`;
+                        let tmdbResult = Processor.tmdbCache.get(cacheKey);
+        
+                        if (!tmdbResult) {
+                            try {
+                                tmdbResult = await Processor.searchTmdb(item.name, item.name_cn, year);
+                                Processor.tmdbCache.set(cacheKey, tmdbResult || null);
+                            } catch (err) {
+                                console.error(`[TMDB] processDailyCalendar error: ${err.message}`);
+                                tmdbResult = null;
+                            }
                         }
+        
+                        if (tmdbResult) {
+                            const {
+                                id, name, title: tmdbTitle, poster_path, first_air_date, release_date,
+                                vote_average, overview, origin_country, ...rest
+                            } = tmdbResult;
+        
+                            // 核心字段覆盖
+                            baseItem.id = String(id);
+                            baseItem.type = "tmdb";
+                            baseItem.title = name || tmdbTitle || baseItem.title;
+                            baseItem.posterPath = poster_path ? `https://image.tmdb.org/t/p/w500${poster_path}` : baseItem.posterPath;
+                            baseItem.releaseDate = first_air_date || release_date || baseItem.releaseDate;
+                            baseItem.rating = vote_average ? vote_average.toFixed(1) : baseItem.rating;
+                            baseItem.description = overview || baseItem.description;
+                            baseItem.link = null; // TMDB 链接置空
+                            baseItem.tmdb_id = String(id);
+                            baseItem.tmdb_origin_countries = origin_country || [];
+        
+                            // 全字段保留
+                            baseItem.tmdb = rest;
+                        }
+        
                         return baseItem;
                     });
+        
                     const settled = await Promise.allSettled(promises);
                     settled.forEach(res => {
                         if (res.status === 'fulfilled' && res.value) enhancedItems.push(res.value);
                     });
                 }
+        
                 return enhancedItems;
             } catch (error) {
                 console.error(`[BGM Widget] processDailyCalendar error: ${error.message}`);
