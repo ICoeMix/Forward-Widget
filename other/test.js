@@ -203,7 +203,7 @@ async function fetchDailyCalendarApi(params = {}) {
     // 关键词过滤（保持原来的 AC + 正则逻辑）
     const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 异步更新 TMDB 详情
+    // 异步更新 TMDB 详情并添加 genre_titles
     finalResults.forEach(item => {
         if (item.type === "link") {
             (async ()=>{
@@ -218,6 +218,7 @@ async function fetchDailyCalendarApi(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                    item.genre_titles = tmdbResult.genre_titles || []; // ← 新增字段
                 }
             })();
         }
@@ -226,14 +227,15 @@ async function fetchDailyCalendarApi(params = {}) {
     return finalResults;
 }
 
+/* ==================== DynamicDataProcessor ==================== */
 const DynamicDataProcessor = (() => {
 
     class Processor {
-        // ==================== 静态常量 ====================
         static BGM_BASE_URL = "https://bgm.tv";
-        static TMDB_ANIMATION_GENRE_ID = 16; // 动画类别
-        static MAX_CONCURRENT_DETAILS_FETCH = 8; // 并发限制
-        static tmdbCache = new Map(); // TMDB 查询缓存
+        static TMDB_ANIMATION_GENRE_ID = 16;
+        static MAX_CONCURRENT_DETAILS_FETCH = 8;
+        static tmdbCache = new Map();
+        static tmdbGenreMap = new Map(); // id -> title 映射缓存
 
         // ==================== 工具方法 ====================
         static normalizeTmdbQuery(query) { 
@@ -248,9 +250,9 @@ const DynamicDataProcessor = (() => {
             dateStr = dateStr.trim(); 
             let match; 
             match = dateStr.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日/); 
-            if (match) return `${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`; 
+            if (match) return `${match[1]}-${String(match[2]).padStart(2,'0')}-${String(match[3]).padStart(2,'0')}`; 
             match = dateStr.match(/^(\d{4})年(\d{1,2})月(?!日)/); 
-            if (match) return `${match[1]}-${String(match[2]).padStart(2, '0')}-01`; 
+            if (match) return `${match[1]}-${String(match[2]).padStart(2,'0')}-01`; 
             match = dateStr.match(/^(\d{4})$/); 
             if (match) return `${match[1]}-01-01`; 
             return '';
@@ -271,7 +273,19 @@ const DynamicDataProcessor = (() => {
         }
 
         // ==================== TMDB 查询 ====================
+        static async loadTmdbGenres() {
+            if (Processor.tmdbGenreMap.size) return;
+            try {
+                const response = await Widget.tmdb.get('/genre/tv/list', { params: { language: 'zh-CN' } });
+                (response.data.genres || []).forEach(g => Processor.tmdbGenreMap.set(g.id, g.name));
+            } catch (err) {
+                console.error("[TMDB] loadTmdbGenres error:", err.message);
+            }
+        }
+
         static async searchTmdb(originalTitle, chineseTitle, year) {
+            await Processor.loadTmdbGenres();
+
             const cacheKey = `${originalTitle || ''}-${chineseTitle || ''}-${year || ''}`;
             if (Processor.tmdbCache.has(cacheKey)) return Processor.tmdbCache.get(cacheKey);
 
@@ -281,7 +295,7 @@ const DynamicDataProcessor = (() => {
             const query = chineseTitle || originalTitle;
             try {
                 const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
-                    params: { query, language: "zh-CN", include_adult: false, year: year } 
+                    params: { query, language: "zh-CN", include_adult: false, year } 
                 });
                 const results = response?.results || [];
                 for (const result of results) {
@@ -291,6 +305,12 @@ const DynamicDataProcessor = (() => {
                         maxScore = score;
                         bestMatch = result;
                     }
+                }
+                // 映射 genre_titles
+                if (bestMatch) {
+                    bestMatch.genre_titles = (bestMatch.genre_ids || [])
+                        .map(id => Processor.tmdbGenreMap.get(id))
+                        .filter(Boolean);
                 }
             } catch (err) {
                 console.error(`[TMDB] searchTmdb error: ${err.message}`);
@@ -339,6 +359,7 @@ const DynamicDataProcessor = (() => {
                 baseItem.link = null;
                 baseItem.tmdb_id = String(tmdbResult.id);
                 baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+                baseItem.genre_titles = tmdbResult.genre_titles || [];
             }
             return baseItem;
         }
@@ -363,7 +384,6 @@ const DynamicDataProcessor = (() => {
             }
         }
 
-        // ==================== 每日放送 ====================
         static async processDailyCalendar() {
             try {
                 const apiResponse = await Widget.http.get("https://api.bgm.tv/calendar");
@@ -400,6 +420,7 @@ const DynamicDataProcessor = (() => {
                             baseItem.link = null;
                             baseItem.tmdb_id = String(tmdbResult.id);
                             baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
+                            baseItem.genre_titles = tmdbResult.genre_titles || [];
                         }
                         return baseItem;
                     });
