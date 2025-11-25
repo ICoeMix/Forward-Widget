@@ -322,11 +322,14 @@ async function fetchAirtimeRanking(params = {}) {
     globalData.dynamic[dynamicKey] = listItems;
     return listItems;
 }
+
+
+
+
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
-    let items = globalData.dailyCalendar?.all_week || [];
-    if (!items.length && !archiveFetchPromises['daily']) {
+    if (!globalData.dailyCalendar?.all_week && !archiveFetchPromises['daily']) {
         console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
         archiveFetchPromises['daily'] = (async () => {
             const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
@@ -334,15 +337,16 @@ async function fetchDailyCalendarApi(params = {}) {
             globalData.dailyCalendar.all_week = dynamicItems;
         })();
     }
+
     if (archiveFetchPromises['daily']) await archiveFetchPromises['daily'];
 
-    items = globalData.dailyCalendar?.all_week || [];
+    let items = globalData.dailyCalendar?.all_week || [];
 
     const { filterType = "today", specificWeekday = "1", dailySortOrder = "popularity_rat_bgm", dailyRegionFilter = "all", keywordFilter = "" } = params;
-
     const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
     const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
 
+    // 过滤星期
     let filteredByDay = [];
     if (filterType === "all_week") filteredByDay = items;
     else {
@@ -378,7 +382,7 @@ async function fetchDailyCalendarApi(params = {}) {
             if (dailySortOrder==="popularity_rat_bgm") return (b.bgm_rating_total||0)-(a.bgm_rating_total||0);
             if (dailySortOrder==="score_bgm_desc") return (b.bgm_score||0)-(a.bgm_score||0);
             if (dailySortOrder==="airdate_desc"){
-                const dateA=a.releaseDate||0,dateB=b.releaseDate||0;
+                const dateA=a.releaseDate||0, dateB=b.releaseDate||0;
                 return new Date(dateB).getTime()-new Date(dateA).getTime();
             }
             return 0;
@@ -388,8 +392,8 @@ async function fetchDailyCalendarApi(params = {}) {
     // 关键词过滤
     let finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 异步更新 TMDB 详情，并添加 genres 字段
-    await Promise.all(finalResults.map(async item => {
+    // 异步更新 TMDB 信息并加入 genres
+    finalResults = await Promise.all(finalResults.map(async item => {
         if (item.type === "link") {
             const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
             if (tmdbResult) {
@@ -402,14 +406,17 @@ async function fetchDailyCalendarApi(params = {}) {
                 item.description = tmdbResult.overview || item.description;
                 item.tmdb_id = String(tmdbResult.id);
                 item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                item.genres = tmdbResult.genre_ids || []; // 新增 genre 数组
+                item.genres = tmdbResult.genre_ids || [];
+            } else {
+                item.genres = [];
             }
         } else if (item.type === "tmdb") {
             item.genres = item.genres || item.tmdb_genre_ids || [];
         }
+        return item;
     }));
 
-    return finalResults; // ⚠ 返回数组，兼容 Swift
+    return finalResults; // ✅ 返回数组，Swift 直接解析 [Item]
 }
 
 
