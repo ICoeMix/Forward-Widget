@@ -200,29 +200,7 @@ async function fetchDailyCalendarApi(params = {}) {
 
     const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 仅对每日放送来源的 link 类型项进行 TMDB 富化并映射 genre
-    for(let i=0;i<finalResults.length;i+=DynamicDataProcessor.MAX_CONCURRENT_DETAILS_FETCH){
-        const batch = finalResults.slice(i,i+DynamicDataProcessor.MAX_CONCURRENT_DETAILS_FETCH);
-        await Promise.all(batch.map(async item => {
-            if(item.type==='link' && item.bgm_id){
-                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
-                if(tmdbResult){
-                    const genreMap = await DynamicDataProcessor.fetchTmdbGenres();
-                    item.id = String(tmdbResult.id);
-                    item.type = 'tmdb';
-                    item.title = tmdbResult.name || tmdbResult.title || item.title;
-                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
-                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
-                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
-                    item.description = tmdbResult.overview || item.description;
-                    item.link = null;
-                    item.tmdb_id = String(tmdbResult.id);
-                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                    item.tmdb_genres = (tmdbResult.genre_ids||[]).map(id=>genreMap[id]).filter(Boolean);
-                }
-            }
-        }));
-    }
+    await DynamicDataProcessor.enrichWithTmdbAndGenres(finalResults);
 
     return finalResults;
 }
@@ -237,13 +215,12 @@ const DynamicDataProcessor = (() => {
         static tmdbGenreMap = null;
 
         static async fetchTmdbGenres() {
-            console.log('[Processor] fetchTmdbGenres start');
             if (Processor.tmdbGenreMap) return Processor.tmdbGenreMap;
             try {
                 const resp = await Widget.tmdb.get('/genre/tv/list', { params: { language: "zh-CN" } });
+                console.log('[TMDB] genre list response:', resp?.data);
                 Processor.tmdbGenreMap = {};
-                resp.data.genres.forEach(g => Processor.tmdbGenreMap[g.id] = g.name);
-                console.log('[Processor] fetchTmdbGenres result:', Processor.tmdbGenreMap);
+                (resp?.data?.genres || []).forEach(g => Processor.tmdbGenreMap[g.id] = g.name);
             } catch(e) {
                 console.error('[TMDB] fetch genres error', e);
                 Processor.tmdbGenreMap = {};
@@ -252,12 +229,8 @@ const DynamicDataProcessor = (() => {
         }
 
         static async searchTmdb(originalTitle, chineseTitle, year) {
-            console.log('[Processor] searchTmdb start', originalTitle, chineseTitle, year);
             const cacheKey = `${originalTitle||''}-${chineseTitle||''}-${year||''}`;
-            if (Processor.tmdbCache.has(cacheKey)) {
-                console.log('[Processor] searchTmdb cache hit for', cacheKey);
-                return Processor.tmdbCache.get(cacheKey);
-            }
+            if (Processor.tmdbCache.has(cacheKey)) return Processor.tmdbCache.get(cacheKey);
 
             let bestMatch = null;
             let maxScore = -1;
@@ -267,15 +240,14 @@ const DynamicDataProcessor = (() => {
                 const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
                     params: { query, language: "zh-CN", include_adult: false, year } 
                 });
-                console.log('[Processor] searchTmdb API results count:', response?.results?.length);
-                const results = response?.results || [];
+                console.log('[TMDB] search response for', query, response?.data);
+                const results = response?.data?.results || [];
                 for (const result of results) {
                     if (!(result.genre_ids && result.genre_ids.includes(Processor.TMDB_ANIMATION_GENRE_ID))) continue;
                     const score = Processor.scoreTmdbResult(result, query, year);
                     if (score > maxScore) {
                         maxScore = score;
                         bestMatch = result;
-                        console.log('[Processor] new bestMatch:', bestMatch?.title || bestMatch?.name, 'score:', score);
                     }
                 }
             } catch(err){
@@ -300,18 +272,17 @@ const DynamicDataProcessor = (() => {
         }
 
         static async enrichWithTmdbAndGenres(items){
-            console.log('[Processor] enrichWithTmdbAndGenres start, items length:', items.length);
             if(!items.length) return;
             const genreMap = await Processor.fetchTmdbGenres();
+            console.log('[TMDB] genre map used:', genreMap);
 
             for(let i=0;i<items.length;i+=Processor.MAX_CONCURRENT_DETAILS_FETCH){
                 const batch = items.slice(i,i+Processor.MAX_CONCURRENT_DETAILS_FETCH);
                 const promises = batch.map(async item=>{
                     if(item.type!=='link') return item;
-                    console.log('[Processor] enriching item:', item.title);
                     const tmdbResult = await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
+                    console.log('[TMDB] enrich result for', item.title, tmdbResult);
                     if(tmdbResult){
-                        console.log('[Processor] TMDB result found for:', item.title);
                         item.id = String(tmdbResult.id);
                         item.type = 'tmdb';
                         item.title = tmdbResult.name || tmdbResult.title || item.title;
@@ -323,7 +294,7 @@ const DynamicDataProcessor = (() => {
                         item.tmdb_id = String(tmdbResult.id);
                         item.tmdb_origin_countries = tmdbResult.origin_country || [];
                         item.tmdb_genres = (tmdbResult.genre_ids||[]).map(id=>genreMap[id]).filter(Boolean);
-                        console.log('[Processor] TMDB genres assigned:', item.tmdb_genres);
+                        console.log('[TMDB] mapped genres for', item.title, item.tmdb_genres);
                     }
                     return item;
                 });
@@ -332,11 +303,10 @@ const DynamicDataProcessor = (() => {
         }
 
         static async processBangumiPage(url, category) {
-            console.log('[Processor] processBangumiPage start', url);
             try {
                 const listHtmlResp = await Widget.http.get(url);
+                console.log('[BGM Widget] fetched Bangumi page:', url);
                 const pendingItems = Processor.parseBangumiListItems(listHtmlResp.data);
-                console.log('[Processor] parsed pendingItems length:', pendingItems.length);
                 const enrichedItems = [];
                 for (let i = 0; i < pendingItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
                     const batch = pendingItems.slice(i, i + Processor.MAX_CONCURRENT_DETAILS_FETCH);
@@ -344,7 +314,6 @@ const DynamicDataProcessor = (() => {
                     enrichedItems.push(...detailsBatch);
                 }
                 await Processor.enrichWithTmdbAndGenres(enrichedItems);
-                console.log('[Processor] processBangumiPage enrichedItems length:', enrichedItems.length);
                 return enrichedItems;
             } catch (err) {
                 console.error(`[BGM Widget] processBangumiPage error: ${err.message}`);
@@ -353,9 +322,9 @@ const DynamicDataProcessor = (() => {
         }
 
         static async processDailyCalendar() {
-            console.log('[Processor] processDailyCalendar start');
             try {
                 const apiResponse = await Widget.http.get("https://api.bgm.tv/calendar");
+                console.log('[BGM Widget] fetched daily calendar');
                 const allItems = [];
                 apiResponse.data.forEach(dayData => {
                     if (dayData.items) {
@@ -365,7 +334,6 @@ const DynamicDataProcessor = (() => {
                         });
                     }
                 });
-                console.log('[Processor] total items fetched from API:', allItems.length);
                 const baseItems = allItems.map(item => ({
                     id: String(item.id), type: "link", title: item.name_cn || item.name,
                     posterPath: item.images?.large?.startsWith('//') ? 'https:' + item.images.large : item.images?.large,
@@ -375,7 +343,6 @@ const DynamicDataProcessor = (() => {
                     bgm_rating_total: item.rating?.total || 0, bgm_weekday_id: item.bgm_weekday_id
                 }));
                 await Processor.enrichWithTmdbAndGenres(baseItems);
-                console.log('[Processor] processDailyCalendar enriched baseItems length:', baseItems.length);
                 return baseItems;
             } catch (err) {
                 console.error(`[BGM Widget] processDailyCalendar error: ${err.message}`);
