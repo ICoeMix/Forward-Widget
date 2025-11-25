@@ -137,6 +137,7 @@ const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())retur
 
 
 /* ==================== 优化后的 fetchDailyCalendarApi ==================== */
+/* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
@@ -217,10 +218,17 @@ const DynamicDataProcessor = (() => {
         static async fetchTmdbGenres() {
             if (Processor.tmdbGenreMap) return Processor.tmdbGenreMap;
             try {
-                const resp = await Widget.tmdb.get('/genre/tv/list', { params: { language: "zh-CN" } });
-                Processor.tmdbGenreMap = {};
-                resp.data.genres.forEach(g => Processor.tmdbGenreMap[g.id] = g.name);
-                console.log('[TMDB] fetched genres', Processor.tmdbGenreMap);
+                console.log('[TMDB] fetching genres...');
+                const resp = await Widget.tmdb.get('/genre/tv/list', { params: { language: "zh-CN", api_key: Widget.tmdbApiKey } });
+                console.log('[TMDB] genres response:', resp.data);
+                if(resp.data && Array.isArray(resp.data.genres)){
+                    Processor.tmdbGenreMap = {};
+                    resp.data.genres.forEach(g => Processor.tmdbGenreMap[g.id] = g.name);
+                    console.log('[TMDB] genre map created', Processor.tmdbGenreMap);
+                } else {
+                    console.warn('[TMDB] unexpected genre response structure', resp.data);
+                    Processor.tmdbGenreMap = {};
+                }
             } catch(e) {
                 console.error('[TMDB] fetch genres error', e);
                 Processor.tmdbGenreMap = {};
@@ -241,7 +249,6 @@ const DynamicDataProcessor = (() => {
                     params: { query, language: "zh-CN", include_adult: false, year } 
                 });
                 const results = response?.results || [];
-                console.log('[TMDB] search results for', query, results);
                 for (const result of results) {
                     if (!(result.genre_ids && result.genre_ids.includes(Processor.TMDB_ANIMATION_GENRE_ID))) continue;
                     const score = Processor.scoreTmdbResult(result, query, year);
@@ -254,6 +261,7 @@ const DynamicDataProcessor = (() => {
                 console.error('[TMDB] search error', err);
             }
             Processor.tmdbCache.set(cacheKey, bestMatch);
+            console.log('[TMDB] search result for', query, bestMatch);
             return bestMatch;
         }
 
@@ -274,12 +282,14 @@ const DynamicDataProcessor = (() => {
         static async enrichWithTmdbAndGenres(items){
             if(!items.length) return;
             const genreMap = await Processor.fetchTmdbGenres();
-            console.log('[TMDB] enriching items', items.map(it=>it.title));
+            console.log('[TMDB] genreMap used for enrichment:', genreMap);
 
             for(let i=0;i<items.length;i+=Processor.MAX_CONCURRENT_DETAILS_FETCH){
                 const batch = items.slice(i,i+Processor.MAX_CONCURRENT_DETAILS_FETCH);
                 const promises = batch.map(async item=>{
-                    const tmdbResult = item.type==='tmdb' ? await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4)) : await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
+                    if(item.type!=='link') return item;
+                    const tmdbResult = await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
+                    console.log('[TMDB] enriching item:', item.title, tmdbResult);
                     if(tmdbResult){
                         item.id = String(tmdbResult.id);
                         item.type = 'tmdb';
@@ -292,7 +302,7 @@ const DynamicDataProcessor = (() => {
                         item.tmdb_id = String(tmdbResult.id);
                         item.tmdb_origin_countries = tmdbResult.origin_country || [];
                         item.tmdb_genres = (tmdbResult.genre_ids||[]).map(id=>genreMap[id]).filter(Boolean);
-                        console.log('[TMDB] item enriched', item.title, item.tmdb_genres);
+                        console.log('[TMDB] enriched genres:', item.tmdb_genres);
                     }
                     return item;
                 });
