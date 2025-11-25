@@ -322,7 +322,6 @@ async function fetchAirtimeRanking(params = {}) {
     globalData.dynamic[dynamicKey] = listItems;
     return listItems;
 }
-/* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
@@ -387,46 +386,30 @@ async function fetchDailyCalendarApi(params = {}) {
     }
 
     // 关键词过滤
-    const finalResults = filterByKeywords(sortedResults, keywordFilter);
+    let finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 异步更新 TMDB 详情（可选，保持原逻辑）
-    finalResults.forEach(item => {
+    // 异步更新 TMDB 详情，并添加 genres 字段
+    await Promise.all(finalResults.map(async item => {
         if (item.type === "link") {
-            (async ()=>{
-                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
-                if (tmdbResult) {
-                    item.id = String(tmdbResult.id);
-                    item.type = "tmdb";
-                    item.title = tmdbResult.name || tmdbResult.title || item.title;
-                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
-                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
-                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
-                    item.description = tmdbResult.overview || item.description;
-                    item.tmdb_id = String(tmdbResult.id);
-                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                }
-            })();
-        }
-    });
-
-    // ✅ 按 TMDB genre 分组返回
-    function groupByGenres(items) {
-        const grouped = {};
-        items.forEach(item => {
-            if (!item.genres || !item.genres.length) {
-                grouped["未知分类"] = grouped["未知分类"] || [];
-                grouped["未知分类"].push(item);
-                return;
+            const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
+            if (tmdbResult) {
+                item.id = String(tmdbResult.id);
+                item.type = "tmdb";
+                item.title = tmdbResult.name || tmdbResult.title || item.title;
+                item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
+                item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
+                item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
+                item.description = tmdbResult.overview || item.description;
+                item.tmdb_id = String(tmdbResult.id);
+                item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                item.genres = tmdbResult.genre_ids || []; // 新增 genre 数组
             }
-            item.genres.forEach(genre => {
-                grouped[genre] = grouped[genre] || [];
-                grouped[genre].push(item);
-            });
-        });
-        return grouped;
-    }
+        } else if (item.type === "tmdb") {
+            item.genres = item.genres || item.tmdb_genre_ids || [];
+        }
+    }));
 
-    return groupByGenres(finalResults);
+    return finalResults; // ⚠ 返回数组，兼容 Swift
 }
 
 
