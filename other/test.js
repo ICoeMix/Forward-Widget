@@ -136,7 +136,7 @@ const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;i
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
 
 
-/* ==================== 优化后的 fetchDailyCalendarApi ==================== */
+/* ==================== 优化后的 fetchDailyCalendarApi（修正版） ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
@@ -158,6 +158,7 @@ async function fetchDailyCalendarApi(params = {}) {
     const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
     const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
 
+    // ========== 过滤日期 ==========
     let filteredByDay = [];
     if (filterType === "all_week") filteredByDay = items;
     else {
@@ -173,7 +174,7 @@ async function fetchDailyCalendarApi(params = {}) {
         filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
     }
 
-    // 地区过滤
+    // ========== 地区过滤 ==========
     let filteredByRegion = filteredByDay.filter(item => {
         if (dailyRegionFilter === "all") return true;
         if (item.type !== "tmdb" || !item.tmdb_id) return dailyRegionFilter === "OTHER";
@@ -186,7 +187,7 @@ async function fetchDailyCalendarApi(params = {}) {
         return false;
     });
 
-    // 排序
+    // ========== 排序 ==========
     let sortedResults = [...filteredByRegion];
     if (dailySortOrder !== "default") {
         sortedResults.sort((a,b)=>{
@@ -200,14 +201,17 @@ async function fetchDailyCalendarApi(params = {}) {
         });
     }
 
-    // 关键词过滤（保持原来的 AC + 正则逻辑）
-    const finalResults = filterByKeywords(sortedResults, keywordFilter);
+    // ========== 关键词过滤 ==========
+    let finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 异步更新 TMDB 详情并添加 genre_titles
-    finalResults.forEach(item => {
-        if (item.type === "link") {
-            (async ()=>{
-                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
+    // ========== 异步更新 TMDB 详情（并发控制） ==========
+    const batchSize = DynamicDataProcessor.Processor.MAX_CONCURRENT_DETAILS_FETCH || 8;
+
+    for (let i = 0; i < finalResults.length; i += batchSize) {
+        const batch = finalResults.slice(i, i + batchSize);
+        const promises = batch.map(async item => {
+            if (item.type === "link") {
+                const tmdbResult = await DynamicDataProcessor.Processor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
                 if (tmdbResult) {
                     item.id = String(tmdbResult.id);
                     item.type = "tmdb";
@@ -218,11 +222,15 @@ async function fetchDailyCalendarApi(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                    item.genre_titles = tmdbResult.genre_titles || []; // ← 新增字段
+                    // ====== 映射 genre_id → genre_titles ======
+                    const genreMap = DynamicDataProcessor.Processor.tmdbGenreMap || {};
+                    item.genre_ids = tmdbResult.genre_ids || [];
+                    item.genre_titles = item.genre_ids.map(id => genreMap[id]).filter(Boolean);
                 }
-            })();
-        }
-    });
+            }
+        });
+        await Promise.all(promises);
+    }
 
     return finalResults;
 }
