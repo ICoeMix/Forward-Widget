@@ -330,7 +330,6 @@ async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
     if (!globalData.dailyCalendar?.all_week && !archiveFetchPromises['daily']) {
-        console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
         archiveFetchPromises['daily'] = (async () => {
             const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
             if (!globalData.dailyCalendar) globalData.dailyCalendar = {};
@@ -346,7 +345,7 @@ async function fetchDailyCalendarApi(params = {}) {
     const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
     const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
 
-    // 过滤星期
+    // ------------------- 过滤星期 -------------------
     let filteredByDay = [];
     if (filterType === "all_week") filteredByDay = items;
     else {
@@ -362,7 +361,7 @@ async function fetchDailyCalendarApi(params = {}) {
         filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
     }
 
-    // 地区过滤
+    // ------------------- 地区过滤 -------------------
     let filteredByRegion = filteredByDay.filter(item => {
         if (dailyRegionFilter === "all") return true;
         if (item.type !== "tmdb" || !item.tmdb_id) return dailyRegionFilter === "OTHER";
@@ -375,7 +374,7 @@ async function fetchDailyCalendarApi(params = {}) {
         return false;
     });
 
-    // 排序
+    // ------------------- 排序 -------------------
     let sortedResults = [...filteredByRegion];
     if (dailySortOrder !== "default") {
         sortedResults.sort((a,b)=>{
@@ -389,10 +388,10 @@ async function fetchDailyCalendarApi(params = {}) {
         });
     }
 
-    // 关键词过滤
+    // ------------------- 关键词过滤 -------------------
     let finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // 异步更新 TMDB 信息并加入 genres
+    // ------------------- 异步更新 TMDB 信息并加入 genres -------------------
     finalResults = await Promise.all(finalResults.map(async item => {
         if (item.type === "link") {
             const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
@@ -416,9 +415,8 @@ async function fetchDailyCalendarApi(params = {}) {
         return item;
     }));
 
-    return finalResults; // ✅ 返回数组，Swift 直接解析 [Item]
+    return finalResults; // ✅ 返回数组
 }
-
 
 /* ==================== DynamicDataProcessor ==================== */
 const DynamicDataProcessor = (() => {
