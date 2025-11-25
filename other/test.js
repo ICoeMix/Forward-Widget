@@ -218,9 +218,9 @@ const DynamicDataProcessor = (() => {
             if (Processor.tmdbGenreMap) return Processor.tmdbGenreMap;
             try {
                 const resp = await Widget.tmdb.get('/genre/tv/list', { params: { language: "zh-CN" } });
-                console.log('[TMDB] genre list response:', resp?.data);
                 Processor.tmdbGenreMap = {};
-                (resp?.data?.genres || []).forEach(g => Processor.tmdbGenreMap[g.id] = g.name);
+                resp.data.genres.forEach(g => Processor.tmdbGenreMap[g.id] = g.name);
+                console.log('[TMDB] fetched genres', Processor.tmdbGenreMap);
             } catch(e) {
                 console.error('[TMDB] fetch genres error', e);
                 Processor.tmdbGenreMap = {};
@@ -240,8 +240,8 @@ const DynamicDataProcessor = (() => {
                 const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
                     params: { query, language: "zh-CN", include_adult: false, year } 
                 });
-                console.log('[TMDB] search response for', query, response?.data);
-                const results = response?.data?.results || [];
+                const results = response?.results || [];
+                console.log('[TMDB] search results for', query, results);
                 for (const result of results) {
                     if (!(result.genre_ids && result.genre_ids.includes(Processor.TMDB_ANIMATION_GENRE_ID))) continue;
                     const score = Processor.scoreTmdbResult(result, query, year);
@@ -274,14 +274,12 @@ const DynamicDataProcessor = (() => {
         static async enrichWithTmdbAndGenres(items){
             if(!items.length) return;
             const genreMap = await Processor.fetchTmdbGenres();
-            console.log('[TMDB] genre map used:', genreMap);
+            console.log('[TMDB] enriching items', items.map(it=>it.title));
 
             for(let i=0;i<items.length;i+=Processor.MAX_CONCURRENT_DETAILS_FETCH){
                 const batch = items.slice(i,i+Processor.MAX_CONCURRENT_DETAILS_FETCH);
                 const promises = batch.map(async item=>{
-                    if(item.type!=='link') return item;
-                    const tmdbResult = await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
-                    console.log('[TMDB] enrich result for', item.title, tmdbResult);
+                    const tmdbResult = item.type==='tmdb' ? await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4)) : await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
                     if(tmdbResult){
                         item.id = String(tmdbResult.id);
                         item.type = 'tmdb';
@@ -294,7 +292,7 @@ const DynamicDataProcessor = (() => {
                         item.tmdb_id = String(tmdbResult.id);
                         item.tmdb_origin_countries = tmdbResult.origin_country || [];
                         item.tmdb_genres = (tmdbResult.genre_ids||[]).map(id=>genreMap[id]).filter(Boolean);
-                        console.log('[TMDB] mapped genres for', item.title, item.tmdb_genres);
+                        console.log('[TMDB] item enriched', item.title, item.tmdb_genres);
                     }
                     return item;
                 });
@@ -305,7 +303,6 @@ const DynamicDataProcessor = (() => {
         static async processBangumiPage(url, category) {
             try {
                 const listHtmlResp = await Widget.http.get(url);
-                console.log('[BGM Widget] fetched Bangumi page:', url);
                 const pendingItems = Processor.parseBangumiListItems(listHtmlResp.data);
                 const enrichedItems = [];
                 for (let i = 0; i < pendingItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
@@ -324,7 +321,6 @@ const DynamicDataProcessor = (() => {
         static async processDailyCalendar() {
             try {
                 const apiResponse = await Widget.http.get("https://api.bgm.tv/calendar");
-                console.log('[BGM Widget] fetched daily calendar');
                 const allItems = [];
                 apiResponse.data.forEach(dayData => {
                     if (dayData.items) {
