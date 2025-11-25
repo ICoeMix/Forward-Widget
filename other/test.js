@@ -223,7 +223,7 @@ async function initTmdbGenres(language="zh-CN"){
 
 // -----------------------------
 // 标准化处理函数
-function normalizeItems(list) {
+function normalizeItem(list) {
     if (!Array.isArray(list)) return [];
 
     return list.map(item => {
