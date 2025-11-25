@@ -347,7 +347,7 @@ async function fetchRecentHot(params = {}) {
    
     // --- 归一化 & 格式化输出 ---
     const normalized = normalizeItems(resultList);
-    return formatOutput(normalized);
+    return normalized;
 }
 
 /* ==================== 优化后的 fetchAirtimeRanking ==================== */
