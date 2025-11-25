@@ -136,7 +136,7 @@ const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;i
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
 
 
-/* ==================== 优化后的 fetchDailyCalendarApi（修正版） ==================== */
+/* ==================== 优化后的 fetchDailyCalendarApi（支持 TMDB genre 映射） ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
@@ -150,15 +150,20 @@ async function fetchDailyCalendarApi(params = {}) {
         })();
     }
     if (archiveFetchPromises['daily']) await archiveFetchPromises['daily'];
-
     items = globalData.dailyCalendar?.all_week || [];
 
-    const { filterType = "today", specificWeekday = "1", dailySortOrder = "popularity_rat_bgm", dailyRegionFilter = "all", keywordFilter = "" } = params;
+    const {
+        filterType = "today",
+        specificWeekday = "1",
+        dailySortOrder = "popularity_rat_bgm",
+        dailyRegionFilter = "all",
+        keywordFilter = ""
+    } = params;
 
     const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
     const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
 
-    // ========== 过滤日期 ==========
+    // ==================== 按星期过滤 ====================
     let filteredByDay = [];
     if (filterType === "all_week") filteredByDay = items;
     else {
@@ -174,7 +179,7 @@ async function fetchDailyCalendarApi(params = {}) {
         filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
     }
 
-    // ========== 地区过滤 ==========
+    // ==================== 按地区过滤 ====================
     let filteredByRegion = filteredByDay.filter(item => {
         if (dailyRegionFilter === "all") return true;
         if (item.type !== "tmdb" || !item.tmdb_id) return dailyRegionFilter === "OTHER";
@@ -187,31 +192,37 @@ async function fetchDailyCalendarApi(params = {}) {
         return false;
     });
 
-    // ========== 排序 ==========
+    // ==================== 排序 ====================
     let sortedResults = [...filteredByRegion];
     if (dailySortOrder !== "default") {
         sortedResults.sort((a,b)=>{
             if (dailySortOrder==="popularity_rat_bgm") return (b.bgm_rating_total||0)-(a.bgm_rating_total||0);
             if (dailySortOrder==="score_bgm_desc") return (b.bgm_score||0)-(a.bgm_score||0);
             if (dailySortOrder==="airdate_desc"){
-                const dateA=a.releaseDate||0,dateB=b.releaseDate||0;
-                return new Date(dateB).getTime()-new Date(dateA).getTime();
+                const dateA=a.releaseDate||0, dateB=b.releaseDate||0;
+                return new Date(dateB).getTime() - new Date(dateA).getTime();
             }
             return 0;
         });
     }
 
-    // ========== 关键词过滤 ==========
-    let finalResults = filterByKeywords(sortedResults, keywordFilter);
+    // ==================== 关键词过滤 ====================
+    const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // ========== 异步更新 TMDB 详情（并发控制） ==========
-    const batchSize = DynamicDataProcessor.Processor.MAX_CONCURRENT_DETAILS_FETCH || 8;
+    // ==================== 异步更新 TMDB 详情 & genre 映射 ====================
+    // 确保 genreMap 已存在
+    if (!Processor.tmdbGenreMap) {
+        Processor.tmdbGenreMap = await fetchTmdbGenres(); // {16: '动画', 35:'喜剧', ...}
+    }
 
-    for (let i = 0; i < finalResults.length; i += batchSize) {
-        const batch = finalResults.slice(i, i + batchSize);
+    const MAX_CONCURRENT = Processor.MAX_CONCURRENT_DETAILS_FETCH || 8;
+
+    // 分批处理 finalResults 避免并发过多
+    for (let i = 0; i < finalResults.length; i += MAX_CONCURRENT) {
+        const batch = finalResults.slice(i, i + MAX_CONCURRENT);
         const promises = batch.map(async item => {
             if (item.type === "link") {
-                const tmdbResult = await DynamicDataProcessor.Processor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
+                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
                 if (tmdbResult) {
                     item.id = String(tmdbResult.id);
                     item.type = "tmdb";
@@ -222,10 +233,10 @@ async function fetchDailyCalendarApi(params = {}) {
                     item.description = tmdbResult.overview || item.description;
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
-                    // ====== 映射 genre_id → genre_titles ======
-                    const genreMap = DynamicDataProcessor.Processor.tmdbGenreMap || {};
+
+                    // ==================== 映射 genre_titles ====================
                     item.genre_ids = tmdbResult.genre_ids || [];
-                    item.genre_titles = item.genre_ids.map(id => genreMap[id]).filter(Boolean);
+                    item.genre_titles = item.genre_ids.map(id => Processor.tmdbGenreMap[id]).filter(Boolean);
                 }
             }
         });
