@@ -135,16 +135,14 @@ const getRegex=term=>regexCache.has(term)?regexCache.get(term):(regexCache.set(t
 const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;if(filterUnitCache.has(filterStr))return filterUnitCache.get(filterStr);const terms=filterStr.split(/\s*\|\|\s*/).map(t=>t.trim()).filter(Boolean),plainTerms=[],regexTerms=[];for(const t of terms)(isPlainText(t)?plainTerms:regexTerms).push(t);let ac=null;if(plainTerms.length){const key=plainTerms.slice().sort().join("\u0001");if(acCache.has(key))ac=acCache.get(key);else{ac=new ACAutomaton();plainTerms.forEach(p=>ac.insert(p.toLowerCase()));ac.build();acCache.set(key,ac)}}const unit={ac,regexTerms};filterUnitCache.set(filterStr,unit);return unit}; 
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
 
-/* ==================== 优化后的 fetchDailyCalendarApi (带 TMDB genre 调试) ==================== */
-/* ==================== fetchDailyCalendarApi 完整优化版 ==================== */
+/* ==================== fetchDailyCalendarApi (强制补全 genre) ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
-    // 获取原始 Bangumi 数据
-    let rawItems = globalData.dailyCalendar?.all_week || [];
+    let items = globalData.dailyCalendar?.all_week || [];
 
-    // 动态拉取 Bangumi 数据（只缓存原始数据）
-    if (!rawItems.length && !archiveFetchPromises['daily']) {
+    // 如果没有缓存原始数据，先动态拉取 Bangumi
+    if (!items.length && !archiveFetchPromises['daily']) {
         console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
         archiveFetchPromises['daily'] = (async () => {
             const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
@@ -154,16 +152,16 @@ async function fetchDailyCalendarApi(params = {}) {
         })();
     }
 
-    rawItems = archiveFetchPromises['daily'] ? await archiveFetchPromises['daily'] : rawItems;
+    // 等待动态拉取完成
+    items = archiveFetchPromises['daily'] ? await archiveFetchPromises['daily'] : items;
 
-    // --- 参数处理 ---
+    // 日筛选、地区筛选、排序、关键词逻辑保持不变
     const { filterType = "today", specificWeekday = "1", dailySortOrder = "popularity_rat_bgm", dailyRegionFilter = "all", keywordFilter = "" } = params;
     const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
     const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
 
-    // --- 日筛选 ---
     let filteredByDay = [];
-    if (filterType === "all_week") filteredByDay = rawItems;
+    if (filterType === "all_week") filteredByDay = items;
     else {
         const today = new Date();
         const currentJsDay = today.getDay();
@@ -174,10 +172,9 @@ async function fetchDailyCalendarApi(params = {}) {
             case "mon_thu": [1,2,3,4].forEach(id=>targetBgmIds.add(id)); break;
             case "fri_sun": [5,6,7].forEach(id=>targetBgmIds.add(id)); break;
         }
-        filteredByDay = rawItems.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
+        filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
     }
 
-    // --- 地区筛选 ---
     let filteredByRegion = filteredByDay.filter(item => {
         if (dailyRegionFilter === "all") return true;
         if (item.type !== "tmdb" || !item.tmdb_id) return dailyRegionFilter === "OTHER";
@@ -190,7 +187,6 @@ async function fetchDailyCalendarApi(params = {}) {
         return false;
     });
 
-    // --- 排序 ---
     let sortedResults = [...filteredByRegion];
     if (dailySortOrder !== "default") {
         sortedResults.sort((a,b)=>{
@@ -204,18 +200,18 @@ async function fetchDailyCalendarApi(params = {}) {
         });
     }
 
-    // --- 关键词过滤 ---
     let finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // --- TMDB enrichment，每次执行，加入 genre_ids 和 genre_titles ---
-    await DynamicDataProcessor.enrichWithTmdbAndGenres(finalResults);
+    // --- TMDB enrichment，只要 genre 为空就执行 ---
+    const itemsToEnrich = finalResults.filter(item => !item.tmdb_genres || !item.tmdb_genres.length);
+    await DynamicDataProcessor.enrichWithTmdbAndGenres(itemsToEnrich);
 
-    // --- 调试日志 ---
+    // 调试日志
     finalResults.forEach(item => {
         console.log(`[DEBUG] Final TMDB item "${item.title}"`, {
             id: item.id,
             tmdb_id: item.tmdb_id,
-            tmdb_genres: item.tmdb_genres || [],
+            genre_ids: item.tmdb_genres || [],
         });
     });
 
