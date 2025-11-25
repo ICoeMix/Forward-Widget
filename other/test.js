@@ -361,7 +361,7 @@ async function fetchAirtimeRanking(params = {}) {
     globalData.dynamic[dynamicKey] = listItems;
     
     // 返回标准化 + 格式化后的输出
-    return formatOutput(normalizeItems(listItems));
+    return normalizeItems(listItems);
 }
 /* ==================== fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
