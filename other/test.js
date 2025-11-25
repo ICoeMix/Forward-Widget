@@ -136,6 +136,7 @@ const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;i
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
 
 /* ==================== 调试增强版 fetchDailyCalendarApi ==================== */
+/* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
@@ -199,14 +200,13 @@ async function fetchDailyCalendarApi(params = {}) {
 
     const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    console.log('[DEBUG] finalResults before TMDB enrichment:', finalResults);
     try {
         await DynamicDataProcessor.enrichWithTmdbAndGenres(finalResults);
+        console.log('[DEBUG] finalResults after TMDB enrichment:', finalResults);
     } catch(e) {
         console.error('[BGM Widget] enrichWithTmdbAndGenres error', e);
     }
 
-    console.log('[DEBUG] finalResults after TMDB enrichment:', finalResults);
     return finalResults;
 }
 
@@ -222,14 +222,18 @@ const DynamicDataProcessor = (() => {
         static async fetchTmdbGenres() {
             if (Processor.tmdbGenreMap) return Processor.tmdbGenreMap;
             try {
-                console.log('[DEBUG] fetching TMDB genres...');
-                // 这里不依赖APIKEY, 用静态映射示例
-                Processor.tmdbGenreMap = {
-                    16: '动画', 35: '喜剧', 18: '剧情', 10759: '动作冒险', 10765: '科幻奇幻'
-                };
-                console.log('[DEBUG] genre map created', Processor.tmdbGenreMap);
+                console.log('[TMDB] fetching genres...');
+                const resp = await Widget.tmdb.get('/genre/tv/list', { params: { language: "zh-CN" } });
+                if(resp.data && Array.isArray(resp.data.genres)){
+                    Processor.tmdbGenreMap = {};
+                    resp.data.genres.forEach(g => Processor.tmdbGenreMap[g.id] = g.name);
+                    console.log('[TMDB] genre map created', Processor.tmdbGenreMap);
+                } else {
+                    console.warn('[TMDB] unexpected genre response structure', resp.data);
+                    Processor.tmdbGenreMap = {};
+                }
             } catch(e) {
-                console.error('[DEBUG] fetch genres error', e);
+                console.error('[TMDB] fetch genres error', e);
                 Processor.tmdbGenreMap = {};
             }
             return Processor.tmdbGenreMap;
@@ -244,37 +248,61 @@ const DynamicDataProcessor = (() => {
             const searchMediaType = 'tv';
             const query = chineseTitle || originalTitle;
             try {
-                console.log('[DEBUG] searching TMDB for:', query, 'year:', year);
-                // 模拟查询结果
-                bestMatch = {
-                    id: 12345,
-                    name: originalTitle,
-                    genre_ids: [16,35],
-                    poster_path: '/sample.jpg',
-                    first_air_date: year ? `${year}-01-01` : '2025-01-01',
-                    vote_average: 8.5,
-                    overview: '模拟 TMDB 描述',
-                    origin_country: ['JP']
-                };
+                const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
+                    params: { query, language: "zh-CN", include_adult: false, year } 
+                });
+                const results = response?.results || [];
+                for (const result of results) {
+                    if (!(result.genre_ids && result.genre_ids.includes(Processor.TMDB_ANIMATION_GENRE_ID))) continue;
+                    const score = Processor.scoreTmdbResult(result, query, year);
+                    if (score > maxScore) {
+                        maxScore = score;
+                        bestMatch = {...result}; // clone to avoid mutation issues
+                    }
+                }
             } catch(err){
-                console.error('[DEBUG] search error', err);
+                console.error('[TMDB] search error', err);
             }
             Processor.tmdbCache.set(cacheKey, bestMatch);
-            console.log('[DEBUG] TMDB search result:', bestMatch);
+            console.log('[TMDB] bestMatch before return for', query, bestMatch);
             return bestMatch;
+        }
+
+        static scoreTmdbResult(result, query, validYear){
+            let score = 0;
+            const resTitle = (result.title || result.name || '').toLowerCase().trim();
+            const queryNorm = (query||'').toLowerCase().trim();
+            if(resTitle===queryNorm) score+=15;
+            else if(resTitle.includes(queryNorm)) score+=7;
+            if(validYear){
+                const resDate = result.release_date || result.first_air_date;
+                if(resDate && resDate.startsWith(validYear)) score+=6;
+            }
+            score += Math.log10((result.popularity||0)+1)*2.2;
+            return score;
         }
 
         static async enrichWithTmdbAndGenres(items){
             if(!items.length) return;
-            let genreMap = await Processor.fetchTmdbGenres();
-            console.log('[DEBUG] genreMap used for enrichment:', genreMap);
+            let genreMap = {};
+            try {
+                genreMap = await Processor.fetchTmdbGenres();
+            } catch(e){
+                console.error('[TMDB] failed to fetch genre map', e);
+            }
+            console.log('[TMDB] genreMap used for enrichment:', genreMap);
 
             for(let i=0;i<items.length;i+=Processor.MAX_CONCURRENT_DETAILS_FETCH){
                 const batch = items.slice(i,i+Processor.MAX_CONCURRENT_DETAILS_FETCH);
                 const promises = batch.map(async item=>{
                     if(item.type!=='link') return item;
-                    let tmdbResult = await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
-                    console.log('[DEBUG] tmdbResult for', item.title, tmdbResult);
+                    let tmdbResult = null;
+                    try {
+                        tmdbResult = await Processor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
+                    } catch(e){
+                        console.error('[TMDB] searchTmdb failed for', item.title, e);
+                    }
+                    console.log('[TMDB] enriching item:', item.title, tmdbResult);
                     if(tmdbResult){
                         item.id = String(tmdbResult.id);
                         item.type = 'tmdb';
@@ -287,11 +315,29 @@ const DynamicDataProcessor = (() => {
                         item.tmdb_id = String(tmdbResult.id);
                         item.tmdb_origin_countries = tmdbResult.origin_country || [];
                         item.tmdb_genres = (tmdbResult.genre_ids||[]).map(id=>genreMap[id]).filter(Boolean);
-                        console.log('[DEBUG] enriched tmdb_genres for', item.title, item.tmdb_genres);
+                        console.log('[TMDB] enriched genres for', item.title, ':', item.tmdb_genres);
                     }
                     return item;
                 });
                 await Promise.all(promises);
+            }
+        }
+
+        static async processBangumiPage(url, category) {
+            try {
+                const listHtmlResp = await Widget.http.get(url);
+                const pendingItems = Processor.parseBangumiListItems(listHtmlResp.data);
+                const enrichedItems = [];
+                for (let i = 0; i < pendingItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
+                    const batch = pendingItems.slice(i, i + Processor.MAX_CONCURRENT_DETAILS_FETCH);
+                    const detailsBatch = await Promise.all(batch.map(item => Processor.fetchItemDetails(item, category)));
+                    enrichedItems.push(...detailsBatch);
+                }
+                await Processor.enrichWithTmdbAndGenres(enrichedItems);
+                return enrichedItems;
+            } catch (err) {
+                console.error(`[BGM Widget] processBangumiPage error: ${err.message}`);
+                return [];
             }
         }
 
@@ -300,8 +346,8 @@ const DynamicDataProcessor = (() => {
                 const apiResponse = await Widget.http.get("https://api.bgm.tv/calendar");
                 const allItems = [];
                 apiResponse.data.forEach(dayData => {
-                    if(dayData.items){
-                        dayData.items.forEach(item=>{
+                    if (dayData.items) {
+                        dayData.items.forEach(item => {
                             item.bgm_weekday_id = dayData.weekday?.id;
                             allItems.push(item);
                         });
@@ -309,17 +355,17 @@ const DynamicDataProcessor = (() => {
                 });
                 const baseItems = allItems.map(item => ({
                     id: String(item.id), type: "link", title: item.name_cn || item.name,
-                    posterPath: item.images?.large?.startsWith('//') ? 'https:'+item.images.large : item.images?.large,
+                    posterPath: item.images?.large?.startsWith('//') ? 'https:' + item.images.large : item.images?.large,
                     releaseDate: item.air_date, mediaType: 'anime', rating: item.rating?.score?.toFixed(1) || "N/A",
                     description: `[${item.weekday?.cn || ''}] ${item.summary || ''}`.trim(),
                     link: item.url, bgm_id: String(item.id), bgm_score: item.rating?.score || 0,
                     bgm_rating_total: item.rating?.total || 0, bgm_weekday_id: item.bgm_weekday_id
                 }));
-                console.log('[DEBUG] baseItems before TMDB enrichment:', baseItems);
                 await Processor.enrichWithTmdbAndGenres(baseItems);
+                console.log('[DEBUG] daily calendar enriched items:', baseItems);
                 return baseItems;
             } catch (err) {
-                console.error('[DEBUG] processDailyCalendar error', err);
+                console.error(`[BGM Widget] processDailyCalendar error: ${err.message}`);
                 return [];
             }
         }
@@ -328,6 +374,7 @@ const DynamicDataProcessor = (() => {
     return {
         searchTmdb: Processor.searchTmdb.bind(Processor),
         enrichWithTmdbAndGenres: Processor.enrichWithTmdbAndGenres.bind(Processor),
+        processBangumiPage: Processor.processBangumiPage.bind(Processor),
         processDailyCalendar: Processor.processDailyCalendar.bind(Processor)
     };
 })();
