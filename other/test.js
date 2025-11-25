@@ -223,44 +223,43 @@ async function initTmdbGenres(language="zh-CN"){
 
 // -----------------------------
 // 标准化处理函数
-function normalizeItem(list) {
-    if (!Array.isArray(list)) return [];
+function normalizeItem(item) {
+    if (!item || typeof item !== "object") item = {};
 
-    return list.map(item => {
-        if (!item || typeof item !== "object") item = {};
+    const mediaType = item.mediaType || "movie";
+    const type = item.type || "tmdb";
+    const id = item.id != null
+        ? (type === "tmdb" ? `${mediaType}.${item.id}` : `${item.id}`)
+        : null;
 
-        const mediaType = item.mediaType || "movie";
-        const type = item.type || "tmdb";
-        const id = item.id != null
-            ? (type === "tmdb" ? `${mediaType}.${item.id}` : `${item.id}`)
-            : null;
-
-        return {
-            id: id,
-            type: type,
-            title: item.title || "",
-            posterPath: item.posterPath || "",
-            backdropPath: item.backdropPath || "",
-            releaseDate: item.releaseDate || "",
-            mediaType: mediaType,
-            rating: item.rating != null ? Number(item.rating) : 0,
-            genreTitle: item.genreTitle || "",
-            duration: item.duration != null ? Number(item.duration) : 0,
-            durationText: item.durationText || "00:00",
-            previewUrl: item.previewUrl || "",
-            videoUrl: item.videoUrl || "",
-            link: item.link || "",
-            episode: item.episode != null ? Number(item.episode) : 0,
-            description: item.description || "",
-            playerType: item.playerType || "system",
-            childItems: Array.isArray(item.childItems)
-                ? normalizeItems(item.childItems)
-                : []
-        };
-    });
+    return {
+        id: id,
+        type: type,
+        title: item.title || "",
+        posterPath: item.posterPath || "",
+        backdropPath: item.backdropPath || "",
+        releaseDate: item.releaseDate || "",
+        mediaType: mediaType,
+        rating: item.rating != null ? Number(item.rating) : 0,
+        genreTitle: item.genreTitle || "",
+        duration: item.duration != null ? Number(item.duration) : 0,
+        durationText: item.durationText || "00:00",
+        previewUrl: item.previewUrl || "",
+        videoUrl: item.videoUrl || "",
+        link: item.link || "",
+        episode: item.episode != null ? Number(item.episode) : 0,
+        description: item.description || "",
+        playerType: item.playerType || "system",
+        childItems: Array.isArray(item.childItems)
+            ? item.childItems.map(normalizeItem)
+            : []
+    };
 }
 
-function normalizeItems(list){ return Array.isArray(list)?list.map(normalizeItem):[]; }
+// 处理数组
+function normalizeItems(list) {
+    return Array.isArray(list) ? list.map(normalizeItem) : [];
+}
 
 
 
