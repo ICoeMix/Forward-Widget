@@ -453,8 +453,6 @@ async function fetchDailyCalendarApi(params = {}) {
             })();
         }
     });
-
-    console.log("[DEBUG] 标准化之前的 finalResults =>", JSON.parse(JSON.stringify(finalResults)));
     return normalizeItems(finalResults);
 }
 
