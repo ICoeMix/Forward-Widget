@@ -136,18 +136,15 @@ const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;i
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
 
 
-/* ==================== 优化后的 fetchDailyCalendarApi（支持 TMDB genre 映射） ==================== */
 async function fetchDailyCalendarApi(params = {}) {
     await fetchAndCacheGlobalData();
 
     let items = globalData.dailyCalendar?.all_week || [];
     if (!items.length && !archiveFetchPromises['daily']) {
-        console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
-        archiveFetchPromises['daily'] = (async () => {
-            const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
+        archiveFetchPromises['daily'] = DynamicDataProcessor.processDailyCalendar().then(dynamicItems => {
             if (!globalData.dailyCalendar) globalData.dailyCalendar = {};
             globalData.dailyCalendar.all_week = dynamicItems;
-        })();
+        });
     }
     if (archiveFetchPromises['daily']) await archiveFetchPromises['daily'];
     items = globalData.dailyCalendar?.all_week || [];
@@ -163,64 +160,34 @@ async function fetchDailyCalendarApi(params = {}) {
     const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
     const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
 
-    // ==================== 按星期过滤 ====================
-    let filteredByDay = [];
-    if (filterType === "all_week") filteredByDay = items;
-    else {
-        const today = new Date();
-        const currentJsDay = today.getDay();
-        const targetBgmIds = new Set();
-        switch (filterType) {
-            case "today": targetBgmIds.add(JS_DAY_TO_BGM_API_ID[currentJsDay]); break;
-            case "specific_day": targetBgmIds.add(parseInt(specificWeekday,10)); break;
-            case "mon_thu": [1,2,3,4].forEach(id=>targetBgmIds.add(id)); break;
-            case "fri_sun": [5,6,7].forEach(id=>targetBgmIds.add(id)); break;
-        }
-        filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
-    }
+    // 按星期过滤
+    let filteredByDay = filterByWeekday(items, filterType, specificWeekday, JS_DAY_TO_BGM_API_ID);
 
-    // ==================== 按地区过滤 ====================
-    let filteredByRegion = filteredByDay.filter(item => {
-        if (dailyRegionFilter === "all") return true;
-        if (item.type !== "tmdb" || !item.tmdb_id) return dailyRegionFilter === "OTHER";
-        const countries = item.tmdb_origin_countries || [];
-        if (!countries.length) return dailyRegionFilter === "OTHER";
-        if (dailyRegionFilter === "JP") return countries.includes("JP");
-        if (dailyRegionFilter === "CN") return countries.includes("CN");
-        if (dailyRegionFilter === "US_EU") return countries.some(c => REGION_FILTER_US_EU_COUNTRIES.includes(c));
-        if (dailyRegionFilter === "OTHER") return !countries.includes("JP") && !countries.includes("CN") && !countries.some(c=>REGION_FILTER_US_EU_COUNTRIES.includes(c));
-        return false;
-    });
+    // 按地区过滤
+    let filteredByRegion = filteredByDay.filter(item => filterByRegion(item, dailyRegionFilter, REGION_FILTER_US_EU_COUNTRIES));
 
-    // ==================== 排序 ====================
-    let sortedResults = [...filteredByRegion];
-    if (dailySortOrder !== "default") {
-        sortedResults.sort((a,b)=>{
-            if (dailySortOrder==="popularity_rat_bgm") return (b.bgm_rating_total||0)-(a.bgm_rating_total||0);
-            if (dailySortOrder==="score_bgm_desc") return (b.bgm_score||0)-(a.bgm_score||0);
-            if (dailySortOrder==="airdate_desc"){
-                const dateA=a.releaseDate||0, dateB=b.releaseDate||0;
-                return new Date(dateB).getTime() - new Date(dateA).getTime();
-            }
-            return 0;
-        });
-    }
+    // 排序
+    let sortedResults = sortDailyResults(filteredByRegion, dailySortOrder);
 
-    // ==================== 关键词过滤 ====================
+    // 关键词过滤
     const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    // ==================== 异步更新 TMDB 详情 & genre 映射 ====================
-    // 确保 genreMap 已存在
-    if (!Processor.tmdbGenreMap) {
-        Processor.tmdbGenreMap = await fetchTmdbGenres(); // {16: '动画', 35:'喜剧', ...}
-    }
+    // ==================== 异步更新 TMDB 详情 & 映射 genre ====================
+    await updateTmdbDetailsWithGenres(finalResults);
+
+    return finalResults;
+}
+
+/* ==================== 辅助函数 ==================== */
+
+async function updateTmdbDetailsWithGenres(items) {
+    if (!Processor.tmdbGenreMap) Processor.tmdbGenreMap = await fetchTmdbGenres();
 
     const MAX_CONCURRENT = Processor.MAX_CONCURRENT_DETAILS_FETCH || 8;
 
-    // 分批处理 finalResults 避免并发过多
-    for (let i = 0; i < finalResults.length; i += MAX_CONCURRENT) {
-        const batch = finalResults.slice(i, i + MAX_CONCURRENT);
-        const promises = batch.map(async item => {
+    for (let i = 0; i < items.length; i += MAX_CONCURRENT) {
+        const batch = items.slice(i, i + MAX_CONCURRENT);
+        await Promise.all(batch.map(async item => {
             if (item.type === "link") {
                 const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
                 if (tmdbResult) {
@@ -234,27 +201,66 @@ async function fetchDailyCalendarApi(params = {}) {
                     item.tmdb_id = String(tmdbResult.id);
                     item.tmdb_origin_countries = tmdbResult.origin_country || [];
 
-                    // ==================== 映射 genre_titles ====================
+                    // 映射 genre
                     item.genre_ids = tmdbResult.genre_ids || [];
                     item.genre_titles = item.genre_ids.map(id => Processor.tmdbGenreMap[id]).filter(Boolean);
                 }
             }
-        });
-        await Promise.all(promises);
+        }));
     }
+}
 
-    return finalResults;
+function filterByWeekday(items, filterType, specificWeekday, JS_DAY_TO_BGM_API_ID) {
+    if (filterType === "all_week") return items;
+    const today = new Date();
+    const currentJsDay = today.getDay();
+    const targetBgmIds = new Set();
+    switch(filterType){
+        case "today": targetBgmIds.add(JS_DAY_TO_BGM_API_ID[currentJsDay]); break;
+        case "specific_day": targetBgmIds.add(parseInt(specificWeekday,10)); break;
+        case "mon_thu": [1,2,3,4].forEach(id=>targetBgmIds.add(id)); break;
+        case "fri_sun": [5,6,7].forEach(id=>targetBgmIds.add(id)); break;
+    }
+    return items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
+}
+
+function filterByRegion(item, dailyRegionFilter, REGION_FILTER_US_EU_COUNTRIES){
+    if(dailyRegionFilter==='all') return true;
+    if(item.type!=='tmdb' || !item.tmdb_id) return dailyRegionFilter==='OTHER';
+    const countries = item.tmdb_origin_countries || [];
+    if(!countries.length) return dailyRegionFilter==='OTHER';
+    if(dailyRegionFilter==='JP') return countries.includes('JP');
+    if(dailyRegionFilter==='CN') return countries.includes('CN');
+    if(dailyRegionFilter==='US_EU') return countries.some(c=>REGION_FILTER_US_EU_COUNTRIES.includes(c));
+    if(dailyRegionFilter==='OTHER') return !countries.includes("JP") && !countries.includes("CN") && !countries.some(c=>REGION_FILTER_US_EU_COUNTRIES.includes(c));
+    return false;
+}
+
+function sortDailyResults(items, dailySortOrder){
+    let sorted = [...items];
+    if(dailySortOrder==="default") return sorted;
+    sorted.sort((a,b)=>{
+        if(dailySortOrder==="popularity_rat_bgm") return (b.bgm_rating_total||0)-(a.bgm_rating_total||0);
+        if(dailySortOrder==="score_bgm_desc") return (b.bgm_score||0)-(a.bgm_score||0);
+        if(dailySortOrder==="airdate_desc"){
+            const dateA=a.releaseDate||0, dateB=b.releaseDate||0;
+            return new Date(dateB).getTime()-new Date(dateA).getTime();
+        }
+        return 0;
+    });
+    return sorted;
 }
 
 /* ==================== DynamicDataProcessor ==================== */
 const DynamicDataProcessor = (() => {
 
     class Processor {
+        // ==================== 静态常量 ====================
         static BGM_BASE_URL = "https://bgm.tv";
-        static TMDB_ANIMATION_GENRE_ID = 16;
-        static MAX_CONCURRENT_DETAILS_FETCH = 8;
-        static tmdbCache = new Map();
-        static tmdbGenreMap = new Map(); // id -> title 映射缓存
+        static TMDB_ANIMATION_GENRE_ID = 16; // 动画类别
+        static MAX_CONCURRENT_DETAILS_FETCH = 8; // 并发限制
+        static tmdbCache = new Map(); // TMDB 查询缓存
+        static tmdbGenreMap = null; // TMDB genre 映射
 
         // ==================== 工具方法 ====================
         static normalizeTmdbQuery(query) { 
@@ -269,9 +275,9 @@ const DynamicDataProcessor = (() => {
             dateStr = dateStr.trim(); 
             let match; 
             match = dateStr.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日/); 
-            if (match) return `${match[1]}-${String(match[2]).padStart(2,'0')}-${String(match[3]).padStart(2,'0')}`; 
+            if (match) return `${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`; 
             match = dateStr.match(/^(\d{4})年(\d{1,2})月(?!日)/); 
-            if (match) return `${match[1]}-${String(match[2]).padStart(2,'0')}-01`; 
+            if (match) return `${match[1]}-${String(match[2]).padStart(2, '0')}-01`; 
             match = dateStr.match(/^(\d{4})$/); 
             if (match) return `${match[1]}-01-01`; 
             return '';
@@ -292,19 +298,7 @@ const DynamicDataProcessor = (() => {
         }
 
         // ==================== TMDB 查询 ====================
-        static async loadTmdbGenres() {
-            if (Processor.tmdbGenreMap.size) return;
-            try {
-                const response = await Widget.tmdb.get('/genre/tv/list', { params: { language: 'zh-CN' } });
-                (response.data.genres || []).forEach(g => Processor.tmdbGenreMap.set(g.id, g.name));
-            } catch (err) {
-                console.error("[TMDB] loadTmdbGenres error:", err.message);
-            }
-        }
-
         static async searchTmdb(originalTitle, chineseTitle, year) {
-            await Processor.loadTmdbGenres();
-
             const cacheKey = `${originalTitle || ''}-${chineseTitle || ''}-${year || ''}`;
             if (Processor.tmdbCache.has(cacheKey)) return Processor.tmdbCache.get(cacheKey);
 
@@ -314,7 +308,7 @@ const DynamicDataProcessor = (() => {
             const query = chineseTitle || originalTitle;
             try {
                 const response = await Widget.tmdb.get(`/search/${searchMediaType}`, { 
-                    params: { query, language: "zh-CN", include_adult: false, year } 
+                    params: { query, language: "zh-CN", include_adult: false, year: year } 
                 });
                 const results = response?.results || [];
                 for (const result of results) {
@@ -325,18 +319,53 @@ const DynamicDataProcessor = (() => {
                         bestMatch = result;
                     }
                 }
-                // 映射 genre_titles
-                if (bestMatch) {
-                    bestMatch.genre_titles = (bestMatch.genre_ids || [])
-                        .map(id => Processor.tmdbGenreMap.get(id))
-                        .filter(Boolean);
-                }
             } catch (err) {
                 console.error(`[TMDB] searchTmdb error: ${err.message}`);
             }
 
             Processor.tmdbCache.set(cacheKey, bestMatch);
             return bestMatch;
+        }
+
+        static async fetchTmdbGenres() {
+            if (Processor.tmdbGenreMap) return Processor.tmdbGenreMap;
+            try {
+                const resp = await Widget.tmdb.get('/genre/tv/list', { params: { language: "zh-CN" } });
+                const genres = resp?.genres || [];
+                Processor.tmdbGenreMap = genres.reduce((acc, g) => { acc[g.id] = g.name; return acc; }, {});
+            } catch (err) {
+                console.error(`[TMDB] fetchGenres error: ${err.message}`);
+                Processor.tmdbGenreMap = {};
+            }
+            return Processor.tmdbGenreMap;
+        }
+
+        // ==================== TMDB 更新 & genre 映射 ====================
+        static async enrichWithTmdbAndGenres(items) {
+            await Processor.fetchTmdbGenres();
+            const MAX_CONCURRENT = Processor.MAX_CONCURRENT_DETAILS_FETCH;
+            for (let i = 0; i < items.length; i += MAX_CONCURRENT) {
+                const batch = items.slice(i, i + MAX_CONCURRENT);
+                await Promise.all(batch.map(async item => {
+                    if (item.type === "link") {
+                        const tmdbResult = await Processor.searchTmdb(item.title, null, item.releaseDate?.substring(0,4));
+                        if (tmdbResult) {
+                            item.id = String(tmdbResult.id);
+                            item.type = "tmdb";
+                            item.title = tmdbResult.name || tmdbResult.title || item.title;
+                            item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
+                            item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
+                            item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
+                            item.description = tmdbResult.overview || item.description;
+                            item.tmdb_id = String(tmdbResult.id);
+                            item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                            item.genre_ids = tmdbResult.genre_ids || [];
+                            item.genre_titles = item.genre_ids.map(id => Processor.tmdbGenreMap[id]).filter(Boolean);
+                            item.link = null;
+                        }
+                    }
+                }));
+            }
         }
 
         // ==================== Bangumi 页面解析 ====================
@@ -366,20 +395,6 @@ const DynamicDataProcessor = (() => {
                 mediaType: category, rating: item.rating,
                 description: item.info, link: `${Processor.BGM_BASE_URL}/subject/${item.id}`
             };
-            const tmdbResult = await Processor.searchTmdb(item.title, null, year);
-            if (tmdbResult) {
-                baseItem.id = String(tmdbResult.id);
-                baseItem.type = "tmdb";
-                baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
-                baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
-                baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
-                baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
-                baseItem.description = tmdbResult.overview || baseItem.description;
-                baseItem.link = null;
-                baseItem.tmdb_id = String(tmdbResult.id);
-                baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-                baseItem.genre_titles = tmdbResult.genre_titles || [];
-            }
             return baseItem;
         }
 
@@ -387,22 +402,21 @@ const DynamicDataProcessor = (() => {
             try {
                 const listHtmlResp = await Widget.http.get(url);
                 const pendingItems = Processor.parseBangumiListItems(listHtmlResp.data);
-                const results = [];
+                const enrichedItems = [];
                 for (let i = 0; i < pendingItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
                     const batch = pendingItems.slice(i, i + Processor.MAX_CONCURRENT_DETAILS_FETCH);
-                    const promises = batch.map(item => Processor.fetchItemDetails(item, category));
-                    const settled = await Promise.allSettled(promises);
-                    settled.forEach(res => {
-                        if (res.status === 'fulfilled' && res.value) results.push(res.value);
-                    });
+                    const detailsBatch = await Promise.all(batch.map(item => Processor.fetchItemDetails(item, category)));
+                    enrichedItems.push(...detailsBatch);
                 }
-                return results;
-            } catch (error) {
-                console.error(`[BGM Widget] processBangumiPage error (${url}): ${error.message}`);
+                await Processor.enrichWithTmdbAndGenres(enrichedItems);
+                return enrichedItems;
+            } catch (err) {
+                console.error(`[BGM Widget] processBangumiPage error: ${err.message}`);
                 return [];
             }
         }
 
+        // ==================== 每日放送 ====================
         static async processDailyCalendar() {
             try {
                 const apiResponse = await Widget.http.get("https://api.bgm.tv/calendar");
@@ -415,42 +429,18 @@ const DynamicDataProcessor = (() => {
                         });
                     }
                 });
-                const enhancedItems = [];
-                for (let i = 0; i < allItems.length; i += Processor.MAX_CONCURRENT_DETAILS_FETCH) {
-                    const batch = allItems.slice(i, i + Processor.MAX_CONCURRENT_DETAILS_FETCH);
-                    const promises = batch.map(async (item) => {
-                        const baseItem = {
-                            id: String(item.id), type: "link", title: item.name_cn || item.name,
-                            posterPath: item.images?.large?.startsWith('//') ? 'https:' + item.images.large : item.images?.large,
-                            releaseDate: item.air_date, mediaType: 'anime', rating: item.rating?.score?.toFixed(1) || "N/A",
-                            description: `[${item.weekday?.cn || ''}] ${item.summary || ''}`.trim(),
-                            link: item.url, bgm_id: String(item.id), bgm_score: item.rating?.score || 0,
-                            bgm_rating_total: item.rating?.total || 0, bgm_weekday_id: item.bgm_weekday_id
-                        };
-                        const tmdbResult = await Processor.searchTmdb(item.name, item.name_cn, item.air_date?.substring(0, 4));
-                        if (tmdbResult) {
-                            baseItem.id = String(tmdbResult.id);
-                            baseItem.type = "tmdb";
-                            baseItem.title = tmdbResult.name || tmdbResult.title || baseItem.title;
-                            baseItem.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : baseItem.posterPath;
-                            baseItem.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || baseItem.releaseDate;
-                            baseItem.rating = tmdbResult.vote_average ? tmdbResult.vote_average.toFixed(1) : baseItem.rating;
-                            baseItem.description = tmdbResult.overview || baseItem.description;
-                            baseItem.link = null;
-                            baseItem.tmdb_id = String(tmdbResult.id);
-                            baseItem.tmdb_origin_countries = tmdbResult.origin_country || [];
-                            baseItem.genre_titles = tmdbResult.genre_titles || [];
-                        }
-                        return baseItem;
-                    });
-                    const settled = await Promise.allSettled(promises);
-                    settled.forEach(res => {
-                        if (res.status === 'fulfilled' && res.value) enhancedItems.push(res.value);
-                    });
-                }
-                return enhancedItems;
-            } catch (error) {
-                console.error(`[BGM Widget] processDailyCalendar error: ${error.message}`);
+                const baseItems = allItems.map(item => ({
+                    id: String(item.id), type: "link", title: item.name_cn || item.name,
+                    posterPath: item.images?.large?.startsWith('//') ? 'https:' + item.images.large : item.images?.large,
+                    releaseDate: item.air_date, mediaType: 'anime', rating: item.rating?.score?.toFixed(1) || "N/A",
+                    description: `[${item.weekday?.cn || ''}] ${item.summary || ''}`.trim(),
+                    link: item.url, bgm_id: String(item.id), bgm_score: item.rating?.score || 0,
+                    bgm_rating_total: item.rating?.total || 0, bgm_weekday_id: item.bgm_weekday_id
+                }));
+                await Processor.enrichWithTmdbAndGenres(baseItems);
+                return baseItems;
+            } catch (err) {
+                console.error(`[BGM Widget] processDailyCalendar error: ${err.message}`);
                 return [];
             }
         }
