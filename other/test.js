@@ -138,28 +138,20 @@ const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())retur
 
 /* ==================== 优化后的 fetchDailyCalendarApi ==================== */
 async function fetchDailyCalendarApi(params = {}) {
-    console.log('[fetchDailyCalendarApi] start');
     await fetchAndCacheGlobalData();
 
     let items = globalData.dailyCalendar?.all_week || [];
-    console.log('[fetchDailyCalendarApi] initial items length:', items.length);
-
     if (!items.length && !archiveFetchPromises['daily']) {
         console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
         archiveFetchPromises['daily'] = (async () => {
             const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
-            console.log('[fetchDailyCalendarApi] dynamicItems fetched:', dynamicItems.length);
             if (!globalData.dailyCalendar) globalData.dailyCalendar = {};
             globalData.dailyCalendar.all_week = dynamicItems;
         })();
     }
-    if (archiveFetchPromises['daily']) {
-        console.log('[fetchDailyCalendarApi] waiting for archiveFetchPromises[daily]');
-        await archiveFetchPromises['daily'];
-    }
+    if (archiveFetchPromises['daily']) await archiveFetchPromises['daily'];
 
     items = globalData.dailyCalendar?.all_week || [];
-    console.log('[fetchDailyCalendarApi] final items length:', items.length);
 
     const { filterType = "today", specificWeekday = "1", dailySortOrder = "popularity_rat_bgm", dailyRegionFilter = "all", keywordFilter = "" } = params;
 
@@ -180,7 +172,6 @@ async function fetchDailyCalendarApi(params = {}) {
         }
         filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
     }
-    console.log('[fetchDailyCalendarApi] filteredByDay length:', filteredByDay.length);
 
     let filteredByRegion = filteredByDay.filter(item => {
         if (dailyRegionFilter === "all") return true;
@@ -193,7 +184,6 @@ async function fetchDailyCalendarApi(params = {}) {
         if (dailyRegionFilter === "OTHER") return !countries.includes("JP") && !countries.includes("CN") && !countries.some(c=>REGION_FILTER_US_EU_COUNTRIES.includes(c));
         return false;
     });
-    console.log('[fetchDailyCalendarApi] filteredByRegion length:', filteredByRegion.length);
 
     let sortedResults = [...filteredByRegion];
     if (dailySortOrder !== "default") {
@@ -209,10 +199,30 @@ async function fetchDailyCalendarApi(params = {}) {
     }
 
     const finalResults = filterByKeywords(sortedResults, keywordFilter);
-    console.log('[fetchDailyCalendarApi] finalResults length before TMDB enrichment:', finalResults.length);
 
-    await DynamicDataProcessor.enrichWithTmdbAndGenres(finalResults);
-    console.log('[fetchDailyCalendarApi] finalResults after TMDB enrichment:', finalResults.length);
+    // 仅对每日放送来源的 link 类型项进行 TMDB 富化并映射 genre
+    for(let i=0;i<finalResults.length;i+=DynamicDataProcessor.MAX_CONCURRENT_DETAILS_FETCH){
+        const batch = finalResults.slice(i,i+DynamicDataProcessor.MAX_CONCURRENT_DETAILS_FETCH);
+        await Promise.all(batch.map(async item => {
+            if(item.type==='link' && item.bgm_id){
+                const tmdbResult = await DynamicDataProcessor.searchTmdb(item.title,null,item.releaseDate?.substring(0,4));
+                if(tmdbResult){
+                    const genreMap = await DynamicDataProcessor.fetchTmdbGenres();
+                    item.id = String(tmdbResult.id);
+                    item.type = 'tmdb';
+                    item.title = tmdbResult.name || tmdbResult.title || item.title;
+                    item.posterPath = tmdbResult.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}` : item.posterPath;
+                    item.releaseDate = tmdbResult.first_air_date || tmdbResult.release_date || item.releaseDate;
+                    item.rating = tmdbResult.vote_average?.toFixed(1) || item.rating;
+                    item.description = tmdbResult.overview || item.description;
+                    item.link = null;
+                    item.tmdb_id = String(tmdbResult.id);
+                    item.tmdb_origin_countries = tmdbResult.origin_country || [];
+                    item.tmdb_genres = (tmdbResult.genre_ids||[]).map(id=>genreMap[id]).filter(Boolean);
+                }
+            }
+        }));
+    }
 
     return finalResults;
 }
