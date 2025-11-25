@@ -199,13 +199,14 @@ async function fetchDailyCalendarApi(params = {}) {
 
     const finalResults = filterByKeywords(sortedResults, keywordFilter);
 
-    try {
-        await DynamicDataProcessor.enrichWithTmdbAndGenres(finalResults);
-    } catch(e) {
-        console.error('[BGM Widget] enrichWithTmdbAndGenres error', e);
+    // 强制使用 TMDB 结果覆盖原始 Bangumi 字段
+    for(let i=0;i<finalResults.length;i++){
+        const item = finalResults[i];
+        if(item.type === 'link' && item.tmdb_id){
+            item.type = 'tmdb';
+        }
     }
 
-    console.log('[DEBUG] finalResults after TMDB enrichment:', finalResults);
     return finalResults;
 }
 
