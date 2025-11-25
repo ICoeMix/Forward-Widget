@@ -135,7 +135,103 @@ const getRegex=term=>regexCache.has(term)?regexCache.get(term):(regexCache.set(t
 const buildFilterUnit=filterStr=>{if(!filterStr||!filterStr.trim())return null;if(filterUnitCache.has(filterStr))return filterUnitCache.get(filterStr);const terms=filterStr.split(/\s*\|\|\s*/).map(t=>t.trim()).filter(Boolean),plainTerms=[],regexTerms=[];for(const t of terms)(isPlainText(t)?plainTerms:regexTerms).push(t);let ac=null;if(plainTerms.length){const key=plainTerms.slice().sort().join("\u0001");if(acCache.has(key))ac=acCache.get(key);else{ac=new ACAutomaton();plainTerms.forEach(p=>ac.insert(p.toLowerCase()));ac.build();acCache.set(key,ac)}}const unit={ac,regexTerms};filterUnitCache.set(filterStr,unit);return unit}; 
 const filterByKeywords=(list,filterStr)=>{if(!filterStr||!filterStr.trim())return list;if(!Array.isArray(list)||!list.length)return list;const unit=buildFilterUnit(filterStr);if(!unit)return list;const {ac,regexTerms}=unit;return list.filter(item=>{if(!item._normalizedTitle)item._normalizedTitle=normalizeTitleForMatch(item.title||"");const title=item._normalizedTitle;if(ac&&ac.match(title).size)return false;for(const r of regexTerms){const re=getRegex(r);if(re&&re.test(title))return false}return true})};
 
-已在代码中添加详细调试日志，覆盖每个关键步骤，包括初始数据、筛选、排序、关键字过滤以及最终 TMDB 覆盖情况。
+/* ==================== 优化后的 fetchDailyCalendarApi (带 TMDB genre 调试) ==================== */
+async function fetchDailyCalendarApi(params = {}) {
+    await fetchAndCacheGlobalData();
+
+    let items = globalData.dailyCalendar?.all_week || [];
+    if (!items.length && !archiveFetchPromises['daily']) {
+        console.log("[BGM Widget vOptimized] 每日放送无预构建数据，尝试动态获取...");
+        archiveFetchPromises['daily'] = (async () => {
+            const dynamicItems = await DynamicDataProcessor.processDailyCalendar();
+            if (!globalData.dailyCalendar) globalData.dailyCalendar = {};
+            globalData.dailyCalendar.all_week = dynamicItems;
+        })();
+    }
+    if (archiveFetchPromises['daily']) await archiveFetchPromises['daily'];
+
+    items = globalData.dailyCalendar?.all_week || [];
+
+    const { filterType = "today", specificWeekday = "1", dailySortOrder = "popularity_rat_bgm", dailyRegionFilter = "all", keywordFilter = "" } = params;
+
+    const JS_DAY_TO_BGM_API_ID = {0:7,1:1,2:2,3:3,4:4,5:5,6:6};
+    const REGION_FILTER_US_EU_COUNTRIES = ["US","GB","FR","DE","CA","AU","ES","IT"];
+
+    let filteredByDay = [];
+    if (filterType === "all_week") filteredByDay = items;
+    else {
+        const today = new Date();
+        const currentJsDay = today.getDay();
+        const targetBgmIds = new Set();
+        switch (filterType) {
+            case "today": targetBgmIds.add(JS_DAY_TO_BGM_API_ID[currentJsDay]); break;
+            case "specific_day": targetBgmIds.add(parseInt(specificWeekday,10)); break;
+            case "mon_thu": [1,2,3,4].forEach(id=>targetBgmIds.add(id)); break;
+            case "fri_sun": [5,6,7].forEach(id=>targetBgmIds.add(id)); break;
+        }
+        filteredByDay = items.filter(item => item.bgm_weekday_id && targetBgmIds.has(item.bgm_weekday_id));
+    }
+
+    let filteredByRegion = filteredByDay.filter(item => {
+        if (dailyRegionFilter === "all") return true;
+        if (item.type !== "tmdb" || !item.tmdb_id) return dailyRegionFilter === "OTHER";
+        const countries = item.tmdb_origin_countries || [];
+        if (!countries.length) return dailyRegionFilter === "OTHER";
+        if (dailyRegionFilter === "JP") return countries.includes("JP");
+        if (dailyRegionFilter === "CN") return countries.includes("CN");
+        if (dailyRegionFilter === "US_EU") return countries.some(c => REGION_FILTER_US_EU_COUNTRIES.includes(c));
+        if (dailyRegionFilter === "OTHER") return !countries.includes("JP") && !countries.includes("CN") && !countries.some(c=>REGION_FILTER_US_EU_COUNTRIES.includes(c));
+        return false;
+    });
+
+    let sortedResults = [...filteredByRegion];
+    if (dailySortOrder !== "default") {
+        sortedResults.sort((a,b)=>{
+            if (dailySortOrder==="popularity_rat_bgm") return (b.bgm_rating_total||0)-(a.bgm_rating_total||0);
+            if (dailySortOrder==="score_bgm_desc") return (b.bgm_score||0)-(a.bgm_score||0);
+            if (dailySortOrder==="airdate_desc"){
+                const dateA=a.releaseDate||0,dateB=b.releaseDate||0;
+                return new Date(dateB).getTime()-new Date(dateA).getTime();
+            }
+            return 0;
+        });
+    }
+
+    const finalResults = filterByKeywords(sortedResults, keywordFilter);
+
+    const GENRE_MAP = {
+        16: "Animation",
+        35: "Comedy",
+        18: "Drama",
+        10751: "Family",
+        10759: "Action & Adventure",
+        10762: "Kids",
+        9648: "Mystery",
+        10763: "News",
+        10764: "Reality",
+        10765: "Sci-Fi & Fantasy",
+        10766: "Soap",
+        10767: "Talk",
+        10768: "War & Politics",
+        37: "Western"
+    };
+
+    // 强制使用 TMDB 结果覆盖原始 Bangumi 字段，并打印 genre 调试信息
+    for (let i = 0; i < finalResults.length; i++) {
+        const item = finalResults[i];
+        if (item.type === 'link' && item.tmdb_id) {
+            item.type = 'tmdb';
+            // 保存 genre_ids 并映射 title
+            item.tmdb_genre_ids = item.tmdb_genre_ids || [];
+            item.tmdb_genre_titles = item.tmdb_genre_ids.map(id => GENRE_MAP[id] || `Unknown(${id})`);
+            console.log(`[DEBUG] TMDB enrichment for "${item.title}" (tmdb_id: ${item.tmdb_id})`);
+            console.log(`  genre_ids:`, item.tmdb_genre_ids);
+            console.log(`  genre_titles:`, item.tmdb_genre_titles);
+        }
+    }
+
+    return finalResults;
+}
 
 const DynamicDataProcessor = (() => {
 
