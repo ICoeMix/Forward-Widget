@@ -222,66 +222,47 @@ async function initTmdbGenres(language="zh-CN"){
 }
 
 // -----------------------------
-// 规范化处理
-function normalizeItem(item){
-    if(!item || typeof item!=="object") return { 
-        id:null, type:"tmdb", title:"未知", overview:"", posterPath:"", backdropPath:"", 
-        mediaType:"movie", releaseDate:"", popularity:0, rating:0, jobs:[], characters:[], genre_ids:[], 
-        _normalizedTitle:"", _releaseTime:0, _popularity:0, _rating:0 
-    };
-    const title = item.title || item.name || "未知";
-    const mediaType = item.media_type || (item.release_date ? "movie" : (item.first_air_date ? "tv" : "movie"));
-    const release = item.release_date || item.first_air_date || "";
-    return {
-        id: item.id || null,
-        type: "tmdb",
-        title,
-        overview: item.overview || "",
-        posterPath: item.poster_path || "",
-        backdropPath: item.backdrop_path || "",
-        mediaType,
-        releaseDate: release,
-        popularity: Number(item.popularity || 0),
-        rating: Number(item.vote_average || 0),
-        jobs: Array.isArray(item.jobs) ? item.jobs : (item.job ? [item.job] : []),
-        characters: Array.isArray(item.characters) ? item.characters : (item.character ? [item.character] : []),
-        genre_ids: Array.isArray(item.genre_ids) ? item.genre_ids : [],
-        _normalizedTitle: title.toLowerCase(),
-        _releaseTime: release ? new Date(release).getTime() : 0,
-        _popularity: Number(item.popularity || 0),
-        _rating: Number(item.vote_average || 0)
-    };
+// 标准化处理函数
+function normalizeItems(list) {
+    if (!Array.isArray(list)) return [];
+
+    return list.map(item => {
+        if (!item || typeof item !== "object") item = {};
+
+        const mediaType = item.mediaType || "movie";
+        const type = item.type || "tmdb";
+        const id = item.id != null
+            ? (type === "tmdb" ? `${mediaType}.${item.id}` : `${item.id}`)
+            : null;
+
+        return {
+            id: id,
+            type: type,
+            title: item.title || "",
+            posterPath: item.posterPath || "",
+            backdropPath: item.backdropPath || "",
+            releaseDate: item.releaseDate || "",
+            mediaType: mediaType,
+            rating: item.rating != null ? Number(item.rating) : 0,
+            genreTitle: item.genreTitle || "",
+            duration: item.duration != null ? Number(item.duration) : 0,
+            durationText: item.durationText || "00:00",
+            previewUrl: item.previewUrl || "",
+            videoUrl: item.videoUrl || "",
+            link: item.link || "",
+            episode: item.episode != null ? Number(item.episode) : 0,
+            description: item.description || "",
+            playerType: item.playerType || "system",
+            childItems: Array.isArray(item.childItems)
+                ? normalizeItems(item.childItems)
+                : []
+        };
+    });
 }
 
 function normalizeItems(list){ return Array.isArray(list)?list.map(normalizeItem):[]; }
 
-// -----------------------------
-// 输出格式化
-function formatOutput(list){
-    return [...(Array.isArray(list)?list:[])]
-        .filter(i => i && typeof i==="object")
-        .sort((a,b)=>new Date(b.releaseDate||0) - new Date(a.releaseDate||0))
-        .map(i=>{
-            const mediaType = i.mediaType || "movie";
-            const genreMap = tmdbGenresCache[mediaType] || {};
-            const genreTitle = Array.isArray(i.genre_ids) ? i.genre_ids.map(id=>genreMap[id] || `未知类型(${id})`).join("•") : "";
-            return {
-                id: i.id,
-                type: "tmdb",
-                title: i.title || "未知",
-                description: i.overview || "",
-                releaseDate: i.releaseDate || "",
-                rating: i.rating || 0,
-                popularity: i.popularity || 0,
-                posterPath: i.posterPath || "",
-                backdropPath: i.backdropPath || "",
-                mediaType,
-                jobs: i.jobs || [],
-                characters: i.characters || [],
-                genreTitle
-            };
-        });
-}
+
 
 async function fetchAndCacheGlobalData() {
     if (globalData) return globalData;
