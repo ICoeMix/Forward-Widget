@@ -202,24 +202,6 @@
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ti.bemarkt.podcast.js"
     },
     {
-      "id": "dytt_vod",
-      "title": "电影天堂",
-      "description": "获取在线电影、电视剧、动漫、综艺和短剧",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.0",
-      "author": "两块",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/dytt_vod.js"
-    },
-    {
-      "id": "ddys_vod",
-      "title": "低端影视",
-      "description": "获取在线电影、电视剧、动画",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.0",
-      "author": "两块",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ddys_vod.js"
-    },
-    {
       "id": "yuanqi.wallpaper",
       "title": "🖼️ ✨wallpaper",
       "description": "✨ Dynamic wallpaper For Topshelf",
@@ -236,6 +218,24 @@
       "version": "2.1.2",
       "author": "Discount Code：VEUS",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/xtream_api_en.js"
+    },
+    {
+      "id": "dytt_vod",
+      "title": "电影天堂",
+      "description": "获取在线电影、电视剧、动漫、综艺和短剧",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.0",
+      "author": "两块",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/dytt_vod.js"
+    },
+    {
+      "id": "ddys_vod",
+      "title": "低端影视",
+      "description": "获取在线电影、电视剧、动画",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.0",
+      "author": "两块",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/ddys_vod.js"
     },
     {
       "id": "forward.combined.media.lists.ar",
