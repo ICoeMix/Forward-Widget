@@ -22,15 +22,6 @@
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/tmdb.person.movie.js"
     },
     {
-      "id": "vod_sream",
-      "title": "VOD Stream",
-      "version": "1.0.208",
-      "description": "获取聚合VOD影片资源",
-      "requiredVersion": "0.0.1",
-      "author": "两块",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/VodStream.js"
-    },
-    {
       "id": "douban",
       "title": "豆瓣我看&豆瓣个性化推荐",
       "description": "解析豆瓣想看、在看、已看以及根据个人数据生成的个性化推荐【30% off code：CHEAP】",
@@ -227,6 +218,15 @@
       "version": "2.1.2",
       "author": "Discount Code：VEUS",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/xtream_api_en.js"
+    },
+    {
+      "id": "vod_sream",
+      "title": "VOD Stream",
+      "version": "1.0.208",
+      "description": "获取聚合VOD影片资源",
+      "requiredVersion": "0.0.1",
+      "author": "两块",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/VodStream.js"
     },
     {
       "id": "dytt_vod",
