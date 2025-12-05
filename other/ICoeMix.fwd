@@ -21,6 +21,16 @@
             "author": "ICoeMix (Optimized by ChatGPT)",
             "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/refs/heads/master/other/person.movie.js"
             
+        },
+        {
+            "id": "vod_sream",
+            "title": "VOD Stream",
+            "version": "1.0.208",
+            "description": "获取聚合VOD影片资源",
+            "requiredVersion": "0.0.1",
+            "author": "两块",
+            "url": "https://raw.githubusercontent.com/2kuai/ForwardWidgets/refs/heads/main/Widgets/VodStream.js"
+            
         }
-    ]
+]
 }
