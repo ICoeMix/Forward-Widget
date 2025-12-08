@@ -22,58 +22,22 @@
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/tmdb.person.movie.js"
     },
     {
-      "id": "douban",
-      "title": "豆瓣我看&豆瓣个性化推荐",
-      "description": "解析豆瓣想看、在看、已看以及根据个人数据生成的个性化推荐【30% off code：CHEAP】",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.20",
-      "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/douban.js"
+      "id": "forward.combined.media.lists",
+      "title": "影视榜单",
+      "description": "影视动画榜单",
+      "requiredVersion": "0.0.2",
+      "version": "1.5.0",
+      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/forward.combined.media.lists.js"
     },
     {
-      "id": "trakt",
-      "title": "Trakt我看&Trakt个性化推荐",
-      "description": "解析Trakt想看、在看、已看、片单、追剧日历以及根据个人数据生成的个性化推荐【30% off code：CHEAP】",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.15",
-      "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/trakt.js"
-    },
-    {
-      "id": "live",
-      "title": "直播(电视+网络)",
-      "description": "解析直播订阅链接【30% off code：CHEAP】",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.10",
-      "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/live.js"
-    },
-    {
-      "id": "yatu",
-      "title": "雅图(每日放送+点播排行榜+评分排行榜)",
-      "description": "解析雅图每日放送更新以及各类排行榜【30% off code：CHEAP】",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.6",
-      "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/yatu.js"
-    },
-    {
-      "id": "zhuijurili",
-      "title": "追剧日历(今/明日播出、周历、各项榜单、今日推荐)",
-      "description": "解析追剧日历今/明日播出剧集/番剧/国漫/综艺、周历、各项榜单、今日推荐等【30% off code：CHEAP】",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.4",
-      "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/zhuijurili.js"
-    },
-    {
-      "id": "letterboxd",
-      "title": "Letterboxd电影爱好者平台",
-      "description": "解析Letterboxd片单内的影片【30% off code：CHEAP】",
-      "requiredVersion": "0.0.1",
-      "version": "1.0.2",
-      "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/letterboxd.js"
+      "id": "baranwang.danmu.universe",
+      "title": "通用弹幕",
+      "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台",
+      "requiredVersion": "0.0.2",
+      "version": "0.14.1",
+      "author": "Baran",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/baranwang.danmu.universe.js"
     },
     {
       "id": "forward.auto.danmu",
@@ -94,24 +58,6 @@
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/forward.auto.danmu_api.js"
     },
     {
-      "id": "forward.combined.media.lists",
-      "title": "影视榜单",
-      "description": "影视动画榜单",
-      "requiredVersion": "0.0.2",
-      "version": "1.5.0",
-      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/forward.combined.media.lists.js"
-    },
-    {
-      "id": "baranwang.danmu.universe",
-      "title": "通用弹幕",
-      "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台",
-      "requiredVersion": "0.0.2",
-      "version": "0.14.1",
-      "author": "Baran",
-      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/baranwang.danmu.universe.js"
-    },
-    {
       "id": "forward.combined.media.lists.en",
       "title": "Movie & TV Lists",
       "description": "Movie & TV Lists",
@@ -119,6 +65,51 @@
       "version": "1.5.0",
       "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/forward.combined.media.lists.en.js"
+    },
+    {
+      "id": "douban",
+      "title": "豆瓣我看&豆瓣个性化推荐",
+      "description": "解析豆瓣想看、在看、已看以及根据个人数据生成的个性化推荐【30% off code：CHEAP】",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.20",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/douban.js"
+    },
+    {
+      "id": "trakt",
+      "title": "Trakt我看&Trakt个性化推荐",
+      "description": "解析Trakt想看、在看、已看、片单、追剧日历以及根据个人数据生成的个性化推荐【30% off code：CHEAP】",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.15",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/trakt.js"
+    },
+    {
+      "id": "zhuijurili",
+      "title": "追剧日历(今/明日播出、周历、各项榜单、今日推荐)",
+      "description": "解析追剧日历今/明日播出剧集/番剧/国漫/综艺、周历、各项榜单、今日推荐等【30% off code：CHEAP】",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.4",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/zhuijurili.js"
+    },
+    {
+      "id": "yatu",
+      "title": "雅图(每日放送+点播排行榜+评分排行榜)",
+      "description": "解析雅图每日放送更新以及各类排行榜【30% off code：CHEAP】",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.6",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/yatu.js"
+    },
+    {
+      "id": "letterboxd",
+      "title": "Letterboxd电影爱好者平台",
+      "description": "解析Letterboxd片单内的影片【30% off code：CHEAP】",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.2",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/letterboxd.js"
     },
     {
       "id": "hot_picks",
@@ -146,6 +137,15 @@
       "version": "1.0.4",
       "author": "Evan",
       "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/person.movie.tmdb.js"
+    },
+    {
+      "id": "live",
+      "title": "直播(电视+网络)",
+      "description": "解析直播订阅链接【30% off code：CHEAP】",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.10",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/ICoeMix/Forward-Widget/master/widgets/live.js"
     },
     {
       "id": "imdb_discovery_final_v2",
